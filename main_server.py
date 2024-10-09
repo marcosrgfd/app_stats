@@ -347,6 +347,7 @@ def calculate_sample_size_pearson():
         alpha = data.get('alpha', 0.05)  # Nivel de significancia
         power = data.get('power', 0.8)  # Potencia estadística
         r = data.get('coef_pearson', None)  # Tamaño del efecto (coeficiente de correlación)
+        alternative = data.get('alternative', 'two-sided')  # Tipo de prueba ('two-sided', 'larger', 'smaller')
 
         if r is None:
             raise ValueError("El tamaño del efecto (coeficiente de correlación r) es necesario para el cálculo.")
@@ -362,7 +363,7 @@ def calculate_sample_size_pearson():
         analysis = NormalIndPower()
 
         # Calcular el tamaño muestral necesario
-        sample_size = analysis.solve_power(effect_size=effect_size, alpha=alpha, power=power, alternative='two-sided')
+        sample_size = analysis.solve_power(effect_size=effect_size, alpha=alpha, power=power, alternative=alternative)
 
         if isinstance(sample_size, float):
             sample_size = math.ceil(sample_size)  # Redondear hacia arriba para asegurar tamaño suficiente
