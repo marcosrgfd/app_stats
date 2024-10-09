@@ -337,6 +337,42 @@ def calculate_sample_size_mcnemar():
         return jsonify({'error': str(e)}), 400
     
 
+# Ruta para el cálculo de tamaño muestral para la correlación de Pearson
+@app.route('/calculate_sample_size_pearson', methods=['POST'])
+def calculate_sample_size_pearson():
+    try:
+        data = request.get_json()
+
+        # Obtener los parámetros de la solicitud
+        alpha = data.get('alpha', 0.05)  # Nivel de significancia
+        power = data.get('power', 0.8)  # Potencia estadística
+        r = data.get('coef_pearson', None)  # Tamaño del efecto (coeficiente de correlación)
+
+        if r is None:
+            raise ValueError("El tamaño del efecto (coeficiente de correlación r) es necesario para el cálculo.")
+
+        # Verificar que el coeficiente de correlación esté en el rango válido
+        if not -1 <= r <= 1:
+            raise ValueError("El coeficiente de correlación (r) debe estar entre -1 y 1.")
+
+        # Calcular el tamaño del efecto para el análisis de poder
+        effect_size = math.sqrt(r**2 / (1 - r**2))
+
+        # Configurar el análisis de poder para la correlación de Pearson
+        analysis = NormalIndPower()
+
+        # Calcular el tamaño muestral necesario
+        sample_size = analysis.solve_power(effect_size=effect_size, alpha=alpha, power=power, alternative='two-sided')
+
+        if isinstance(sample_size, float):
+            sample_size = math.ceil(sample_size)  # Redondear hacia arriba para asegurar tamaño suficiente
+
+        return jsonify({'sample_size': sample_size, 'effect_size': effect_size})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+    
+
 
 ####################################################################################################
 ####################################### DESCRIPTIVE ANALYSIS #######################################
@@ -845,5 +881,7 @@ def run_regression():
         return jsonify({'error': str(e)}), 400
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=False, host='0.0.0.0', port=5000)
+
+
 
