@@ -372,6 +372,7 @@ def calculate_sample_size_pearson():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
     
 
 
@@ -880,6 +881,11 @@ def run_regression():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+    
+
+@app.route('/ping', methods=['HEAD', 'GET'])
+def ping():
+    return '', 200
 
 if __name__ == '__main__':
     app.run(debug=False, host='0.0.0.0', port=5000)
