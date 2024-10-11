@@ -494,7 +494,7 @@ def analyze_selected_columns():
 
                 # Guardar el gráfico en formato de imagen
                 img = io.BytesIO()
-                plt.savefig(img, format='png')
+                plt.savefig(img, format='svg')  # Cambiar 'svg' a 'png', 'jpeg', etc., según sea necesario.
                 img.seek(0)
                 encoded_img = base64.b64encode(img.getvalue()).decode()
                 plt.close()  # Cerrar la figura para liberar memoria
@@ -554,7 +554,7 @@ def calculate_descriptive_statistics(data_series, title='Histograma de Datos'):
         plt.tight_layout()
 
         img = io.BytesIO()
-        plt.savefig(img, format='png')
+        plt.savefig(img, format='svg')  # Cambiar 'svg' a 'png', 'jpeg', etc., según sea necesario.
         img.seek(0)
         encoded_img = base64.b64encode(img.getvalue()).decode()
         plt.close()  # Cerrar la figura para liberar memoria
@@ -725,7 +725,7 @@ def generate_charts():
                 return jsonify({'error': 'La columna seleccionada debe ser numérica para un boxplot.'}), 400
 
         plt.tight_layout()
-        plt.savefig(img, format='png')
+        plt.savefig(img, format='svg')  # Cambiar 'svg' a 'png', 'jpeg', etc., según sea necesario.
         img.seek(0)
         encoded_img = base64.b64encode(img.getvalue()).decode()
         plt.close()
