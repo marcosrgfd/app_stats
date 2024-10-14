@@ -732,6 +732,37 @@ def generate_charts():
 
         return jsonify({'chart': encoded_img})
 
+@app.route('/download_chart', methods=['POST'])
+def download_chart():
+    try:
+        data = request.get_json()
+        x_column = data.get('x_column')
+        y_column = data.get('y_column')
+        chart_type = data.get('chart_type')
+        categorical_column = data.get('categorical_column')
+
+        # Generación del gráfico (igual que antes)
+        img = io.BytesIO()
+        plt.figure(figsize=(8, 6))
+
+        if chart_type == 'Scatterplot':
+            sns.scatterplot(x=dataframe[x_column], y=dataframe[y_column], color='blue', alpha=0.6, edgecolor='w', s=80)
+        elif chart_type == 'Histograma':
+            sns.histplot(dataframe[x_column], bins=20, kde=True, color='skyblue')
+        elif chart_type == 'Boxplot':
+            sns.boxplot(x=categorical_column, y=x_column, data=dataframe, palette='Set3')
+
+        plt.tight_layout()
+        plt.savefig(img, format='png')
+        img.seek(0)
+        plt.close()
+
+        return send_file(img, mimetype='image/png', as_attachment=True, download_name='grafico.png')
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
