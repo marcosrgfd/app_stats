@@ -725,7 +725,7 @@ def generate_charts():
                 return jsonify({'error': 'La columna seleccionada debe ser numérica para un boxplot.'}), 400
 
         plt.tight_layout()
-        plt.savefig(img, format='svg')  # Cambiar 'svg' a 'png', 'jpeg', etc., según sea necesario.
+        plt.savefig(img, format='png')
         img.seek(0)
         encoded_img = base64.b64encode(img.getvalue()).decode()
         plt.close()
