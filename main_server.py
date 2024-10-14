@@ -588,14 +588,6 @@ def calculate_descriptive_statistics(data_series, title='Histograma de Datos'):
 ####################################### GENERATE CHARTS #######################################
 ###############################################################################################
 
-import io
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-from flask import Flask, request, jsonify, send_file
-
-app = Flask(__name__)
-
 # Variable global para almacenar el DataFrame cargado
 dataframe = None
 
@@ -625,6 +617,7 @@ def upload_file_charts():
 
         elif filename.endswith(('.xls', '.xlsx')):
             try:
+                # Intentar leer el archivo Excel (.xls o .xlsx) usando un flujo de bytes
                 file_stream = io.BytesIO(file.read())
                 dataframe = pd.read_excel(file_stream, engine='openpyxl')
             except ValueError as e:
@@ -640,12 +633,17 @@ def upload_file_charts():
         else:
             return jsonify({'error': "Formato de archivo no soportado. Proporcione un archivo CSV, XLSX, XLS o TXT."}), 400
 
+        # Verificar si el DataFrame se cargó correctamente
         if dataframe.empty:
             return jsonify({'error': 'El archivo está vacío o no se pudo procesar correctamente.'}), 400
 
+        # Normalizar encabezados quitando espacios adicionales
         dataframe.columns = dataframe.columns.str.strip()
-        dataframe = dataframe.fillna("N/A")
 
+        # Manejo de celdas vacías
+        dataframe = dataframe.fillna("N/A")  # Rellenar celdas vacías con "N/A" o el valor que sea más apropiado
+
+        # Clasificar las columnas entre numéricas y categóricas
         numeric_columns = dataframe.select_dtypes(include=['number']).columns.tolist()
         categorical_columns = dataframe.select_dtypes(exclude=['number']).columns.tolist()
 
@@ -655,9 +653,12 @@ def upload_file_charts():
             'categorical_columns': categorical_columns
         })
 
+    except UnicodeDecodeError:
+        return jsonify({'error': 'Error de codificación. Asegúrese de que el archivo esté en formato UTF-8 o ISO-8859-1.'}), 400
+    except pd.errors.ParserError:
+        return jsonify({'error': 'Error al analizar el archivo. Verifique el delimitador y el formato del archivo.'}), 400
     except Exception as e:
         return jsonify({'error': str(e)}), 400
-
 
 # Nueva ruta para la generación de gráficos a partir de las columnas seleccionadas
 @app.route('/generate_charts', methods=['POST'])
@@ -676,12 +677,15 @@ def generate_charts():
         if not x_column or not chart_type:
             return jsonify({'error': 'Por favor, seleccione las columnas y el tipo de gráfico.'}), 400
 
+        # Limpiar los datos eliminando valores nulos
         df_clean = dataframe.dropna(subset=[x_column, y_column] if y_column else [x_column])
 
+        # Generar el gráfico
         img = io.BytesIO()
         plt.figure(figsize=(8, 6))
 
         if chart_type == 'Scatterplot':
+            # Scatterplot necesita dos columnas numéricas
             if not y_column:
                 return jsonify({'error': 'Para un scatterplot, debe seleccionar dos variables numéricas.'}), 400
             
@@ -695,6 +699,7 @@ def generate_charts():
                 return jsonify({'error': 'Ambas columnas seleccionadas deben ser numéricas para un scatterplot.'}), 400
 
         elif chart_type == 'Histograma':
+            # Histograma para una columna numérica
             if pd.api.types.is_numeric_dtype(dataframe[x_column]):
                 sns.histplot(df_clean[x_column], bins=20, kde=True, color='skyblue')
                 plt.xlabel(x_column)
@@ -704,6 +709,7 @@ def generate_charts():
                 return jsonify({'error': 'La columna seleccionada debe ser numérica para un histograma.'}), 400
 
         elif chart_type == 'Boxplot':
+            # Boxplot para una columna numérica, opcionalmente diferenciada por una categórica
             if pd.api.types.is_numeric_dtype(dataframe[x_column]):
                 if categorical_column and categorical_column in dataframe.columns:
                     if pd.api.types.is_categorical_dtype(dataframe[categorical_column]) or dataframe[categorical_column].dtype == 'object':
@@ -719,12 +725,12 @@ def generate_charts():
                 return jsonify({'error': 'La columna seleccionada debe ser numérica para un boxplot.'}), 400
 
         plt.tight_layout()
-        plt.savefig(img, format='png')  # Guardar en PNG
+        plt.savefig(img, format='svg')  # Cambiar 'svg' a 'png', 'jpeg', etc., según sea necesario.
         img.seek(0)
+        encoded_img = base64.b64encode(img.getvalue()).decode()
         plt.close()
 
-        # Enviar el archivo PNG generado como respuesta
-        return send_file(img, mimetype='image/png', as_attachment=True, download_name='chart.png')
+        return jsonify({'chart': encoded_img})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
