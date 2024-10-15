@@ -40,6 +40,8 @@ from statsmodels.stats.outliers_influence import variance_inflation_factor
 
 # STAT TEST
 import scipy.stats as stats
+from scipy.stats import chi2_contingency
+from scipy.stats import chisquare
 
 # Cambiar el backend de matplotlib para evitar problemas de hilos en entornos de servidor
 plt.switch_backend('Agg')
@@ -972,6 +974,8 @@ def ping():
 
 if __name__ == '__main__':
     app.run(debug=False, host='0.0.0.0', port=5000)
+
+
 
 
 
