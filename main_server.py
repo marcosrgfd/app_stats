@@ -904,7 +904,14 @@ def shapiro_test():
 def kolmogorov_test():
     data = request.get_json()
     sample = data['sample']
-    stat, p_value = stats.kstest(sample, 'norm')
+    
+    # Calcular la media y desviación estándar de la muestra
+    sample_mean = np.mean(sample)
+    sample_std = np.std(sample, ddof=1)  # ddof=1 para usar la desviación estándar muestral
+    
+    # Realizar el test Kolmogorov-Smirnov comparando con la distribución normal
+    stat, p_value = stats.kstest(sample, 'norm', args=(sample_mean, sample_std))
+    
     return jsonify({'test': 'Kolmogorov-Smirnov', 'statistic': stat, 'pValue': p_value})
 
 # Ruta para la prueba de Levene (homogeneidad de varianzas)
