@@ -38,6 +38,8 @@ from scipy.stats import shapiro
 # import io  # Ya importado
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 
+# STAT TEST
+import scipy.stats as stats
 
 # Cambiar el backend de matplotlib para evitar problemas de hilos en entornos de servidor
 plt.switch_backend('Agg')
@@ -737,9 +739,9 @@ def generate_charts():
 
 
 
-##########################################################################################
-####################################### STAT TESTS #######################################
-##########################################################################################
+###############################################################################################
+####################################### STAT TESTS DATA #######################################
+###############################################################################################
 
 # Variable global para almacenar el DataFrame cargado
 dataframe = None
@@ -884,12 +886,64 @@ def run_regression():
         return jsonify({'error': str(e)}), 400
     
 
+
+##########################################################################################
+####################################### STAT TESTS #######################################
+##########################################################################################
+
+# Ruta para la prueba Shapiro-Wilk
+@app.route('/api/shapiro', methods=['POST'])
+def shapiro_test():
+    data = request.get_json()
+    sample = data['sample']
+    stat, p_value = stats.shapiro(sample)
+    return jsonify({'test': 'Shapiro-Wilk', 'statistic': stat, 'pValue': p_value})
+
+# Ruta para la prueba Kolmogorov-Smirnov
+@app.route('/api/kolmogorov', methods=['POST'])
+def kolmogorov_test():
+    data = request.get_json()
+    sample = data['sample']
+    stat, p_value = stats.kstest(sample, 'norm')
+    return jsonify({'test': 'Kolmogorov-Smirnov', 'statistic': stat, 'pValue': p_value})
+
+# Ruta para la prueba de Levene (homogeneidad de varianzas)
+@app.route('/api/levene', methods=['POST'])
+def levene_test():
+    data = request.get_json()
+    sample1 = data['sample1']
+    sample2 = data['sample2']
+    stat, p_value = stats.levene(sample1, sample2)
+    return jsonify({'test': 'Levene', 'statistic': stat, 'pValue': p_value})
+
+# Ruta para la prueba t de Student
+@app.route('/api/ttest', methods=['POST'])
+def t_test():
+    data = request.get_json()
+    sample1 = data['sample1']
+    sample2 = data['sample2']
+    stat, p_value = stats.ttest_ind(sample1, sample2)
+    return jsonify({'test': 'T-Test', 'statistic': stat, 'pValue': p_value})
+
+# Ruta para la prueba Chi-Square
+@app.route('/api/chi_square', methods=['POST'])
+def chi_square_test():
+    data = request.get_json()
+    observed = data['observed']
+    expected = data['expected']
+    stat, p_value = stats.chisquare(f_obs=observed, f_exp=expected)
+    return jsonify({'test': 'Chi-Square', 'statistic': stat, 'pValue': p_value})
+
+
+
 @app.route('/ping', methods=['HEAD', 'GET'])
 def ping():
     return '', 200
 
 if __name__ == '__main__':
     app.run(debug=False, host='0.0.0.0', port=5000)
+
+
 
 
 
