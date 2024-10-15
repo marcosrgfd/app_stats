@@ -936,13 +936,26 @@ def t_test():
 @app.route('/api/chi_square/goodness_of_fit', methods=['POST'])
 def chi_square_goodness_of_fit():
     data = request.get_json()
-    observed = data['observed']
-    expected = data.get('expected', None)  # Expected puede ser opcional
+    observed = data.get('observed', [])
+    expected = data.get('expected', None)
+    
+    # Convertir observaciones a floats
+    observed = [float(x) for x in observed]
     if expected:
-        stat, p_value = stats.chisquare(f_obs=observed, f_exp=expected)
-    else:
-        stat, p_value = stats.chisquare(f_obs=observed)  # Si no se proporciona "expected"
-    return jsonify({'test': 'Chi-Square (Bondad de Ajuste)', 'statistic': stat, 'pValue': p_value})
+        expected = [float(x) for x in expected]
+
+    if len(observed) != len(expected):
+        return jsonify({'error': 'Las frecuencias observadas y esperadas deben tener el mismo tamaño.'}), 400
+
+    try:
+        if expected:
+            stat, p_value = chisquare(f_obs=observed, f_exp=expected)
+        else:
+            stat, p_value = chisquare(f_obs=observed)
+        return jsonify({'test': 'Chi-Square (Bondad de Ajuste)', 'statistic': stat, 'pValue': p_value})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 # Ruta para la prueba Chi-Square de independencia
 @app.route('/api/chi_square/independence', methods=['POST'])
