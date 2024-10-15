@@ -932,15 +932,25 @@ def t_test():
     stat, p_value = stats.ttest_ind(sample1, sample2)
     return jsonify({'test': 'T-Test', 'statistic': stat, 'pValue': p_value})
 
-# Ruta para la prueba Chi-Square
-@app.route('/api/chi_square', methods=['POST'])
-def chi_square_test():
+# Ruta para la prueba Chi-Square de bondad de ajuste
+@app.route('/api/chi_square/goodness_of_fit', methods=['POST'])
+def chi_square_goodness_of_fit():
     data = request.get_json()
     observed = data['observed']
-    expected = data['expected']
-    stat, p_value = stats.chisquare(f_obs=observed, f_exp=expected)
-    return jsonify({'test': 'Chi-Square', 'statistic': stat, 'pValue': p_value})
+    expected = data.get('expected', None)  # Expected puede ser opcional
+    if expected:
+        stat, p_value = stats.chisquare(f_obs=observed, f_exp=expected)
+    else:
+        stat, p_value = stats.chisquare(f_obs=observed)  # Si no se proporciona "expected"
+    return jsonify({'test': 'Chi-Square (Bondad de Ajuste)', 'statistic': stat, 'pValue': p_value})
 
+# Ruta para la prueba Chi-Square de independencia
+@app.route('/api/chi_square/independence', methods=['POST'])
+def chi_square_independence():
+    data = request.get_json()
+    observed = data['observed']
+    stat, p_value, _, _ = stats.chi2_contingency(observed)
+    return jsonify({'test': 'Chi-Square (Independencia)', 'statistic': stat, 'pValue': p_value})
 
 
 @app.route('/ping', methods=['HEAD', 'GET'])
