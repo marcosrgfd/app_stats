@@ -989,20 +989,12 @@ def anova_one_way():
         model = ols('value ~ C(group)', data=df).fit()
         anova_table = sm.stats.anova_lm(model, typ=2)
 
-        # Realizar comparaciones post-hoc (Tukey HSD)
-        tukey = pairwise_tukeyhsd(endog=df['value'], groups=df['group'], alpha=0.05)
-
-        # Formatear los resultados para devolver (simplificado)
+        # Formatear los resultados para devolver solo los valores esenciales del ANOVA
         anova_results = {
-            'anova': {
-                'F': anova_table['F'][0],
-                'pValue': anova_table['PR(>F)'][0],
-                'df': {
-                    'between_groups': anova_table['df'][0],
-                    'within_groups': anova_table['df'][1]
-                }
-            },
-            'tukey_summary': tukey.summary().as_text()
+            'F': anova_table['F'][0],
+            'pValue': anova_table['PR(>F)'][0],
+            'df_between': anova_table['df'][0],
+            'df_within': anova_table['df'][1]
         }
 
         return jsonify(anova_results)
@@ -1010,6 +1002,7 @@ def anova_one_way():
         # Registrar el error completo para depuración
         print(f'Error al ejecutar la ANOVA: {str(e)}')
         return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
+
 
 
 
