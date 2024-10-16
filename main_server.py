@@ -960,47 +960,44 @@ def chi_square_goodness_of_fit():
 
 
 # Ruta para la prueba Chi-Square de independencia
-@app.route('/api/chi_square/independence', methods=['POST'])
-def chi_square_independence():
-    data = request.get_json()
-    observed = data['observed']
-    stat, p_value, _, _ = stats.chi2_contingency(observed)
-    return jsonify({'test': 'Chi-Square (Independencia)', 'statistic': stat, 'pValue': p_value})
-
-# Ruta para la prueba ANOVA de una vía
 @app.route('/api/anova_one_way', methods=['POST'])
 def anova_one_way():
     try:
+        # Obtener los datos del JSON recibido
         data = request.get_json()
-        groups = data['groups']
+        groups = data.get('groups')
 
-        # Verificar que los grupos no estén vacíos y contengan valores numéricos
-        if not groups or not all(isinstance(v, list) and v for v in groups.values()):
-            return jsonify({'error': 'Los grupos de datos están vacíos o no contienen valores válidos.'}), 400
+        # Validar que los grupos no sean nulos y tengan al menos dos grupos
+        if not groups or len(groups) < 2:
+            return jsonify({'error': 'Se requieren al menos dos grupos para realizar ANOVA.'}), 400
 
-        # Crear un DataFrame para realizar el ANOVA
-        df = pd.DataFrame({'value': [], 'group': []})
+        # Crear un DataFrame para almacenar los datos
+        df = pd.DataFrame(columns=['value', 'group'])
         for group_name, values in groups.items():
-            if not all(isinstance(value, (int, float)) for value in values):
-                return jsonify({'error': f'El grupo {group_name} contiene valores no numéricos.'}), 400
-            df = pd.concat([df, pd.DataFrame({'value': values, 'group': [group_name] * len(values)})])
+            # Asegurarse de que los valores sean una lista de números
+            if not isinstance(values, list) or not all(isinstance(x, (int, float)) for x in values):
+                return jsonify({'error': f'El grupo {group_name} debe contener una lista de números.'}), 400
+            
+            # Agregar los datos al DataFrame
+            temp_df = pd.DataFrame({'value': values, 'group': [group_name] * len(values)})
+            df = pd.concat([df, temp_df], ignore_index=True)
 
         # Realizar el ANOVA de una vía
         model = ols('value ~ C(group)', data=df).fit()
         anova_table = sm.stats.anova_lm(model, typ=2)
 
-        # Formatear los resultados para devolver solo los valores esenciales del ANOVA
+        # Formatear los resultados para devolver
         anova_results = {
             'F': anova_table['F'][0],
             'pValue': anova_table['PR(>F)'][0],
-            'df_between': anova_table['df'][0],
-            'df_within': anova_table['df'][1]
+            'df_between': int(anova_table['df'][0]),
+            'df_within': int(anova_table['df'][1])
         }
 
         return jsonify(anova_results)
     except Exception as e:
-        # Registrar el error completo para depuración
-        print(f'Error al ejecutar la ANOVA: {str(e)}')
+        # Registrar el error en el servidor para depuración
+        print(f'Error al ejecutar ANOVA: {str(e)}')
         return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
 
 
