@@ -992,7 +992,7 @@ def anova_one_way():
         # Realizar comparaciones post-hoc (Tukey HSD)
         tukey = pairwise_tukeyhsd(endog=df['value'], groups=df['group'], alpha=0.05)
 
-        # Formatear los resultados para devolver
+        # Formatear los resultados para devolver (simplificado)
         anova_results = {
             'anova': {
                 'F': anova_table['F'][0],
@@ -1002,16 +1002,15 @@ def anova_one_way():
                     'within_groups': anova_table['df'][1]
                 }
             },
-            'tukey': {
-                'summary': tukey.summary().as_html()
-            }
+            'tukey_summary': tukey.summary().as_text()
         }
 
         return jsonify(anova_results)
     except Exception as e:
-        # Registrar el error en la consola del servidor para depuración
+        # Registrar el error completo para depuración
         print(f'Error al ejecutar la ANOVA: {str(e)}')
         return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
+
 
 
 
