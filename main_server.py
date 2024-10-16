@@ -1019,7 +1019,21 @@ def anova_one_way():
             
             # Realizar Tukey HSD
             tukey = mc.pairwise_tukeyhsd(df['value'], df['group'], alpha=0.05)
-            anova_results['tukey'] = tukey.summary().as_text()
+            tukey_results = []
+            for i in range(len(tukey.summary())):
+                comparison = {
+                    'group1': tukey.summary().data[i + 1][0],
+                    'group2': tukey.summary().data[i + 1][1],
+                    'mean_diff': tukey.summary().data[i + 1][2],
+                    'p_adj': tukey.summary().data[i + 1][3],
+                    'lower': tukey.summary().data[i + 1][4],
+                    'upper': tukey.summary().data[i + 1][5],
+                    'reject': tukey.summary().data[i + 1][6]
+                }
+                tukey_results.append(comparison)
+            
+            # Añadir los resultados de Tukey HSD formateados al diccionario de resultados de ANOVA
+            anova_results['tukey'] = tukey_results
 
         return jsonify(anova_results)
     except Exception as e:
