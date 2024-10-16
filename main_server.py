@@ -970,37 +970,49 @@ def chi_square_independence():
 # Ruta para la prueba ANOVA de una vía
 @app.route('/api/anova_one_way', methods=['POST'])
 def anova_one_way():
-    data = request.get_json()
-    groups = data['groups']
+    try:
+        data = request.get_json()
+        groups = data['groups']
 
-    # Crear un DataFrame para realizar el ANOVA
-    df = pd.DataFrame({'value': [], 'group': []})
-    for group_name, values in groups.items():
-        df = pd.concat([df, pd.DataFrame({'value': values, 'group': [group_name] * len(values)})])
+        # Verificar que los grupos no estén vacíos
+        if not groups or not all(groups.values()):
+            return jsonify({'error': 'Los grupos de datos están vacíos o no válidos.'}), 400
 
-    # Realizar el ANOVA de una vía
-    model = ols('value ~ C(group)', data=df).fit()
-    anova_table = sm.stats.anova_lm(model, typ=2)
+        # Crear un DataFrame para realizar el ANOVA
+        df = pd.DataFrame({'value': [], 'group': []})
+        for group_name, values in groups.items():
+            if not values:  # Verificar si la lista está vacía
+                return jsonify({'error': f'El grupo {group_name} no tiene datos.'}), 400
+            df = pd.concat([df, pd.DataFrame({'value': values, 'group': [group_name] * len(values)})])
 
-    # Realizar comparaciones post-hoc (Tukey HSD)
-    tukey = pairwise_tukeyhsd(endog=df['value'], groups=df['group'], alpha=0.05)
+        # Realizar el ANOVA de una vía
+        model = ols('value ~ C(group)', data=df).fit()
+        anova_table = sm.stats.anova_lm(model, typ=2)
 
-    # Formatear los resultados para devolver
-    anova_results = {
-        'anova': {
-            'F': anova_table['F'][0],
-            'pValue': anova_table['PR(>F)'][0],
-            'df': {
-                'between_groups': anova_table['df'][0],
-                'within_groups': anova_table['df'][1]
+        # Realizar comparaciones post-hoc (Tukey HSD)
+        tukey = pairwise_tukeyhsd(endog=df['value'], groups=df['group'], alpha=0.05)
+
+        # Formatear los resultados para devolver
+        anova_results = {
+            'anova': {
+                'F': anova_table['F'][0],
+                'pValue': anova_table['PR(>F)'][0],
+                'df': {
+                    'between_groups': anova_table['df'][0],
+                    'within_groups': anova_table['df'][1]
+                }
+            },
+            'tukey': {
+                'summary': tukey.summary().as_html()
             }
-        },
-        'tukey': {
-            'summary': tukey.summary().as_html()
         }
-    }
 
-    return jsonify(anova_results)
+        return jsonify(anova_results)
+    except Exception as e:
+        # Registrar el error en la consola del servidor
+        print(f'Error al ejecutar la ANOVA: {str(e)}')
+        return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
+
 
 
 
