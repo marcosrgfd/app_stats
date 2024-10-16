@@ -982,15 +982,31 @@ def anova_one_way():
         group1 = data.get('group1', [])
         group2 = data.get('group2', [])
         group3 = data.get('group3', [])
+        group4 = data.get('group4', [])
+        group5 = data.get('group5', [])
+        group6 = data.get('group6', [])
+        group7 = data.get('group7', [])
+        group8 = data.get('group8', [])
+        group9 = data.get('group9', [])
+        group10 = data.get('group10', [])
         multiple_comparisons = data.get('multipleComparisons', False)
 
         # Convertir los datos de cada grupo a float
         group1 = [float(x) for x in group1]
         group2 = [float(x) for x in group2]
         group3 = [float(x) for x in group3]
+        group4 = [float(x) for x in group4]
+        group5 = [float(x) for x in group5]
+        group6 = [float(x) for x in group6]
+        group7 = [float(x) for x in group7]
+        group8 = [float(x) for x in group8]
+        group9 = [float(x) for x in group9]
+        group10 = [float(x) for x in group10]
+
+        # Filtrar los grupos no vacíos
+        groups = [group for group in [group1, group2, group3, group4, group5, group6, group7, group8, group9, group10] if group]
 
         # Validar que haya al menos dos grupos no vacíos
-        groups = [group for group in [group1, group2, group3] if group]
         if len(groups) < 2:
             return jsonify({'error': 'Se requieren al menos dos grupos con datos para realizar ANOVA.'}), 400
 
@@ -1026,6 +1042,7 @@ def anova_one_way():
         # Registrar el error en el servidor para depuración
         print(f'Error al ejecutar ANOVA: {str(e)}')
         return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
+
 
 
 
