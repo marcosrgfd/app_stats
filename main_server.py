@@ -42,6 +42,7 @@ from statsmodels.stats.outliers_influence import variance_inflation_factor
 import scipy.stats as stats
 from scipy.stats import chi2_contingency
 from scipy.stats import chisquare
+from scipy.stats import f_oneway
 
 # Cambiar el backend de matplotlib para evitar problemas de hilos en entornos de servidor
 plt.switch_backend('Agg')
