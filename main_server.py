@@ -42,7 +42,11 @@ from statsmodels.stats.outliers_influence import variance_inflation_factor
 import scipy.stats as stats
 from scipy.stats import chi2_contingency
 from scipy.stats import chisquare
+import statsmodels.api as sm
+from statsmodels.formula.api import ols
+from statsmodels.stats.multicomp import pairwise_tukeyhsd
 from scipy.stats import f_oneway
+import statsmodels.stats.multicomp as mc
 
 # Cambiar el backend de matplotlib para evitar problemas de hilos en entornos de servidor
 plt.switch_backend('Agg')
@@ -961,6 +965,15 @@ def chi_square_goodness_of_fit():
 
 
 # Ruta para la prueba Chi-Square de independencia
+@app.route('/api/chi_square/independence', methods=['POST'])
+def chi_square_independence():
+    data = request.get_json()
+    observed = data['observed']
+    stat, p_value, _, _ = stats.chi2_contingency(observed)
+    return jsonify({'test': 'Chi-Square (Independencia)', 'statistic': stat, 'pValue': p_value})
+
+
+# Ruta para la prueba ANOVA de una vía
 @app.route('/api/anova_one_way', methods=['POST'])
 def anova_one_way():
     try:
@@ -969,6 +982,7 @@ def anova_one_way():
         group1 = data.get('group1', [])
         group2 = data.get('group2', [])
         group3 = data.get('group3', [])
+        multiple_comparisons = data.get('multipleComparisons', False)
 
         # Convertir los datos de cada grupo a float
         group1 = [float(x) for x in group1]
@@ -983,13 +997,29 @@ def anova_one_way():
         # Realizar el ANOVA de una vía
         f_statistic, p_value = f_oneway(*groups)
 
-        # Formatear los resultados para devolver
+        # Resultados básicos de ANOVA
         anova_results = {
             'F': f_statistic,
             'pValue': p_value,
             'num_groups': len(groups),
             'total_observations': sum(len(group) for group in groups)
         }
+
+        # Realizar comparaciones múltiples si está habilitado
+        if multiple_comparisons:
+            # Preparar los datos para Tukey HSD
+            all_data = []
+            labels = []
+            for i, group in enumerate(groups):
+                all_data.extend(group)
+                labels.extend([f'Group {i+1}'] * len(group))
+            
+            # Convertir los datos a un DataFrame
+            df = pd.DataFrame({'value': all_data, 'group': labels})
+            
+            # Realizar Tukey HSD
+            tukey = mc.pairwise_tukeyhsd(df['value'], df['group'], alpha=0.05)
+            anova_results['tukey'] = tukey.summary().as_text()
 
         return jsonify(anova_results)
     except Exception as e:
@@ -1002,14 +1032,15 @@ def anova_one_way():
 
 
 
-
-
+# Ruta para llamar a Render y que no se apague
 @app.route('/ping', methods=['HEAD', 'GET'])
 def ping():
     return '', 200
 
 if __name__ == '__main__':
     app.run(debug=False, host='0.0.0.0', port=5000)
+
+
 
 
 
