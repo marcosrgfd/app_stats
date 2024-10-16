@@ -1021,7 +1021,7 @@ def anova_one_way():
             tukey = mc.pairwise_tukeyhsd(df['value'], df['group'], alpha=0.05)
             tukey_results = []
             # Acceder a los datos de Tukey HSD
-            for i in range(len(tukey.groupsunique) * (len(tukey.groupsunique) - 1) // 2):
+            for i in range(len(tukey.reject)):
                 comparison = {
                     'group1': tukey.groups1[i],
                     'group2': tukey.groups2[i],
@@ -1029,7 +1029,7 @@ def anova_one_way():
                     'p_adj': tukey.pvalues[i],
                     'lower': tukey.confint[i][0],
                     'upper': tukey.confint[i][1],
-                    'reject': tukey.reject[i]
+                    'reject': bool(tukey.reject[i])
                 }
                 tukey_results.append(comparison)
             
