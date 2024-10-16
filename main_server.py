@@ -967,6 +967,43 @@ def chi_square_independence():
     stat, p_value, _, _ = stats.chi2_contingency(observed)
     return jsonify({'test': 'Chi-Square (Independencia)', 'statistic': stat, 'pValue': p_value})
 
+# Ruta para la prueba ANOVA de una vía
+@app.route('/api/anova_one_way', methods=['POST'])
+def anova_one_way():
+    data = request.get_json()
+    groups = data['groups']
+
+    # Crear un DataFrame para realizar el ANOVA
+    df = pd.DataFrame({'value': [], 'group': []})
+    for group_name, values in groups.items():
+        df = pd.concat([df, pd.DataFrame({'value': values, 'group': [group_name] * len(values)})])
+
+    # Realizar el ANOVA de una vía
+    model = ols('value ~ C(group)', data=df).fit()
+    anova_table = sm.stats.anova_lm(model, typ=2)
+
+    # Realizar comparaciones post-hoc (Tukey HSD)
+    tukey = pairwise_tukeyhsd(endog=df['value'], groups=df['group'], alpha=0.05)
+
+    # Formatear los resultados para devolver
+    anova_results = {
+        'anova': {
+            'F': anova_table['F'][0],
+            'pValue': anova_table['PR(>F)'][0],
+            'df': {
+                'between_groups': anova_table['df'][0],
+                'within_groups': anova_table['df'][1]
+            }
+        },
+        'tukey': {
+            'summary': tukey.summary().as_html()
+        }
+    }
+
+    return jsonify(anova_results)
+
+
+
 
 @app.route('/ping', methods=['HEAD', 'GET'])
 def ping():
