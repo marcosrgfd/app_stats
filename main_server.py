@@ -974,15 +974,15 @@ def anova_one_way():
         data = request.get_json()
         groups = data['groups']
 
-        # Verificar que los grupos no estén vacíos
-        if not groups or not all(groups.values()):
-            return jsonify({'error': 'Los grupos de datos están vacíos o no válidos.'}), 400
+        # Verificar que los grupos no estén vacíos y contengan valores numéricos
+        if not groups or not all(isinstance(v, list) and v for v in groups.values()):
+            return jsonify({'error': 'Los grupos de datos están vacíos o no contienen valores válidos.'}), 400
 
         # Crear un DataFrame para realizar el ANOVA
         df = pd.DataFrame({'value': [], 'group': []})
         for group_name, values in groups.items():
-            if not values:  # Verificar si la lista está vacía
-                return jsonify({'error': f'El grupo {group_name} no tiene datos.'}), 400
+            if not all(isinstance(value, (int, float)) for value in values):
+                return jsonify({'error': f'El grupo {group_name} contiene valores no numéricos.'}), 400
             df = pd.concat([df, pd.DataFrame({'value': values, 'group': [group_name] * len(values)})])
 
         # Realizar el ANOVA de una vía
@@ -1009,9 +1009,10 @@ def anova_one_way():
 
         return jsonify(anova_results)
     except Exception as e:
-        # Registrar el error en la consola del servidor
+        # Registrar el error en la consola del servidor para depuración
         print(f'Error al ejecutar la ANOVA: {str(e)}')
         return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
+
 
 
 
