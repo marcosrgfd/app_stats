@@ -965,33 +965,29 @@ def anova_one_way():
     try:
         # Obtener los datos del JSON recibido
         data = request.get_json()
-        groups = data.get('groups')
+        group1 = data.get('group1', [])
+        group2 = data.get('group2', [])
+        group3 = data.get('group3', [])
 
-        # Validar que los grupos no sean nulos y tengan al menos dos grupos
-        if not groups or len(groups) < 2:
-            return jsonify({'error': 'Se requieren al menos dos grupos para realizar ANOVA.'}), 400
+        # Convertir los datos de cada grupo a float
+        group1 = [float(x) for x in group1]
+        group2 = [float(x) for x in group2]
+        group3 = [float(x) for x in group3]
 
-        # Crear un DataFrame para almacenar los datos
-        df = pd.DataFrame(columns=['value', 'group'])
-        for group_name, values in groups.items():
-            # Asegurarse de que los valores sean una lista de números
-            if not isinstance(values, list) or not all(isinstance(x, (int, float)) for x in values):
-                return jsonify({'error': f'El grupo {group_name} debe contener una lista de números.'}), 400
-            
-            # Agregar los datos al DataFrame
-            temp_df = pd.DataFrame({'value': values, 'group': [group_name] * len(values)})
-            df = pd.concat([df, temp_df], ignore_index=True)
+        # Validar que haya al menos dos grupos no vacíos
+        groups = [group for group in [group1, group2, group3] if group]
+        if len(groups) < 2:
+            return jsonify({'error': 'Se requieren al menos dos grupos con datos para realizar ANOVA.'}), 400
 
         # Realizar el ANOVA de una vía
-        model = ols('value ~ C(group)', data=df).fit()
-        anova_table = sm.stats.anova_lm(model, typ=2)
+        f_statistic, p_value = f_oneway(*groups)
 
         # Formatear los resultados para devolver
         anova_results = {
-            'F': anova_table['F'][0],
-            'pValue': anova_table['PR(>F)'][0],
-            'df_between': int(anova_table['df'][0]),
-            'df_within': int(anova_table['df'][1])
+            'F': f_statistic,
+            'pValue': p_value,
+            'num_groups': len(groups),
+            'total_observations': sum(len(group) for group in groups)
         }
 
         return jsonify(anova_results)
