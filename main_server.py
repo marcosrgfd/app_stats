@@ -947,21 +947,30 @@ def chi_square_goodness_of_fit():
     expected = data.get('expected', None)
     
     # Convertir observaciones a floats
-    observed = [float(x) for x in observed]
-    if expected:
-        expected = [float(x) for x in expected]
+    try:
+        observed = [float(x) for x in observed]
+        if expected:
+            expected = [float(x) for x in expected]
+    except ValueError:
+        return jsonify({'error': 'Los datos proporcionados deben ser numéricos.'}), 400
 
-    if len(observed) != len(expected):
+    # Validar que observed y expected tengan la misma longitud si expected está presente
+    if expected and len(observed) != len(expected):
         return jsonify({'error': 'Las frecuencias observadas y esperadas deben tener el mismo tamaño.'}), 400
 
     try:
+        # Realizar la prueba Chi-Cuadrado
         if expected:
             stat, p_value = chisquare(f_obs=observed, f_exp=expected)
         else:
             stat, p_value = chisquare(f_obs=observed)
+        
+        # Retornar los resultados
         return jsonify({'test': 'Chi-Square (Bondad de Ajuste)', 'statistic': stat, 'pValue': p_value})
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        # Manejo de errores en la ejecución del test
+        return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
+
 
 
 # Ruta para la prueba Chi-Square de independencia
