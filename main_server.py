@@ -1044,14 +1044,28 @@ def anova_one_way():
             
             # Realizar Tukey HSD
             tukey = mc.pairwise_tukeyhsd(df['value'], df['group'], alpha=0.05)
-            anova_results['tukey'] = tukey.summary().as_text()
+            
+            # Procesar los resultados de Tukey HSD para hacerlos más amigables
+            tukey_results = []
+            for result in tukey._results_table[1:]:
+                tukey_results.append({
+                    'group1': result[0],  # Primer grupo comparado
+                    'group2': result[1],  # Segundo grupo comparado
+                    'mean_diff': result[2],  # Diferencia de medias
+                    'p_adj': result[3],  # Valor p ajustado (Tukey)
+                    'ci_lower': result[4],  # Límite inferior del intervalo de confianza
+                    'ci_upper': result[5],  # Límite superior del intervalo de confianza
+                    'reject': result[6]  # ¿Se rechaza la hipótesis nula? (True/False)
+                })
+
+            # Agregar los resultados de Tukey a los resultados de ANOVA
+            anova_results['tukey'] = tukey_results
 
         return jsonify(anova_results)
     except Exception as e:
         # Registrar el error en el servidor para depuración
         print(f'Error al ejecutar ANOVA: {str(e)}')
         return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
-
 
 
 
