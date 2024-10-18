@@ -1052,21 +1052,21 @@ def anova_one_way():
                 df = pd.DataFrame({'value': all_data, 'group': labels})
                 
                 # Realizar Tukey HSD
-                tukey = pairwise_tukeyhsd(df['value'], df['group'], alpha=0.05)
+                tukey = mc.pairwise_tukeyhsd(df['value'], df['group'], alpha=0.05)
 
                 # Procesar los resultados de Tukey HSD y generar texto formateado
-                tukey_summary = "Comparaciones múltiples (Tukey HSD): "
-                for result in tukey.summary().data[1:]:
+                tukey_summary = "Comparaciones múltiples (Tukey HSD):\n"
+                for result in tukey.summary().data[1:]:  # Ignorar la cabecera
                     tukey_summary += (
-                        f"Grupo 1: {result[0]} vs Grupo 2: {result[1]} | "
-                        f"Diferencia de Medias: {result[2]:.2f}, "
-                        f"p-Value ajustado: {result[3]:.3f}, "
-                        f"IC Inferior: {result[4]:.2f}, IC Superior: {result[5]:.2f}, "
-                        f"Rechazo H0: {'Sí' if result[6] else 'No'} - "
+                        f"Grupo 1: {result[0]} vs Grupo 2: {result[1]}\n"
+                        f"  Diferencia de Medias: {result[2]:.2f}\n"
+                        f"  p-Value ajustado: {result[3]:.3f}\n"
+                        f"  IC Inferior: {result[4]:.2f}, IC Superior: {result[5]:.2f}\n"
+                        f"  Rechazo H0: {'Sí' if result[6] else 'No'}\n\n"
                     )
 
                 # Agregar el resumen de Tukey al resultado
-                anova_results['tukey'] = tukey_summary.as_text()
+                anova_results['tukey'] = tukey_summary  # Eliminar .as_text()
 
             except Exception as e:
                 return jsonify({'error': f'Error al ejecutar Tukey HSD: {str(e)}'}), 500
@@ -1077,6 +1077,7 @@ def anova_one_way():
         # Registrar el error en el servidor para depuración
         print(f'Error al ejecutar ANOVA: {str(e)}')
         return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
+
 
 
 
