@@ -1052,7 +1052,7 @@ def anova_one_way():
                 df = pd.DataFrame({'value': all_data, 'group': labels})
                 
                 # Realizar Tukey HSD
-                tukey = mc.pairwise_tukeyhsd(df['value'], df['group'], alpha=0.05)
+                tukey = pairwise_tukeyhsd(df['value'], df['group'], alpha=0.05)
 
                 # Procesar los resultados de Tukey HSD y generar texto formateado
                 tukey_summary = "Comparaciones múltiples (Tukey HSD):\n"
