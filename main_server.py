@@ -1066,7 +1066,7 @@ def anova_one_way():
                     )
 
                 # Agregar el resumen de Tukey al resultado
-                anova_results['tukey'] = tukey_summary
+                anova_results['tukey'] = tukey_summary.as_text()
 
             except Exception as e:
                 return jsonify({'error': f'Error al ejecutar Tukey HSD: {str(e)}'}), 500
