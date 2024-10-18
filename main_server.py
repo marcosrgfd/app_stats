@@ -1027,7 +1027,8 @@ def anova_one_way():
             'F': f_statistic,
             'pValue': p_value,
             'num_groups': len(groups),
-            'total_observations': sum(len(group) for group in groups)
+            'total_observations': sum(len(group) for group in groups),
+            'anovaType': 'One way'
         }
 
         # Realizar comparaciones múltiples si está habilitado
