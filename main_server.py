@@ -1032,34 +1032,47 @@ def anova_one_way():
 
         # Realizar comparaciones múltiples si está habilitado
         if multiple_comparisons:
-            # Preparar los datos para Tukey HSD
-            all_data = []
-            labels = []
-            for i, group in enumerate(groups):
-                all_data.extend(group)
-                labels.extend([f'Group {i+1}'] * len(group))
+            # Verificar que haya al menos tres grupos para hacer Tukey HSD
+            if len(groups) < 3:
+                return jsonify({'error': 'Se requieren al menos tres grupos para realizar comparaciones múltiples (Tukey HSD).'}), 400
             
-            # Convertir los datos a un DataFrame
-            df = pd.DataFrame({'value': all_data, 'group': labels})
-            
-            # Realizar Tukey HSD
-            tukey = mc.pairwise_tukeyhsd(df['value'], df['group'], alpha=0.05)
+            try:
+                # Preparar los datos para Tukey HSD
+                all_data = []
+                labels = []
+                for i, group in enumerate(groups):
+                    # Verificar que cada grupo tenga al menos un valor
+                    if len(group) == 0:
+                        return jsonify({'error': f'El grupo {i + 1} no contiene datos suficientes.'}), 400
 
-            # Procesar los resultados de Tukey HSD y generar texto formateado
-            tukey_summary = "Comparaciones múltiples (Tukey HSD):\n"
-            for result in tukey._results_table[1:]:
-                tukey_summary += (
-                    f"Grupo 1: {result[0]} vs Grupo 2: {result[1]}\n"
-                    f"  Diferencia de Medias: {result[2]:.2f}\n"
-                    f"  p-Value ajustado: {result[3]:.3f}\n"
-                    f"  IC Inferior: {result[4]:.2f}, IC Superior: {result[5]:.2f}\n"
-                    f"  Rechazo H0: {'Sí' if result[6] else 'No'}\n\n"
-                )
+                    all_data.extend(group)
+                    labels.extend([f'Group {i+1}'] * len(group))
+                
+                # Convertir los datos a un DataFrame
+                df = pd.DataFrame({'value': all_data, 'group': labels})
+                
+                # Realizar Tukey HSD
+                tukey = mc.pairwise_tukeyhsd(df['value'], df['group'], alpha=0.05)
 
-            # Agregar el resumen de Tukey al resultado
-            anova_results['tukey'] = tukey_summary
+                # Procesar los resultados de Tukey HSD y generar texto formateado
+                tukey_summary = "Comparaciones múltiples (Tukey HSD):\n"
+                for result in tukey._results_table[1:]:
+                    tukey_summary += (
+                        f"Grupo 1: {result[0]} vs Grupo 2: {result[1]}\n"
+                        f"  Diferencia de Medias: {result[2]:.2f}\n"
+                        f"  p-Value ajustado: {result[3]:.3f}\n"
+                        f"  IC Inferior: {result[4]:.2f}, IC Superior: {result[5]:.2f}\n"
+                        f"  Rechazo H0: {'Sí' if result[6] else 'No'}\n\n"
+                    )
+
+                # Agregar el resumen de Tukey al resultado
+                anova_results['tukey'] = tukey_summary
+
+            except Exception as e:
+                return jsonify({'error': f'Error al ejecutar Tukey HSD: {str(e)}'}), 500
 
         return jsonify(anova_results)
+    
     except Exception as e:
         # Registrar el error en el servidor para depuración
         print(f'Error al ejecutar ANOVA: {str(e)}')
