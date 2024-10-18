@@ -1055,14 +1055,14 @@ def anova_one_way():
                 tukey = pairwise_tukeyhsd(df['value'], df['group'], alpha=0.05)
 
                 # Procesar los resultados de Tukey HSD y generar texto formateado
-                tukey_summary = "Comparaciones múltiples (Tukey HSD):\n"
-                for result in tukey._results_table[1:]:
+                tukey_summary = "Comparaciones múltiples (Tukey HSD): "
+                for result in tukey.summary().data[1:]:
                     tukey_summary += (
-                        f"Grupo 1: {result[0]} vs Grupo 2: {result[1]}\n"
-                        f"  Diferencia de Medias: {result[2]:.2f}\n"
-                        f"  p-Value ajustado: {result[3]:.3f}\n"
-                        f"  IC Inferior: {result[4]:.2f}, IC Superior: {result[5]:.2f}\n"
-                        f"  Rechazo H0: {'Sí' if result[6] else 'No'}\n\n"
+                        f"Grupo 1: {result[0]} vs Grupo 2: {result[1]} | "
+                        f"Diferencia de Medias: {result[2]:.2f}, "
+                        f"p-Value ajustado: {result[3]:.3f}, "
+                        f"IC Inferior: {result[4]:.2f}, IC Superior: {result[5]:.2f}, "
+                        f"Rechazo H0: {'Sí' if result[6] else 'No'} - "
                     )
 
                 # Agregar el resumen de Tukey al resultado
