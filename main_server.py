@@ -1044,28 +1044,27 @@ def anova_one_way():
             
             # Realizar Tukey HSD
             tukey = mc.pairwise_tukeyhsd(df['value'], df['group'], alpha=0.05)
-            
-            # Procesar los resultados de Tukey HSD para hacerlos más amigables
-            tukey_results = []
-            for result in tukey._results_table[1:]:
-                tukey_results.append({
-                    'group1': result[0],  # Primer grupo comparado
-                    'group2': result[1],  # Segundo grupo comparado
-                    'mean_diff': result[2],  # Diferencia de medias
-                    'p_adj': result[3],  # Valor p ajustado (Tukey)
-                    'ci_lower': result[4],  # Límite inferior del intervalo de confianza
-                    'ci_upper': result[5],  # Límite superior del intervalo de confianza
-                    'reject': result[6]  # ¿Se rechaza la hipótesis nula? (True/False)
-                })
 
-            # Agregar los resultados de Tukey a los resultados de ANOVA
-            anova_results['tukey'] = tukey_results
+            # Procesar los resultados de Tukey HSD y generar texto formateado
+            tukey_summary = "Comparaciones múltiples (Tukey HSD):\n"
+            for result in tukey._results_table[1:]:
+                tukey_summary += (
+                    f"Grupo 1: {result[0]} vs Grupo 2: {result[1]}\n"
+                    f"  Diferencia de Medias: {result[2]:.2f}\n"
+                    f"  p-Value ajustado: {result[3]:.3f}\n"
+                    f"  IC Inferior: {result[4]:.2f}, IC Superior: {result[5]:.2f}\n"
+                    f"  Rechazo H0: {'Sí' if result[6] else 'No'}\n\n"
+                )
+
+            # Agregar el resumen de Tukey al resultado
+            anova_results['tukey'] = tukey_summary
 
         return jsonify(anova_results)
     except Exception as e:
         # Registrar el error en el servidor para depuración
         print(f'Error al ejecutar ANOVA: {str(e)}')
         return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
+
 
 
 
