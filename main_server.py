@@ -1046,7 +1046,7 @@ def anova_one_way():
                         return jsonify({'error': f'El grupo {i + 1} no contiene datos suficientes.'}), 400
 
                     all_data.extend(group)
-                    labels.extend([f'Group {i+1}'] * len(group))
+                    labels.extend([f'Grupo {i+1}'] * len(group))  # Cambia a 'Grupo {i+1}' para una mejor presentación
                 
                 # Convertir los datos a un DataFrame
                 df = pd.DataFrame({'value': all_data, 'group': labels})
@@ -1058,15 +1058,16 @@ def anova_one_way():
                 tukey_summary = "Comparaciones múltiples (Tukey HSD):\n"
                 for result in tukey.summary().data[1:]:  # Ignorar la cabecera
                     tukey_summary += (
-                        f"Grupo 1: {result[0]} vs Grupo 2: {result[1]}\n"
-                        f"  Diferencia de Medias: {result[2]:.2f}\n"
-                        f"  p-Value ajustado: {result[3]:.3f}\n"
-                        f"  IC Inferior: {result[4]:.2f}, IC Superior: {result[5]:.2f}\n"
-                        f"  Rechazo H0: {'Sí' if result[6] else 'No'}\n\n"
+                        f"----------------------------\n"  # Separador para mayor claridad
+                        f"Comparación: {result[0]} vs {result[1]}\n"
+                        f"  • Diferencia de Medias: {result[2]:.2f}\n"
+                        f"  • p-Value ajustado: {result[3]:.3f}\n"
+                        f"  • IC Inferior: {result[4]:.2f}, IC Superior: {result[5]:.2f}\n"
+                        f"  • Rechazo H0: {'Sí' if result[6] else 'No'}\n"
                     )
 
                 # Agregar el resumen de Tukey al resultado
-                anova_results['tukey'] = tukey_summary  # Eliminar .as_text()
+                anova_results['tukey'] = tukey_summary
 
             except Exception as e:
                 return jsonify({'error': f'Error al ejecutar Tukey HSD: {str(e)}'}), 500
@@ -1077,6 +1078,7 @@ def anova_one_way():
         # Registrar el error en el servidor para depuración
         print(f'Error al ejecutar ANOVA: {str(e)}')
         return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
+
 
 
 
