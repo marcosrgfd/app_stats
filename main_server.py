@@ -1111,9 +1111,13 @@ def anova_two_way():
         # Calcular la tabla ANOVA
         anova_table = sm.stats.anova_lm(model, typ=2)
 
+        # Convertir la tabla ANOVA a JSON
+        anova_json = anova_table.reset_index().to_dict(orient='records')
+
         # Devolver los resultados
         return jsonify({
-            'ANOVAT': anova_table.asText()
+            'ANOVA_table': anova_json,
+            'message': 'Prueba ANOVA de dos vías realizada con éxito'
         })
 
     except Exception as e:
