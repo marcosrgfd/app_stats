@@ -1112,7 +1112,7 @@ def anova_two_way():
            # 'anovaType': 'Two way'
         #}
 
-        return jsonify('factor1': print(factor1), 'factor2': print(factor2), 'values':print(values))
+        return jsonify('factor1': factor1, 'factor2': factor2, 'values': values)
 
     except Exception as e:
         return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
