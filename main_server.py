@@ -1113,14 +1113,7 @@ def anova_two_way():
 
         # Devolver los resultados
         return jsonify({
-            'F_factor1': anova_table.loc['C(factor1)', 'F'],
-            'pValue_factor1': anova_table.loc['C(factor1)', 'PR(>F)'],
-            'F_factor2': anova_table.loc['C(factor2)', 'F'],
-            'pValue_factor2': anova_table.loc['C(factor2)', 'PR(>F)'],
-            'F_interaction': anova_table.loc['C(factor1):C(factor2)', 'F'],
-            'pValue_interaction': anova_table.loc['C(factor1):C(factor2)', 'PR(>F)'],
-            'total_observations': len(values),
-            'message': 'Prueba ANOVA de dos vías realizada con éxito'
+            'ANOVAT': anova_table.asText()
         })
 
     except Exception as e:
