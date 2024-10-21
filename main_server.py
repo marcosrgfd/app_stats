@@ -1108,6 +1108,8 @@ def anova_two_way():
         # Realizar ANOVA de dos vías
         model = ols('values ~ C(factor1) + C(factor2) + C(factor1):C(factor2)', data=df).fit()
         anova_table = sm.stats.anova_lm(model, typ=2)
+        # Reemplazar NaN e infinitos por 0 o por cualquier valor adecuado antes de convertir a JSON
+        anova_table = anova_table.replace([np.inf, -np.inf, np.nan], 0)
 
         # Devolver los resultados
         return jsonify({
