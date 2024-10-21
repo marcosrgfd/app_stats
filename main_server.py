@@ -924,11 +924,57 @@ def kolmogorov_test():
 # Ruta para la prueba de Levene (homogeneidad de varianzas)
 @app.route('/api/levene', methods=['POST'])
 def levene_test():
-    data = request.get_json()
-    sample1 = data['sample1']
-    sample2 = data['sample2']
-    stat, p_value = stats.levene(sample1, sample2)
-    return jsonify({'test': 'Levene', 'statistic': stat, 'pValue': p_value})
+    try:
+        # Obtener los datos del JSON recibido
+        data = request.get_json()
+        group1 = data.get('group1', [])
+        group2 = data.get('group2', [])
+        group3 = data.get('group3', [])
+        group4 = data.get('group4', [])
+        group5 = data.get('group5', [])
+        group6 = data.get('group6', [])
+        group7 = data.get('group7', [])
+        group8 = data.get('group8', [])
+        group9 = data.get('group9', [])
+        group10 = data.get('group10', [])
+
+        # Convertir los datos de cada grupo a float
+        group1 = [float(x) for x in group1]
+        group2 = [float(x) for x in group2]
+        group3 = [float(x) for x in group3]
+        group4 = [float(x) for x in group4]
+        group5 = [float(x) for x in group5]
+        group6 = [float(x) for x in group6]
+        group7 = [float(x) for x in group7]
+        group8 = [float(x) for x in group8]
+        group9 = [float(x) for x in group9]
+        group10 = [float(x) for x in group10]
+
+        # Filtrar los grupos no vacíos
+        groups = [group for group in [group1, group2, group3, group4, group5, group6, group7, group8, group9, group10] if group]
+
+        # Validar que haya al menos dos grupos no vacíos
+        if len(groups) < 2:
+            return jsonify({'error': 'Se requieren al menos dos grupos con datos para realizar la prueba de Levene.'}), 400
+
+        # Realizar la prueba de Levene
+        stat, p_value = stats.levene(*groups)
+
+        # Resultados de la prueba de Levene
+        levene_results = {
+            'test': 'Levene',
+            'statistic': stat,
+            'pValue': p_value,
+            'num_groups': len(groups),
+            'total_observations': sum(len(group) for group in groups),
+        }
+
+        return jsonify(levene_results)
+
+    except Exception as e:
+        # Registrar el error en el servidor para depuración
+        print(f'Error al ejecutar la prueba de Levene: {str(e)}')
+        return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
 
 # Ruta para la prueba t de Student
 @app.route('/api/ttest', methods=['POST'])
