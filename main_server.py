@@ -1082,37 +1082,19 @@ def anova_one_way():
 
 
 
-# Ruta para la prueba ANOVA de dos vías
-@app.route('/api/anova_two_way', methods=['POST'])
-def anova_two_way():
+# Ruta para recibir los datos y mostrarlos en la consola
+@app.route('/api/receive_data', methods=['POST'])
+def receive_data():
     try:
         data = request.get_json()
 
-        # Recoger los factores y valores del JSON
-        factor1 = data['factor1']
-        factor2 = data['factor2']
-        values = [float(x) for x in data['values']]
+        # Imprimir los datos en la consola para verificar que los hemos recibido
+        print("Factor 1: ", data['factor1'])
+        print("Factor 2: ", data['factor2'])
+        print("Valores: ", data['values'])
 
-        # Verificar que las listas tengan la misma longitud
-        if not (len(factor1) == len(factor2) == len(values)):
-            return jsonify({'error': 'Factor 1, Factor 2 y Valores deben tener la misma longitud.'}), 400
-
-        # Crear un DataFrame con los datos
-        df = pd.DataFrame({'Factor1': factor1, 'Factor2': factor2, 'Value': values})
-
-        # Realizar ANOVA de dos vías
-        model = ols('Value ~ C(Factor1) + C(Factor2) + C(Factor1):C(Factor2)', data=df).fit()
-        anova_table = sm.stats.anova_lm(model, typ=2)
-
-        anova_results = {
-            'Factor1': {'F': anova_table['F'][0], 'pValue': anova_table['PR(>F)'][0]},
-            'Factor2': {'F': anova_table['F'][1], 'pValue': anova_table['PR(>F)'][1]},
-            'Interaction': {'F': anova_table['F'][2], 'pValue': anova_table['PR(>F)'][2]},
-            'total_observations': len(values),
-            'anovaType': 'Two way'
-        }
-
-        return jsonify(anova_results)
+        # Enviar respuesta de éxito
+        return jsonify({"message": "Datos recibidos correctamente"}), 200
 
     except Exception as e:
         return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
