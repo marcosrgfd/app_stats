@@ -1105,23 +1105,17 @@ def anova_two_way():
         if len(factor1) != len(factor2) or len(factor1) != len(values):
             return jsonify({'error': 'Los vectores deben tener la misma longitud.'}), 400
 
-        # Definir y ajustar el modelo de ANOVA de dos vías
-        model = ols('values ~ C(factor1) + C(factor2) + C(factor1):C(factor2)', data=df).fit()
-
-        # Calcular la tabla ANOVA
-        anova_table = sm.stats.anova_lm(model, typ=2)
-
-        # Convertir la tabla ANOVA a JSON
-        anova_json = anova_table.reset_index().to_dict(orient='records')
-
-        # Devolver los resultados
+        # Devolver los vectores como texto para su comprobación
         return jsonify({
-            'ANOVA_table': anova_json,
-            'message': 'Prueba ANOVA de dos vías realizada con éxito'
+            'factor1': str(factor1),  # Devolver 'factor1' como texto
+            'factor2': str(factor2),  # Devolver 'factor2' como texto
+            'values': str(values),    # Devolver 'values' como texto
+            'message': 'Vectores recibidos correctamente'
         })
 
     except Exception as e:
         return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
+
 
 
 
