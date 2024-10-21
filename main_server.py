@@ -1094,32 +1094,37 @@ def anova_two_way():
         factor2 = data['factor2']  # Variable categórica 2
         values = data['values']    # Variable numérica (valores dependientes)
 
-        # Convertir los datos a formato numpy para usar en ANOVA
-        factor1 = np.array(factor1)
-        factor2 = np.array(factor2)
-        values = np.array(values)
+        # Convertir los datos a un DataFrame para usar con statsmodels
+        df = pd.DataFrame({
+            'factor1': factor1,
+            'factor2': factor2,
+            'values': values
+        })
 
         # Asegurarse de que los vectores tengan la misma longitud
         if len(factor1) != len(factor2) or len(factor1) != len(values):
-            return jsonify({'error': 'Los vectores deben tener la misma longitud.'})
+            return jsonify({'error': 'Los vectores deben tener la misma longitud.'}), 400
 
-        # Realizar ANOVA de dos vías (con interacciones)
-        # stats.f_oneway() no admite ANOVA de dos vías, por lo que usaremos un método manual
-        anova_result = stats.f_oneway(values[factor1 == factor1[0]],
-                                      values[factor1 == factor1[1]])
+        # Definir y ajustar el modelo de ANOVA de dos vías
+        model = ols('values ~ C(factor1) + C(factor2) + C(factor1):C(factor2)', data=df).fit()
 
-        # Para efectos de demostración, solo estamos usando ANOVA básica. 
-        # Normalmente, usarías statsmodels o un método adecuado para ANOVA de dos vías.
+        # Calcular la tabla ANOVA
+        anova_table = sm.stats.anova_lm(model, typ=2)
 
         # Devolver los resultados
         return jsonify({
-            'F': anova_result.statistic,
-            'pValue': anova_result.pvalue,
+            'F_factor1': anova_table.loc['C(factor1)', 'F'],
+            'pValue_factor1': anova_table.loc['C(factor1)', 'PR(>F)'],
+            'F_factor2': anova_table.loc['C(factor2)', 'F'],
+            'pValue_factor2': anova_table.loc['C(factor2)', 'PR(>F)'],
+            'F_interaction': anova_table.loc['C(factor1):C(factor2)', 'F'],
+            'pValue_interaction': anova_table.loc['C(factor1):C(factor2)', 'PR(>F)'],
+            'total_observations': len(values),
             'message': 'Prueba ANOVA de dos vías realizada con éxito'
         })
 
     except Exception as e:
-         return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
+        return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
 
 
 
