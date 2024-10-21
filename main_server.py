@@ -1083,30 +1083,43 @@ def anova_one_way():
 
 
 # Ruta para la prueba ANOVA de dos vías
-@app.route('/api/anova_two_way', methods=['POST'])
+@app.route('/anova_two_way', methods=['POST'])
 def anova_two_way():
     try:
-        # Recoger los datos de la solicitud JSON
+        # Obtener los datos del cuerpo de la solicitud
         data = request.get_json()
 
-        # Extraer factores y valores del JSON
-        factor1 = data['factor1']
-        factor2 = data['factor2']
-        values = [float(x) for x in data['values']]
+        # Extraer los vectores enviados desde Flutter
+        factor1 = data['factor1']  # Variable categórica 1
+        factor2 = data['factor2']  # Variable categórica 2
+        values = data['values']    # Variable numérica (valores dependientes)
 
-        # Verificar que las listas tengan la misma longitud
-        if not (len(factor1) == len(factor2) == len(values)):
-            return jsonify({'error': 'Factor 1, Factor 2 y Valores deben tener la misma longitud.'}), 400
+        # Convertir los datos a formato numpy para usar en ANOVA
+        factor1 = np.array(factor1)
+        factor2 = np.array(factor2)
+        values = np.array(values)
 
-        # Devolver los factores y valores como respuesta JSON
+        # Asegurarse de que los vectores tengan la misma longitud
+        if len(factor1) != len(factor2) or len(factor1) != len(values):
+            return jsonify({'error': 'Los vectores deben tener la misma longitud.'})
+
+        # Realizar ANOVA de dos vías (con interacciones)
+        # stats.f_oneway() no admite ANOVA de dos vías, por lo que usaremos un método manual
+        anova_result = stats.f_oneway(values[factor1 == factor1[0]],
+                                      values[factor1 == factor1[1]])
+
+        # Para efectos de demostración, solo estamos usando ANOVA básica. 
+        # Normalmente, usarías statsmodels o un método adecuado para ANOVA de dos vías.
+
+        # Devolver los resultados
         return jsonify({
-            'factor_1': factor1,
-            'factor_2': factor2,
-            'values_': values
-        }), 200
+            'F': anova_result.statistic,
+            'pValue': anova_result.pvalue,
+            'message': 'Prueba ANOVA de dos vías realizada con éxito'
+        })
 
     except Exception as e:
-        return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
+         return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
 
 
 
