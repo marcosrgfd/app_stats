@@ -1108,17 +1108,36 @@ def anova_two_way():
         # Realizar ANOVA de dos vías
         model = ols('values ~ C(factor1) + C(factor2) + C(factor1):C(factor2)', data=df).fit()
         anova_table = sm.stats.anova_lm(model, typ=2)
+        
         # Reemplazar NaN e infinitos por 0 o por cualquier valor adecuado antes de convertir a JSON
         anova_table = anova_table.replace([np.inf, -np.inf, np.nan], 0)
 
-        # Devolver los resultados
+        # Extraer valores de interés
+        F_factor1 = anova_table.loc['C(factor1)', 'F']
+        pValue_factor1 = anova_table.loc['C(factor1)', 'PR(>F)']
+        F_factor2 = anova_table.loc['C(factor2)', 'F']
+        pValue_factor2 = anova_table.loc['C(factor2)', 'PR(>F)']
+        F_interaction = anova_table.loc['C(factor1):C(factor2)', 'F']
+        pValue_interaction = anova_table.loc['C(factor1):C(factor2)', 'PR(>F)']
+
+        # Devolver los resultados formateados
         return jsonify({
             'anovaType': 'Two way',
-            'ANOVA_table': anova_table.to_dict()  # Convertir la tabla a un diccionario para JSON
+            'F_values': {
+                'Factor1': F_factor1,
+                'Factor2': F_factor2,
+                'Interaction': F_interaction
+            },
+            'p_values': {
+                'Factor1': pValue_factor1,
+                'Factor2': pValue_factor2,
+                'Interaction': pValue_interaction
+            }
         })
     
     except Exception as e:
         return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
+
 
 
 
