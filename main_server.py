@@ -1086,9 +1086,10 @@ def anova_one_way():
 @app.route('/api/anova_two_way', methods=['POST'])
 def anova_two_way():
     try:
+        # Recoger los datos de la solicitud JSON
         data = request.get_json()
 
-        # Recoger los factores y valores del JSON
+        # Extraer factores y valores del JSON
         factor1 = data['factor1']
         factor2 = data['factor2']
         values = [float(x) for x in data['values']]
@@ -1097,22 +1098,12 @@ def anova_two_way():
         if not (len(factor1) == len(factor2) == len(values)):
             return jsonify({'error': 'Factor 1, Factor 2 y Valores deben tener la misma longitud.'}), 400
 
-        # Crear un DataFrame con los datos
-        #df = pd.DataFrame({'Factor1': factor1, 'Factor2': factor2, 'Value': values})
-
-        # Realizar ANOVA de dos vías
-        #model = ols('Value ~ C(Factor1) + C(Factor2) + C(Factor1):C(Factor2)', data=df).fit()
-        #anova_table = sm.stats.anova_lm(model, typ=2)
-
-        #anova_results = {
-           # 'Factor1': {'F': anova_table['F'][0], 'pValue': anova_table['PR(>F)'][0]},
-           # 'Factor2': {'F': anova_table['F'][1], 'pValue': anova_table['PR(>F)'][1]},
-           # 'Interaction': {'F': anova_table['F'][2], 'pValue': anova_table['PR(>F)'][2]},
-           # 'total_observations': len(values),
-           # 'anovaType': 'Two way'
-        #}
-
-        return jsonify('factor1': factor1, 'factor2': factor2, 'values': values)
+        # Devolver los factores y valores como respuesta JSON
+        return jsonify({
+            'factor1': factor1,
+            'factor2': factor2,
+            'values': values
+        }), 200
 
     except Exception as e:
         return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
