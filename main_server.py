@@ -1083,38 +1083,47 @@ def anova_one_way():
 
 
 # Ruta para la prueba ANOVA de dos vías
-@app.route('/anova_two_way', methods=['POST'])
+@app.route('/api/anova_two_way', methods=['POST'])
 def anova_two_way():
     try:
-        # Obtener los datos del cuerpo de la solicitud
+        # Obtener los datos del JSON recibido
         data = request.get_json()
+        factor1 = data.get('factor1', [])
+        factor2 = data.get('factor2', [])
+        values = data.get('values', [])
 
-        # Extraer los vectores enviados desde Flutter
-        factor1 = data['factor1']  # Variable categórica 1
-        factor2 = data['factor2']  # Variable categórica 2
-        values = data['values']    # Variable numérica (valores dependientes)
+        # Convertir los datos en listas de texto para factores y numéricos para los valores
+        if len(factor1) != len(factor2) or len(factor1) != len(values):
+            return jsonify({'error': 'Los vectores factor1, factor2 y values deben tener la misma longitud.'}), 400
 
-        # Convertir los datos a un DataFrame para usar con statsmodels
+        # Crear un DataFrame con los datos
         df = pd.DataFrame({
             'factor1': factor1,
             'factor2': factor2,
             'values': values
         })
 
-        # Asegurarse de que los vectores tengan la misma longitud
-        if len(factor1) != len(factor2) or len(factor1) != len(values):
-            return jsonify({'error': 'Los vectores deben tener la misma longitud.'}), 400
+        # Asegurarse de que hay suficientes datos
+        if len(df) < 2:
+            return jsonify({'error': 'Se requieren al menos dos observaciones para realizar ANOVA de dos vías.'}), 400
 
-        # Devolver los vectores como texto para su comprobación
-        return jsonify({
-            'factor1': str(factor1),  # Devolver 'factor1' como texto
-            'factor2': str(factor2),  # Devolver 'factor2' como texto
-            'values': str(values),    # Devolver 'values' como texto
-            'message': 'Vectores recibidos correctamente'
-        })
+        # Realizar ANOVA de dos vías
+        model = ols('values ~ C(factor1) + C(factor2) + C(factor1):C(factor2)', data=df).fit()
+        anova_table = sm.stats.anova_lm(model, typ=2)
 
+        # Procesar los resultados de ANOVA
+        anova_results = {
+            'anovaType': 'Two way',
+            'ANOVA_table': anova_table.to_dict()  # Convertir la tabla a un diccionario para JSON
+        }
+
+        return jsonify(anova_results)
+    
     except Exception as e:
+        # Registrar el error en el servidor para depuración
+        print(f'Error al ejecutar ANOVA de dos vías: {str(e)}')
         return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
+
 
 
 
