@@ -1100,9 +1100,9 @@ def anova_two_way():
 
         # Devolver los factores y valores como respuesta JSON
         return jsonify({
-            'factor1': factor1,
-            'factor2': factor2,
-            'values': values
+            'factor_1': factor1,
+            'factor_2': factor2,
+            'values_': values
         }), 200
 
     except Exception as e:
