@@ -48,6 +48,7 @@ from statsmodels.stats.multicomp import pairwise_tukeyhsd
 from scipy.stats import f_oneway
 import statsmodels.stats.multicomp as mc
 from scipy.stats import friedmanchisquare
+from scipy.stats import fisher_exact
 
 
 # Cambiar el backend de matplotlib para evitar problemas de hilos en entornos de servidor
