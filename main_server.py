@@ -47,6 +47,8 @@ from statsmodels.formula.api import ols
 from statsmodels.stats.multicomp import pairwise_tukeyhsd
 from scipy.stats import f_oneway
 import statsmodels.stats.multicomp as mc
+from scipy.stats import friedmanchisquare
+
 
 # Cambiar el backend de matplotlib para evitar problemas de hilos en entornos de servidor
 plt.switch_backend('Agg')
@@ -1250,10 +1252,11 @@ def friedman_test():
         data = request.get_json()
         groups = data['groups']
 
-        # Asegurarse de que haya al menos 3 grupos y que todos tengan la misma longitud
+        # Asegúrate de que haya al menos 3 grupos
         if len(groups) < 3:
             return jsonify({'error': 'Se requieren al menos 3 grupos para la prueba Friedman.'}), 400
         
+        # Asegúrate de que todos los grupos tengan el mismo número de observaciones
         num_observaciones = len(groups[0])
         if not all(len(g) == num_observaciones for g in groups):
             return jsonify({'error': 'Todos los grupos deben tener el mismo número de observaciones.'}), 400
@@ -1262,10 +1265,9 @@ def friedman_test():
         stat, p_value = friedmanchisquare(*groups)
 
         return jsonify({'test': 'Friedman', 'statistic': stat, 'pValue': p_value})
-    
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
 
+    except Exception as e:
+        return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
 
 # Fisher exact test
 @app.route('/api/fisher', methods=['POST'])
