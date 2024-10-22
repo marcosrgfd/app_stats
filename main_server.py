@@ -1283,7 +1283,6 @@ def friedman_test():
 # Fisher exact test
 @app.route('/api/fisher', methods=['POST'])
 def fisher_test():
-    try:
         data = request.get_json()
         observed = data['observed']
 
@@ -1291,9 +1290,7 @@ def fisher_test():
         oddsratio, p_value = fisher_exact(observed)
 
         return jsonify({'test': 'Fisher', 'oddsratio': oddsratio, 'pValue': p_value})
-    
-    except Exception as e:
-        return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
+
 
 # Mcnemar test
 @app.route('/api/mcnemar', methods=['POST'])
