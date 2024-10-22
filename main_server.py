@@ -1206,33 +1206,96 @@ def mann_whitney():
 # Kruskal Wallis H test
 @app.route('/api/kruskal', methods=['POST'])
 def kruskal_wallis():
-    data = request.get_json()
-    groups = data['groups']
-    stat, p_value = stats.kruskal(*groups)
-    return jsonify({'test': 'Kruskal-Wallis', 'statistic': stat, 'pValue': p_value})
+    try:
+        data = request.get_json()
+        # Obtener los grupos de datos
+        group1 = data.get('group1', [])
+        group2 = data.get('group2', [])
+        group3 = data.get('group3', [])
+        group4 = data.get('group4', [])
+        group5 = data.get('group5', [])
+        group6 = data.get('group6', [])
+        group7 = data.get('group7', [])
+        group8 = data.get('group8', [])
+        group9 = data.get('group9', [])
+        group10 = data.get('group10', [])
+
+        # Convertir los datos de cada grupo a float
+        groups = [[float(x) for x in group] for group in [group1, group2, group3, group4, group5, group6, group7, group8, group9, group10] if group]
+
+        # Validar que haya al menos dos grupos no vacíos
+        if len(groups) < 2:
+            return jsonify({'error': 'Se requieren al menos dos grupos con datos para realizar la prueba Kruskal-Wallis.'}), 400
+
+        # Realizar la prueba Kruskal-Wallis
+        stat, p_value = stats.kruskal(*groups)
+
+        # Devolver los resultados
+        return jsonify({
+            'test': 'Kruskal-Wallis',
+            'statistic': stat,
+            'pValue': p_value,
+            'num_groups': len(groups),
+            'total_observations': sum(len(group) for group in groups)
+        })
+    
+    except Exception as e:
+        return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
+
 
 # Friedman Test
 @app.route('/api/friedman', methods=['POST'])
 def friedman():
-    data = request.get_json()
-    groups = data['groups']
-    stat, p_value = stats.friedmanchisquare(*groups)
-    return jsonify({'test': 'Friedman', 'statistic': stat, 'pValue': p_value})
+    try:
+        data = request.get_json()
+        group1 = data.get('group1', [])
+        group2 = data.get('group2', [])
+        group3 = data.get('group3', [])
+        group4 = data.get('group4', [])
+        group5 = data.get('group5', [])
+        group6 = data.get('group6', [])
+        group7 = data.get('group7', [])
+        group8 = data.get('group8', [])
+        group9 = data.get('group9', [])
+        group10 = data.get('group10', [])
+
+        # Convertir los datos de cada grupo a float
+        groups = [[float(x) for x in group] for group in [group1, group2, group3, group4, group5, group6, group7, group8, group9, group10] if group]
+
+        # Validar que haya al menos tres grupos no vacíos (Friedman requiere 3 o más)
+        if len(groups) < 3:
+            return jsonify({'error': 'Se requieren al menos tres grupos con datos para realizar la prueba Friedman.'}), 400
+
+        # Realizar la prueba Friedman
+        stat, p_value = stats.friedmanchisquare(*groups)
+
+        # Devolver los resultados
+        return jsonify({
+            'test': 'Friedman',
+            'statistic': stat,
+            'pValue': p_value,
+            'num_groups': len(groups),
+            'total_observations': sum(len(group) for group in groups)
+        })
+    
+    except Exception as e:
+        return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
+
 
 # Fisher exact test
 @app.route('/api/fisher', methods=['POST'])
 def fisher():
     data = request.get_json()
-    table = data['table']
-    oddsratio, p_value = stats.fisher_exact(table)
+    observed = data['observed']
+    oddsratio, p_value = stats.fisher_exact(observed)
     return jsonify({'test': 'Fisher', 'pValue': p_value})
 
 # Mcnemar test
 @app.route('/api/mcnemar', methods=['POST'])
 def mcnemar():
     data = request.get_json()
-    table = data['table']
-    result = sm.stats.mcnemar(table)
+    observed = data['observed']
+    result = sm.stats.mcnemar(observed)
     return jsonify({'test': 'McNemar', 'statistic': result.statistic, 'pValue': result.pvalue})
 
 # Cochran's Q Test
