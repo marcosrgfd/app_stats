@@ -1244,42 +1244,27 @@ def kruskal_wallis():
 
 
 # Friedman Test
-@app.route('/api/friedman', methods=['POST'])
-def friedman():
+@app.route('/friedman', methods=['POST'])
+def friedman_test():
     try:
         data = request.get_json()
-        group1 = data.get('group1', [])
-        group2 = data.get('group2', [])
-        group3 = data.get('group3', [])
-        group4 = data.get('group4', [])
-        group5 = data.get('group5', [])
-        group6 = data.get('group6', [])
-        group7 = data.get('group7', [])
-        group8 = data.get('group8', [])
-        group9 = data.get('group9', [])
-        group10 = data.get('group10', [])
+        groups = data['groups']
 
-        # Convertir los datos de cada grupo a float
-        groups = [[float(x) for x in group] for group in [group1, group2, group3, group4, group5, group6, group7, group8, group9, group10] if group]
-
-        # Validar que haya al menos tres grupos no vacíos (Friedman requiere 3 o más)
+        # Asegurarse de que haya al menos 3 grupos y que todos tengan la misma longitud
         if len(groups) < 3:
-            return jsonify({'error': 'Se requieren al menos tres grupos con datos para realizar la prueba Friedman.'}), 400
+            return jsonify({'error': 'Se requieren al menos 3 grupos para la prueba Friedman.'}), 400
+        
+        num_observaciones = len(groups[0])
+        if not all(len(g) == num_observaciones for g in groups):
+            return jsonify({'error': 'Todos los grupos deben tener el mismo número de observaciones.'}), 400
 
-        # Realizar la prueba Friedman
-        stat, p_value = stats.friedmanchisquare(*groups)
+        # Ejecutar la prueba de Friedman
+        stat, p_value = friedmanchisquare(*groups)
 
-        # Devolver los resultados
-        return jsonify({
-            'test': 'Friedman',
-            'statistic': stat,
-            'pValue': p_value,
-            'num_groups': len(groups),
-            'total_observations': sum(len(group) for group in groups)
-        })
+        return jsonify({'test': 'Friedman', 'statistic': stat, 'pValue': p_value})
     
     except Exception as e:
-        return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
+        return jsonify({'error': str(e)}), 500
 
 
 # Fisher exact test
