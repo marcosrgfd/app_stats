@@ -1246,7 +1246,7 @@ def kruskal_wallis():
 
 
 # Friedman Test
-@app.route('/friedman', methods=['POST'])
+@app.route('/api/friedman', methods=['POST'])
 def friedman_test():
     try:
         data = request.get_json()
