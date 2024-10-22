@@ -1287,15 +1287,6 @@ def fisher_test():
         data = request.get_json()
         observed = data['observed']
 
-        # Asegúrate de que sea una tabla 2x2 y que contenga valores numéricos
-        if len(observed) != 2 or len(observed[0]) != 2 or len(observed[1]) != 2:
-            return jsonify({'error': 'La prueba exacta de Fisher requiere una tabla de contingencia 2x2.'}), 400
-
-        # Validar que todos los elementos sean números
-        for row in observed:
-            if not all(isinstance(item, (int, float)) for item in row):
-                return jsonify({'error': 'Todos los valores de la tabla deben ser numéricos.'}), 400
-
         # Ejecutar la prueba exacta de Fisher
         oddsratio, p_value = fisher_exact(observed)
 
