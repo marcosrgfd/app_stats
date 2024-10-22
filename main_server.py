@@ -49,6 +49,8 @@ from scipy.stats import f_oneway
 import statsmodels.stats.multicomp as mc
 from scipy.stats import friedmanchisquare
 from scipy.stats import fisher_exact
+from statsmodels.stats.contingency_tables import cochrans_q
+from statsmodels.stats.contingency_tables import mcnemar
 
 
 # Cambiar el backend de matplotlib para evitar problemas de hilos en entornos de servidor
@@ -1284,13 +1286,22 @@ def friedman_test():
 # Fisher exact test
 @app.route('/api/fisher', methods=['POST'])
 def fisher_test():
+    try:
         data = request.get_json()
         observed = data['observed']
+
+        # Verificar que la tabla es 2x2
+        if len(observed) != 2 or len(observed[0]) != 2 or len(observed[1]) != 2:
+            return jsonify({'error': 'La prueba exacta de Fisher requiere una tabla de contingencia 2x2.'}), 400
 
         # Ejecutar la prueba exacta de Fisher
         oddsratio, p_value = fisher_exact(observed)
 
         return jsonify({'test': 'Fisher', 'oddsratio': oddsratio, 'pValue': p_value})
+
+    except Exception as e:
+        return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
+
 
 
 # Mcnemar test
@@ -1338,6 +1349,8 @@ def ping():
 
 if __name__ == '__main__':
     app.run(debug=False, host='0.0.0.0', port=5000)
+
+
 
 
 
