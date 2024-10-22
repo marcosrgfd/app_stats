@@ -976,14 +976,23 @@ def levene_test():
         print(f'Error al ejecutar la prueba de Levene: {str(e)}')
         return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
 
-# Ruta para la prueba t de Student
+# Ruta para la prueba t de Student con opción pareado
 @app.route('/api/ttest', methods=['POST'])
 def t_test():
     data = request.get_json()
     sample1 = data['sample1']
     sample2 = data['sample2']
-    stat, p_value = stats.ttest_ind(sample1, sample2)
-    return jsonify({'test': 'T-Test', 'statistic': stat, 'pValue': p_value})
+    paired = data.get('paired', False)  # Recibe si es pareado o no
+    
+    if paired:
+        # Prueba t para medidas pareadas
+        stat, p_value = stats.ttest_rel(sample1, sample2)
+    else:
+        # Prueba t para muestras independientes
+        stat, p_value = stats.ttest_ind(sample1, sample2)
+    
+    return jsonify({'test': 'T-Test' + (' pareado' if paired else ''), 'statistic': stat, 'pValue': p_value})
+
 
 # Ruta para la prueba Chi-Square de bondad de ajuste
 @app.route('/api/chi_square/goodness_of_fit', methods=['POST'])
