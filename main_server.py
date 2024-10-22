@@ -1193,10 +1193,55 @@ def anova_two_way():
     except Exception as e:
         return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
 
+# Mann Whitey U test
+@app.route('/api/mannwhitney', methods=['POST'])
+def mann_whitney():
+    data = request.get_json()
+    sample1 = data['sample1']
+    sample2 = data['sample2']
+    stat, p_value = stats.mannwhitneyu(sample1, sample2)
+    return jsonify({'test': 'Mann-Whitney U', 'statistic': stat, 'pValue': p_value})
 
 
+# Kruskal Wallis H test
+@app.route('/api/kruskal', methods=['POST'])
+def kruskal_wallis():
+    data = request.get_json()
+    groups = data['groups']
+    stat, p_value = stats.kruskal(*groups)
+    return jsonify({'test': 'Kruskal-Wallis', 'statistic': stat, 'pValue': p_value})
 
+# Friedman Test
+@app.route('/api/friedman', methods=['POST'])
+def friedman():
+    data = request.get_json()
+    groups = data['groups']
+    stat, p_value = stats.friedmanchisquare(*groups)
+    return jsonify({'test': 'Friedman', 'statistic': stat, 'pValue': p_value})
 
+# Fisher exact test
+@app.route('/api/fisher', methods=['POST'])
+def fisher():
+    data = request.get_json()
+    table = data['table']
+    oddsratio, p_value = stats.fisher_exact(table)
+    return jsonify({'test': 'Fisher', 'pValue': p_value})
+
+# Mcnemar test
+@app.route('/api/mcnemar', methods=['POST'])
+def mcnemar():
+    data = request.get_json()
+    table = data['table']
+    result = sm.stats.mcnemar(table)
+    return jsonify({'test': 'McNemar', 'statistic': result.statistic, 'pValue': result.pvalue})
+
+# Cochran's Q Test
+@app.route('/api/cochran', methods=['POST'])
+def cochran():
+    data = request.get_json()
+    groups = data['groups']
+    stat, p_value = sm.stats.cochrans_q(*groups)
+    return jsonify({'test': 'Cochran', 'statistic': stat, 'pValue': p_value})
 
 
 
