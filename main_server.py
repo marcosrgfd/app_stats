@@ -1264,13 +1264,24 @@ def friedman_test():
         # Ejecutar la prueba de Friedman
         stat, p_value = friedmanchisquare(*groups)
 
-        return jsonify({'test': 'Friedman', 'statistic': stat, 'pValue': p_value})
+        # Calcular el número de grupos y el total de observaciones
+        num_grupos = len(groups)
+        total_observaciones = num_grupos * num_observaciones
+
+        # Devolver la respuesta con los resultados de la prueba y las métricas adicionales
+        return jsonify({
+            'test': 'Friedman',
+            'statistic': stat,
+            'pValue': p_value,
+            'num_groups': num_grupos,
+            'total_observations': total_observaciones
+        })
 
     except Exception as e:
         return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
 
 # Fisher exact test
-@app.route('/fisher', methods=['POST'])
+@app.route('/api/fisher', methods=['POST'])
 def fisher_test():
     try:
         data = request.get_json()
@@ -1287,7 +1298,7 @@ def fisher_test():
         return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
 
 # Mcnemar test
-@app.route('/mcnemar', methods=['POST'])
+@app.route('/api/mcnemar', methods=['POST'])
 def mcnemar_test():
     try:
         data = request.get_json()
@@ -1304,7 +1315,7 @@ def mcnemar_test():
         return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
 
 # Cochran's Q Test
-@app.route('/cochran', methods=['POST'])
+@app.route('/api/cochran', methods=['POST'])
 def cochran_test():
     try:
         data = request.get_json()
