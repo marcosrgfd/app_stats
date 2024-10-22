@@ -1270,28 +1270,56 @@ def friedman_test():
         return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
 
 # Fisher exact test
-@app.route('/api/fisher', methods=['POST'])
-def fisher():
-    data = request.get_json()
-    observed = data['observed']
-    oddsratio, p_value = stats.fisher_exact(observed)
-    return jsonify({'test': 'Fisher', 'pValue': p_value})
+@app.route('/fisher', methods=['POST'])
+def fisher_test():
+    try:
+        data = request.get_json()
+        observed = data['observed']
+
+        if len(observed) != 2 or len(observed[0]) != 2:
+            return jsonify({'error': 'La prueba exacta de Fisher requiere una tabla de contingencia 2x2.'}), 400
+
+        # Ejecutar la prueba exacta de Fisher
+        oddsratio, p_value = fisher_exact(observed)
+
+        return jsonify({'test': 'Fisher', 'oddsratio': oddsratio, 'pValue': p_value})
+    except Exception as e:
+        return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
 
 # Mcnemar test
-@app.route('/api/mcnemar', methods=['POST'])
-def mcnemar():
-    data = request.get_json()
-    observed = data['observed']
-    result = sm.stats.mcnemar(observed)
-    return jsonify({'test': 'McNemar', 'statistic': result.statistic, 'pValue': result.pvalue})
+@app.route('/mcnemar', methods=['POST'])
+def mcnemar_test():
+    try:
+        data = request.get_json()
+        observed = data['observed']
+
+        if len(observed) != 2 or len(observed[0]) != 2:
+            return jsonify({'error': 'La prueba de McNemar requiere una tabla de contingencia 2x2.'}), 400
+
+        # Ejecutar la prueba de McNemar
+        result = mcnemar(observed, exact=True)  # Si prefieres la versión asintótica, usa exact=False
+
+        return jsonify({'test': 'McNemar', 'statistic': result.statistic, 'pValue': result.pvalue})
+    except Exception as e:
+        return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
 
 # Cochran's Q Test
-@app.route('/api/cochran', methods=['POST'])
-def cochran():
-    data = request.get_json()
-    groups = data['groups']
-    stat, p_value = sm.stats.cochrans_q(*groups)
-    return jsonify({'test': 'Cochran', 'statistic': stat, 'pValue': p_value})
+@app.route('/cochran', methods=['POST'])
+def cochran_test():
+    try:
+        data = request.get_json()
+        observed = data['observed']  # Se espera una lista de listas (tratamientos en las columnas y sujetos en las filas)
+
+        # Asegurar que haya más de dos tratamientos (columnas)
+        if len(observed[0]) < 3:
+            return jsonify({'error': 'La prueba de Cochran requiere al menos 3 tratamientos/condiciones.'}), 400
+
+        # Ejecutar la prueba de Cochran
+        result = cochrans_q(observed)
+
+        return jsonify({'test': 'Cochran', 'statistic': result.statistic, 'pValue': result.pvalue})
+    except Exception as e:
+        return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
 
 
 
