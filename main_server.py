@@ -1339,6 +1339,27 @@ def cochran_test():
     except Exception as e:
         return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
 
+# Wilcoxon Signed-Rank Test
+@app.route('/api/wilcoxon', methods=['POST'])
+def wilcoxon_test():
+    try:
+        data = request.get_json()
+        sample1 = data['sample1']
+        sample2 = data['sample2']
+
+        # Asegurarse de que ambas muestras tengan el mismo número de observaciones
+        if len(sample1) != len(sample2):
+            return jsonify({'error': 'Las dos muestras deben tener el mismo número de observaciones para la prueba Wilcoxon.'}), 400
+
+        # Ejecutar la prueba de Wilcoxon
+        stat, p_value = stats.wilcoxon(sample1, sample2)
+
+        return jsonify({'test': 'Wilcoxon Signed-Rank', 'statistic': stat, 'pValue': p_value})
+    
+    except Exception as e:
+        return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
+
+
 
 
 
