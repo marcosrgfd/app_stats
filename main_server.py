@@ -1449,7 +1449,7 @@ def mcnemar_test():
         if len(observed) != 2 or len(observed[0]) != 2:
             return jsonify({'error': 'McNemar’s test requires a 2x2 contingency table.'}), 400
 
-        result = stats.mcnemar(observed, exact=True)
+        result = mcnemar(observed, exact=True)
 
         # Determine significance of the p-value
         if result.pvalue < 0.05:
@@ -1484,13 +1484,14 @@ def cochran_test():
         if len(observed[0]) < 3:
             return jsonify({'error': 'Cochran’s Q test requires at least 3 treatments/conditions.'}), 400
 
-        stat, p_value = stats.cochrans_q(observed)
+        # Ejecutar la prueba de Cochran
+        result = cochrans_q(observed)
 
         # Determine significance of the p-value
-        if p_value < 0.05:
+        if result.pvalue < 0.05:
             significance = "significant"
             reject_null = "Reject the null hypothesis"
-        elif p_value < 0.1:
+        elif result.pvalue < 0.1:
             significance = "marginally significant"
             reject_null = "Potential rejection of the null hypothesis"
         else:
@@ -1499,8 +1500,8 @@ def cochran_test():
 
         return jsonify({
             'test': 'Cochran\'s Q',
-            'statistic': stat,
-            'pValue': p_value,
+            'statistic': result.statistic,
+            'pValue': result.pvalue,
             'significance': significance,
             'decision': reject_null
         })
