@@ -1102,7 +1102,26 @@ def chi_square_independence():
     data = request.get_json()
     observed = data['observed']
     stat, p_value, _, _ = stats.chi2_contingency(observed)
-    return jsonify({'test': 'Chi-Square (Independencia)', 'statistic': stat, 'pValue': p_value})
+
+    # Determine significance of the p-value
+    if p_value < 0.05:
+        significance = "significant"
+        reject_null = "Reject the null hypothesis"
+    elif p_value < 0.1:
+        significance = "marginally significant"
+        reject_null = "Potential rejection of the null hypothesis"
+    else:
+        significance = "not significant"
+        reject_null = "Do not reject the null hypothesis"
+
+    return jsonify({
+        'test': 'Chi-Square (Independence)',
+        'statistic': stat,
+        'pValue': p_value,
+        'significance': significance,
+        'decision': reject_null
+    })
+
 
 
 # Ruta para la prueba ANOVA de una vía
@@ -1268,7 +1287,26 @@ def mann_whitney():
     sample1 = data['sample1']
     sample2 = data['sample2']
     stat, p_value = stats.mannwhitneyu(sample1, sample2)
-    return jsonify({'test': 'Mann-Whitney U', 'statistic': stat, 'pValue': p_value})
+
+    # Determine significance of the p-value
+    if p_value < 0.05:
+        significance = "significant"
+        reject_null = "Reject the null hypothesis"
+    elif p_value < 0.1:
+        significance = "marginally significant"
+        reject_null = "Potential rejection of the null hypothesis"
+    else:
+        significance = "not significant"
+        reject_null = "Do not reject the null hypothesis"
+
+    return jsonify({
+        'test': 'Mann-Whitney U',
+        'statistic': stat,
+        'pValue': p_value,
+        'significance': significance,
+        'decision': reject_null
+    })
+
 
 
 # Kruskal Wallis H test
@@ -1298,11 +1336,23 @@ def kruskal_wallis():
         # Realizar la prueba Kruskal-Wallis
         stat, p_value = stats.kruskal(*groups)
 
-        # Devolver los resultados
+        # Determine significance of the p-value
+        if p_value < 0.05:
+            significance = "significant"
+            reject_null = "Reject the null hypothesis"
+        elif p_value < 0.1:
+            significance = "marginally significant"
+            reject_null = "Potential rejection of the null hypothesis"
+        else:
+            significance = "not significant"
+            reject_null = "Do not reject the null hypothesis"
+
         return jsonify({
             'test': 'Kruskal-Wallis',
             'statistic': stat,
             'pValue': p_value,
+            'significance': significance,
+            'decision': reject_null,
             'num_groups': len(groups),
             'total_observations': sum(len(group) for group in groups)
         })
@@ -1318,33 +1368,39 @@ def friedman_test():
         data = request.get_json()
         groups = data['groups']
 
-        # Asegúrate de que haya al menos 3 grupos
         if len(groups) < 3:
-            return jsonify({'error': 'Se requieren al menos 3 grupos para la prueba Friedman.'}), 400
-        
-        # Asegúrate de que todos los grupos tengan el mismo número de observaciones
-        num_observaciones = len(groups[0])
-        if not all(len(g) == num_observaciones for g in groups):
-            return jsonify({'error': 'Todos los grupos deben tener el mismo número de observaciones.'}), 400
+            return jsonify({'error': 'At least 3 groups are required for the Friedman test.'}), 400
 
-        # Ejecutar la prueba de Friedman
-        stat, p_value = friedmanchisquare(*groups)
+        num_observations = len(groups[0])
+        if not all(len(g) == num_observations for g in groups):
+            return jsonify({'error': 'All groups must have the same number of observations.'}), 400
 
-        # Calcular el número de grupos y el total de observaciones
-        num_grupos = len(groups)
-        total_observaciones = num_grupos * num_observaciones
+        stat, p_value = stats.friedmanchisquare(*groups)
 
-        # Devolver la respuesta con los resultados de la prueba y las métricas adicionales
+        # Determine significance of the p-value
+        if p_value < 0.05:
+            significance = "significant"
+            reject_null = "Reject the null hypothesis"
+        elif p_value < 0.1:
+            significance = "marginally significant"
+            reject_null = "Potential rejection of the null hypothesis"
+        else:
+            significance = "not significant"
+            reject_null = "Do not reject the null hypothesis"
+
         return jsonify({
             'test': 'Friedman',
             'statistic': stat,
             'pValue': p_value,
-            'num_groups': num_grupos,
-            'total_observations': total_observaciones
+            'significance': significance,
+            'decision': reject_null,
+            'num_groups': len(groups),
+            'total_observations': num_observations * len(groups)
         })
 
     except Exception as e:
-        return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
+
 
 # Fisher exact test
 @app.route('/api/fisher', methods=['POST'])
@@ -1353,17 +1409,33 @@ def fisher_test():
         data = request.get_json()
         observed = data['observed']
 
-        # Verificar que la tabla es 2x2
-        if len(observed) != 2 or len(observed[0]) != 2 or len(observed[1]) != 2:
-            return jsonify({'error': 'La prueba exacta de Fisher requiere una tabla de contingencia 2x2.'}), 400
+        if len(observed) != 2 or len(observed[0]) != 2:
+            return jsonify({'error': 'Fisher’s exact test requires a 2x2 contingency table.'}), 400
 
-        # Ejecutar la prueba exacta de Fisher
-        oddsratio, p_value = fisher_exact(observed)
+        oddsratio, p_value = stats.fisher_exact(observed)
 
-        return jsonify({'test': 'Fisher', 'oddsratio': oddsratio, 'pValue': p_value})
+        # Determine significance of the p-value
+        if p_value < 0.05:
+            significance = "significant"
+            reject_null = "Reject the null hypothesis"
+        elif p_value < 0.1:
+            significance = "marginally significant"
+            reject_null = "Potential rejection of the null hypothesis"
+        else:
+            significance = "not significant"
+            reject_null = "Do not reject the null hypothesis"
+
+        return jsonify({
+            'test': 'Fisher',
+            'oddsratio': oddsratio,
+            'pValue': p_value,
+            'significance': significance,
+            'decision': reject_null
+        })
 
     except Exception as e:
-        return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
+
 
 
 
@@ -1375,34 +1447,67 @@ def mcnemar_test():
         observed = data['observed']
 
         if len(observed) != 2 or len(observed[0]) != 2:
-            return jsonify({'error': 'La prueba de McNemar requiere una tabla de contingencia 2x2.'}), 400
+            return jsonify({'error': 'McNemar’s test requires a 2x2 contingency table.'}), 400
 
-        # Ejecutar la prueba de McNemar
-        result = mcnemar(observed, exact=True)  # Si prefieres la versión asintótica, usa exact=False
+        result = stats.mcnemar(observed, exact=True)
 
-        return jsonify({'test': 'McNemar', 'statistic': result.statistic, 'pValue': result.pvalue})
+        # Determine significance of the p-value
+        if result.pvalue < 0.05:
+            significance = "significant"
+            reject_null = "Reject the null hypothesis"
+        elif result.pvalue < 0.1:
+            significance = "marginally significant"
+            reject_null = "Potential rejection of the null hypothesis"
+        else:
+            significance = "not significant"
+            reject_null = "Do not reject the null hypothesis"
+
+        return jsonify({
+            'test': 'McNemar',
+            'statistic': result.statistic,
+            'pValue': result.pvalue,
+            'significance': significance,
+            'decision': reject_null
+        })
+
     except Exception as e:
-        return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
+
 
 # Cochran's Q Test
 @app.route('/api/cochran', methods=['POST'])
 def cochran_test():
     try:
         data = request.get_json()
-        observed = data['observed']  # Se espera una lista de listas (tratamientos en las columnas y sujetos en las filas)
+        observed = data['observed']
 
-        # Asegurar que haya más de dos tratamientos (columnas)
         if len(observed[0]) < 3:
-            return jsonify({'error': 'La prueba de Cochran requiere al menos 3 tratamientos/condiciones.'}), 400
+            return jsonify({'error': 'Cochran’s Q test requires at least 3 treatments/conditions.'}), 400
 
-        # Ejecutar la prueba de Cochran
-        result = cochrans_q(observed)
+        stat, p_value = stats.cochrans_q(observed)
 
-        return jsonify({'test': 'Cochran', 'statistic': result.statistic, 'pValue': result.pvalue})
+        # Determine significance of the p-value
+        if p_value < 0.05:
+            significance = "significant"
+            reject_null = "Reject the null hypothesis"
+        elif p_value < 0.1:
+            significance = "marginally significant"
+            reject_null = "Potential rejection of the null hypothesis"
+        else:
+            significance = "not significant"
+            reject_null = "Do not reject the null hypothesis"
+
+        return jsonify({
+            'test': 'Cochran\'s Q',
+            'statistic': stat,
+            'pValue': p_value,
+            'significance': significance,
+            'decision': reject_null
+        })
+
     except Exception as e:
-        return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
 
-# Wilcoxon Signed-Rank Test
 @app.route('/api/wilcoxon', methods=['POST'])
 def wilcoxon_test():
     try:
@@ -1417,10 +1522,27 @@ def wilcoxon_test():
         # Ejecutar la prueba de Wilcoxon
         stat, p_value = stats.wilcoxon(sample1, sample2)
 
-        return jsonify({'test': 'Wilcoxon Signed-Rank', 'statistic': stat, 'pValue': p_value})
+        # Determinar significancia del p-valor
+        if p_value < 0.05:
+            significance = "significant"
+            reject_null = "Reject the null hypothesis"
+        elif p_value < 0.1:
+            significance = "marginally significant"
+            reject_null = "Potential rejection of the null hypothesis"
+        else:
+            significance = "not significant"
+            reject_null = "Do not reject the null hypothesis"
+
+        return jsonify({
+            'test': 'Wilcoxon Signed-Rank',
+            'statistic': stat,
+            'pValue': p_value,
+            'significance': significance,
+            'decision': reject_null
+        })
     
     except Exception as e:
-        return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
 
 
 
