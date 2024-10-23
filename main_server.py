@@ -909,22 +909,57 @@ def shapiro_test():
     data = request.get_json()
     sample = data['sample']
     stat, p_value = stats.shapiro(sample)
-    return jsonify({'test': 'Shapiro-Wilk', 'statistic': stat, 'pValue': p_value})
+
+    # Determine significance of the p-value
+    if p_value < 0.05:
+        significance = "significant"
+        reject_null = "Reject the null hypothesis"
+    elif p_value < 0.1:
+        significance = "marginally significant"
+        reject_null = "Potential rejection of the null hypothesis"
+    else:
+        significance = "not significant"
+        reject_null = "Do not reject the null hypothesis"
+
+    return jsonify({
+        'test': 'Shapiro-Wilk',
+        'statistic': stat,
+        'pValue': p_value,
+        'significance': significance,
+        'decision': reject_null
+    })
+
 
 # Ruta para la prueba Kolmogorov-Smirnov
 @app.route('/api/kolmogorov', methods=['POST'])
 def kolmogorov_test():
     data = request.get_json()
     sample = data['sample']
-    
-    # Calcular la media y desviación estándar de la muestra
+
     sample_mean = np.mean(sample)
-    sample_std = np.std(sample, ddof=1)  # ddof=1 para usar la desviación estándar muestral
+    sample_std = np.std(sample, ddof=1)
     
-    # Realizar el test Kolmogorov-Smirnov comparando con la distribución normal
     stat, p_value = stats.kstest(sample, 'norm', args=(sample_mean, sample_std))
-    
-    return jsonify({'test': 'Kolmogorov-Smirnov', 'statistic': stat, 'pValue': p_value})
+
+    # Determine significance of the p-value
+    if p_value < 0.05:
+        significance = "significant"
+        reject_null = "Reject the null hypothesis"
+    elif p_value < 0.1:
+        significance = "marginally significant"
+        reject_null = "Potential rejection of the null hypothesis"
+    else:
+        significance = "not significant"
+        reject_null = "Do not reject the null hypothesis"
+
+    return jsonify({
+        'test': 'Kolmogorov-Smirnov',
+        'statistic': stat,
+        'pValue': p_value,
+        'significance': significance,
+        'decision': reject_null
+    })
+
 
 # Ruta para la prueba de Levene (homogeneidad de varianzas)
 @app.route('/api/levene', methods=['POST'])
@@ -965,11 +1000,24 @@ def levene_test():
         # Realizar la prueba de Levene
         stat, p_value = stats.levene(*groups)
 
+        # Determine significance of the p-value
+        if p_value < 0.05:
+            significance = "significant"
+            reject_null = "Reject the null hypothesis"
+        elif p_value < 0.1:
+            significance = "marginally significant"
+            reject_null = "Potential rejection of the null hypothesis"
+        else:
+            significance = "not significant"
+            reject_null = "Do not reject the null hypothesis"
+
         # Resultados de la prueba de Levene
         levene_results = {
             'test': 'Levene',
             'statistic': stat,
             'pValue': p_value,
+            'significance': significance,
+            'decision': reject_null,
             'num_groups': len(groups),
             'total_observations': sum(len(group) for group in groups),
         }
@@ -987,16 +1035,31 @@ def t_test():
     data = request.get_json()
     sample1 = data['sample1']
     sample2 = data['sample2']
-    paired = data.get('paired', False)  # Recibe si es pareado o no
+    paired = data.get('paired', False)
     
     if paired:
-        # Prueba t para medidas pareadas
         stat, p_value = stats.ttest_rel(sample1, sample2)
     else:
-        # Prueba t para muestras independientes
         stat, p_value = stats.ttest_ind(sample1, sample2)
-    
-    return jsonify({'test': 'T-Test' + (' pareado' if paired else ''), 'statistic': stat, 'pValue': p_value})
+
+    # Determine significance of the p-value
+    if p_value < 0.05:
+        significance = "significant"
+        reject_null = "Reject the null hypothesis"
+    elif p_value < 0.1:
+        significance = "marginally significant"
+        reject_null = "Potential rejection of the null hypothesis"
+    else:
+        significance = "not significant"
+        reject_null = "Do not reject the null hypothesis"
+
+    return jsonify({
+        'test': 'T-Test' + (' paired' if paired else ''),
+        'statistic': stat,
+        'pValue': p_value,
+        'significance': significance,
+        'decision': reject_null
+    })
 
 
 # Ruta para la prueba Chi-Square de bondad de ajuste
