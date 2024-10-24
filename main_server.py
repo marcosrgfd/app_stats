@@ -1554,7 +1554,7 @@ def wilcoxon_test():
 ##########################################################################################
 
 
-# Ruta para regresión lineal
+# Regresión Lineal
 @app.route('/api/linear_regression', methods=['POST'])
 def linear_regression():
     try:
@@ -1562,23 +1562,25 @@ def linear_regression():
         predictors = np.array(data['predictors']).reshape(-1, 1)
         response = np.array(data['response'])
 
-        # Modelo de regresión lineal
         model = LinearRegression()
         model.fit(predictors, response)
 
-        # Coeficientes y resultados
         coefficients = model.coef_.tolist()
         intercept = model.intercept_.tolist()
+
+        predictions = model.predict(predictors)
+        r_squared = r2_score(response, predictions)
 
         return jsonify({
             'model': 'Regresión Lineal',
             'coefficients': coefficients,
-            'intercept': intercept
+            'intercept': intercept,
+            'r_squared': r_squared
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# Ruta para regresión logística
+# Regresión Logística
 @app.route('/api/logistic_regression', methods=['POST'])
 def logistic_regression():
     try:
@@ -1586,20 +1588,22 @@ def logistic_regression():
         predictors = np.array(data['predictors']).reshape(-1, 1)
         response = np.array(data['response'])
 
-        # Modelo de regresión logística
         model = LogisticRegression()
         model.fit(predictors, response)
 
-        # Coeficientes y resultados
         coefficients = model.coef_.tolist()
         intercept = model.intercept_.tolist()
-        score = model.score(predictors, response)  # Precisión
+
+        predictions = model.predict(predictors)
+        accuracy = accuracy_score(response, predictions)
+        cm = confusion_matrix(response, predictions).tolist()
 
         return jsonify({
             'model': 'Regresión Logística',
             'coefficients': coefficients,
             'intercept': intercept,
-            'accuracy': score
+            'accuracy': accuracy,
+            'confusion_matrix': cm
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
