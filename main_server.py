@@ -54,7 +54,7 @@ from statsmodels.stats.contingency_tables import mcnemar
 
 # MODELS
 from sklearn.linear_model import LinearRegression, LogisticRegression
-from sklearn.metrics import r2_score, accuracy_score
+from sklearn.metrics import r2_score, accuracy_score, confusion_matrix
 from sklearn.model_selection import cross_val_score
 
 # Cambiar el backend de matplotlib para evitar problemas de hilos en entornos de servidor
