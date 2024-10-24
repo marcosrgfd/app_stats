@@ -8,5 +8,6 @@ statsmodels
 numpy
 scikit-learn
 openpyxl
+scikit_posthocs
 
 
