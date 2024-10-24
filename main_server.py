@@ -1601,44 +1601,42 @@ def replace_nan_with_none(values):
 def logistic_regression():
     try:
         data = request.get_json()
-        
+
+        # Asumimos que el primer predictor es el intercepto si sm.add_constant(X) se usa
         predictors = np.array(data['predictors'])
         response = np.array(data['response'])
 
-        if predictors.ndim == 1:
-            predictors = predictors.reshape(-1, 1)
+        # Añadir intercepto (constante) a los predictores
+        X = sm.add_constant(predictors)
 
-        if predictors.shape[0] != response.shape[0]:
-            raise ValueError("El número de predictores y respuestas debe coincidir.")
-        
-        # Verificar que la respuesta sea binaria (0 o 1)
-        if not np.array_equal(np.unique(response), [0, 1]):
-            raise ValueError("La variable de respuesta debe ser binaria (0 o 1).")
-        
-        # Añadir constante al modelo
-        predictors = sm.add_constant(predictors)
-        model = sm.Logit(response, predictors)
-        result = model.fit(disp=False)  # Ajustar el modelo
-        
-        coefficients = result.params.tolist()
-        p_values = result.pvalues.tolist()
+        model = sm.Logit(response, X)
+        result = model.fit()
 
-        # Reemplazar los NaN con None antes de serializar
-        p_values = replace_nan_with_none(p_values)
+        # Separar intercepto del resto de los coeficientes
+        intercept = result.params[0]  # El intercepto es el primer valor
+        coefficients = result.params[1:].tolist()  # Coeficientes sin el intercepto
 
-        accuracy = accuracy_score(response, result.predict(predictors) > 0.5)
-        cm = confusion_matrix(response, result.predict(predictors) > 0.5).tolist()
+        # p-valores
+        intercept_pvalue = result.pvalues[0]
+        p_values = result.pvalues[1:].tolist()  # p-valores sin el intercepto
+
+        # Precisión del modelo
+        predictions = (result.predict(X) > 0.5).astype(int)
+        accuracy = accuracy_score(response, predictions)
+        cm = confusion_matrix(response, predictions)
 
         return jsonify({
             'model': 'Regresión Logística',
             'coefficients': coefficients,
+            'intercept': intercept,
             'p_values': p_values,
+            'intercept_pvalue': intercept_pvalue,
             'accuracy': accuracy,
-            'confusion_matrix': cm
+            'confusion_matrix': cm.tolist()
         })
     except Exception as e:
-        print(f"Error en regresión logística: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
 
 
 @app.route('/api/r_squared', methods=['POST'])
