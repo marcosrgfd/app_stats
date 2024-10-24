@@ -1554,37 +1554,57 @@ def wilcoxon_test():
 ##########################################################################################
 
 
+# Función para reemplazar NaN en los resultados
+def replace_nan_with_none(values):
+    return [None if np.isnan(x) else x for x in values]
+
 # Regresión Lineal
 @app.route('/api/linear_regression', methods=['POST'])
 def linear_regression():
     try:
         data = request.get_json()
         
-        # Predictores deben ser una matriz 2D, la respuesta una matriz 1D
+        # Predictores y respuesta desde el JSON
         predictors = np.array(data['predictors'])
         response = np.array(data['response'])
 
-        # Validación para asegurarse de que hay más de un predictor y que el tamaño de las matrices coincide
+        # Asegurarse de que los predictores sean una matriz 2D
         if predictors.ndim == 1:
             predictors = predictors.reshape(-1, 1)
-        
+
+        # Validar que el número de observaciones sea el mismo para predictores y respuesta
         if predictors.shape[0] != response.shape[0]:
             raise ValueError("El número de predictores y respuestas debe coincidir.")
 
-        # Modelo de regresión lineal
-        model = LinearRegression()
-        model.fit(predictors, response)
+        # Añadir una constante (intercepto) a los predictores
+        X = sm.add_constant(predictors)
 
-        # Resultados
-        coefficients = model.coef_.tolist()
-        intercept = model.intercept_.tolist()
-        predictions = model.predict(predictors)
-        r_squared = r2_score(response, predictions)
+        # Ajustar el modelo de regresión lineal
+        model = sm.OLS(response, X)
+        result = model.fit()
 
+        # Separar el intercepto del resto de los coeficientes
+        intercept = result.params[0]  # El intercepto es el primer valor
+        coefficients = result.params[1:].tolist()  # Coeficientes sin el intercepto
+
+        # Separar p-valores
+        intercept_pvalue = replace_nan_with_none([result.pvalues[0]])[0]  # p-valor del intercepto
+        p_values = replace_nan_with_none(result.pvalues[1:].tolist())  # p-valores sin el intercepto
+
+        # Estadísticos adicionales
+        t_values = replace_nan_with_none(result.tvalues[1:].tolist())
+        confidence_intervals = result.conf_int().tolist()[1:]  # Intervalos de confianza sin el intercepto
+        r_squared = result.rsquared
+
+        # Devolver los resultados en formato JSON
         return jsonify({
             'model': 'Regresión Lineal',
-            'coefficients': coefficients,
             'intercept': intercept,
+            'intercept_pvalue': intercept_pvalue,
+            'coefficients': coefficients,
+            'p_values': p_values,
+            't_values': t_values,
+            'confidence_intervals': confidence_intervals,
             'r_squared': r_squared
         })
     except Exception as e:
@@ -1592,49 +1612,68 @@ def linear_regression():
         return jsonify({'error': str(e)}), 500
 
 
-# Función para reemplazar NaN en los resultados
-def replace_nan_with_none(values):
-    return [None if np.isnan(x) else x for x in values]
-
 # Regresión Logística
 @app.route('/api/logistic_regression', methods=['POST'])
 def logistic_regression():
     try:
         data = request.get_json()
 
-        # Asumimos que el primer predictor es el intercepto si sm.add_constant(X) se usa
+        # Predictores y respuesta desde el JSON
         predictors = np.array(data['predictors'])
         response = np.array(data['response'])
 
-        # Añadir intercepto (constante) a los predictores
+        # Asegurarse de que los predictores sean una matriz 2D
+        if predictors.ndim == 1:
+            predictors = predictors.reshape(-1, 1)
+
+        # Validar que el número de observaciones sea el mismo para predictores y respuesta
+        if predictors.shape[0] != response.shape[0]:
+            raise ValueError("El número de predictores y respuestas debe coincidir.")
+
+        # Verificar que la respuesta sea binaria (0 o 1)
+        if not np.array_equal(np.unique(response), [0, 1]):
+            raise ValueError("La variable de respuesta debe ser binaria (0 o 1).")
+
+        # Añadir una constante (intercepto) a los predictores
         X = sm.add_constant(predictors)
 
+        # Ajustar el modelo de regresión logística
         model = sm.Logit(response, X)
-        result = model.fit()
+        result = model.fit(disp=False)
 
-        # Separar intercepto del resto de los coeficientes
+        # Separar el intercepto del resto de los coeficientes
         intercept = result.params[0]  # El intercepto es el primer valor
         coefficients = result.params[1:].tolist()  # Coeficientes sin el intercepto
 
-        # p-valores
-        intercept_pvalue = result.pvalues[0]
-        p_values = result.pvalues[1:].tolist()  # p-valores sin el intercepto
+        # Separar p-valores
+        intercept_pvalue = replace_nan_with_none([result.pvalues[0]])[0]  # p-valor del intercepto
+        p_values = replace_nan_with_none(result.pvalues[1:].tolist())  # p-valores sin el intercepto
+
+        # Estadísticos adicionales
+        z_values = replace_nan_with_none(result.tvalues[1:].tolist())  # En logística, son z-values
+        confidence_intervals = result.conf_int().tolist()[1:]  # Intervalos de confianza sin el intercepto
 
         # Precisión del modelo
         predictions = (result.predict(X) > 0.5).astype(int)
         accuracy = accuracy_score(response, predictions)
-        cm = confusion_matrix(response, predictions)
 
+        # Matriz de confusión
+        cm = confusion_matrix(response, predictions).tolist()
+
+        # Devolver los resultados en formato JSON
         return jsonify({
             'model': 'Regresión Logística',
-            'coefficients': coefficients,
             'intercept': intercept,
-            'p_values': p_values,
             'intercept_pvalue': intercept_pvalue,
+            'coefficients': coefficients,
+            'p_values': p_values,
+            'z_values': z_values,
+            'confidence_intervals': confidence_intervals,
             'accuracy': accuracy,
-            'confusion_matrix': cm.tolist()
+            'confusion_matrix': cm
         })
     except Exception as e:
+        print(f"Error en regresión logística: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 
