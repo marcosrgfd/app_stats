@@ -52,6 +52,10 @@ from scipy.stats import fisher_exact
 from statsmodels.stats.contingency_tables import cochrans_q
 from statsmodels.stats.contingency_tables import mcnemar
 
+# MODELS
+from sklearn.linear_model import LinearRegression, LogisticRegression
+from sklearn.metrics import r2_score, accuracy_score
+from sklearn.model_selection import cross_val_score
 
 # Cambiar el backend de matplotlib para evitar problemas de hilos en entornos de servidor
 plt.switch_backend('Agg')
@@ -1545,7 +1549,109 @@ def wilcoxon_test():
     except Exception as e:
         return jsonify({'error': f'Internal server error: {str(e)}'}), 500
 
+##########################################################################################
+####################################### MODELOS ##########################################
+##########################################################################################
 
+
+# Ruta para regresión lineal
+@app.route('/api/linear_regression', methods=['POST'])
+def linear_regression():
+    try:
+        data = request.get_json()
+        predictors = np.array(data['predictors']).reshape(-1, 1)
+        response = np.array(data['response'])
+
+        # Modelo de regresión lineal
+        model = LinearRegression()
+        model.fit(predictors, response)
+
+        # Coeficientes y resultados
+        coefficients = model.coef_.tolist()
+        intercept = model.intercept_.tolist()
+
+        return jsonify({
+            'model': 'Regresión Lineal',
+            'coefficients': coefficients,
+            'intercept': intercept
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Ruta para regresión logística
+@app.route('/api/logistic_regression', methods=['POST'])
+def logistic_regression():
+    try:
+        data = request.get_json()
+        predictors = np.array(data['predictors']).reshape(-1, 1)
+        response = np.array(data['response'])
+
+        # Modelo de regresión logística
+        model = LogisticRegression()
+        model.fit(predictors, response)
+
+        # Coeficientes y resultados
+        coefficients = model.coef_.tolist()
+        intercept = model.intercept_.tolist()
+        score = model.score(predictors, response)  # Precisión
+
+        return jsonify({
+            'model': 'Regresión Logística',
+            'coefficients': coefficients,
+            'intercept': intercept,
+            'accuracy': score
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Ruta para calcular R² (regresión lineal)
+@app.route('/api/r_squared', methods=['POST'])
+def calculate_r_squared():
+    try:
+        data = request.get_json()
+        predictors = np.array(data['predictors']).reshape(-1, 1)
+        response = np.array(data['response'])
+
+        # Modelo de regresión lineal
+        model = LinearRegression()
+        model.fit(predictors, response)
+
+        # Predicciones
+        predictions = model.predict(predictors)
+
+        # Calcular R²
+        r_squared = r2_score(response, predictions)
+
+        return jsonify({
+            'model': 'Regresión Lineal',
+            'rSquared': r_squared
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Ruta para realizar validación cruzada (regresión lineal)
+@app.route('/api/cross_validation', methods=['POST'])
+def cross_validation():
+    try:
+        data = request.get_json()
+        predictors = np.array(data['predictors']).reshape(-1, 1)
+        response = np.array(data['response'])
+        folds = data.get('folds', 5)  # Número de particiones (folds), por defecto 5
+
+        # Modelo de regresión lineal
+        model = LinearRegression()
+
+        # Validación cruzada
+        scores = cross_val_score(model, predictors, response, cv=folds)
+        mean_score = scores.mean()
+
+        return jsonify({
+            'model': 'Regresión Lineal',
+            'crossValidationScores': scores.tolist(),
+            'meanScore': mean_score
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 
