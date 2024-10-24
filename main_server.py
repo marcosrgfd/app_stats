@@ -1639,69 +1639,6 @@ def logistic_regression():
 
 
 
-@app.route('/api/r_squared', methods=['POST'])
-def calculate_r_squared():
-    try:
-        data = request.get_json()
-        predictors = np.array(data['predictors'])
-        response = np.array(data['response'])
-
-        if predictors.ndim == 1:
-            predictors = predictors.reshape(-1, 1)
-        
-        if predictors.shape[0] != response.shape[0]:
-            raise ValueError("El número de predictores y respuestas debe coincidir.")
-
-        # Modelo de regresión lineal
-        model = LinearRegression()
-        model.fit(predictors, response)
-
-        # Predicciones
-        predictions = model.predict(predictors)
-
-        # Calcular R²
-        r_squared = r2_score(response, predictions)
-
-        return jsonify({
-            'model': 'Regresión Lineal',
-            'rSquared': r_squared
-        })
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-
-@app.route('/api/cross_validation', methods=['POST'])
-def cross_validation():
-    try:
-        data = request.get_json()
-        predictors = np.array(data['predictors'])
-        response = np.array(data['response'])
-        folds = data.get('folds', 5)  # Número de particiones (folds), por defecto 5
-
-        if predictors.ndim == 1:
-            predictors = predictors.reshape(-1, 1)
-        
-        if predictors.shape[0] != response.shape[0]:
-            raise ValueError("El número de predictores y respuestas debe coincidir.")
-
-        # Modelo de regresión lineal
-        model = LinearRegression()
-
-        # Validación cruzada
-        scores = cross_val_score(model, predictors, response, cv=folds)
-        mean_score = scores.mean()
-
-        return jsonify({
-            'model': 'Regresión Lineal',
-            'crossValidationScores': scores.tolist(),
-            'meanScore': mean_score
-        })
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-
 # Ruta para llamar a Render y que no se apague
 @app.route('/ping', methods=['HEAD', 'GET'])
 def ping():
