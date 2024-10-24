@@ -1592,34 +1592,40 @@ def linear_regression():
         return jsonify({'error': str(e)}), 500
 
 
+# Función para reemplazar NaN en los resultados
+def replace_nan_with_none(values):
+    return [None if np.isnan(x) else x for x in values]
+
 # Regresión Logística
 @app.route('/api/logistic_regression', methods=['POST'])
 def logistic_regression():
     try:
         data = request.get_json()
         
-        # Predictores deben ser una matriz 2D, la respuesta una matriz 1D
         predictors = np.array(data['predictors'])
         response = np.array(data['response'])
 
-        # Validación para asegurarse de que hay más de un predictor y que el tamaño de las matrices coincide
         if predictors.ndim == 1:
             predictors = predictors.reshape(-1, 1)
-        
+
         if predictors.shape[0] != response.shape[0]:
             raise ValueError("El número de predictores y respuestas debe coincidir.")
         
-        # Verificar que la respuesta es binaria
+        # Verificar que la respuesta sea binaria (0 o 1)
         if not np.array_equal(np.unique(response), [0, 1]):
             raise ValueError("La variable de respuesta debe ser binaria (0 o 1).")
         
-        # Ajustar el modelo con statsmodels
-        predictors = sm.add_constant(predictors)  # Añadir el intercepto manualmente
+        # Añadir constante al modelo
+        predictors = sm.add_constant(predictors)
         model = sm.Logit(response, predictors)
         result = model.fit(disp=False)  # Ajustar el modelo
         
         coefficients = result.params.tolist()
         p_values = result.pvalues.tolist()
+
+        # Reemplazar los NaN con None antes de serializar
+        p_values = replace_nan_with_none(p_values)
+
         accuracy = accuracy_score(response, result.predict(predictors) > 0.5)
         cm = confusion_matrix(response, result.predict(predictors) > 0.5).tolist()
 
