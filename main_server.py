@@ -1554,20 +1554,30 @@ def wilcoxon_test():
 ##########################################################################################
 
 
-# Regresión Lineal con soporte para múltiples predictores
+# Regresión Lineal
 @app.route('/api/linear_regression', methods=['POST'])
 def linear_regression():
     try:
         data = request.get_json()
-        predictors = np.array(data['predictors'])  # Aceptar múltiples predictores (matriz)
+        
+        # Predictores deben ser una matriz 2D, la respuesta una matriz 1D
+        predictors = np.array(data['predictors'])
         response = np.array(data['response'])
 
+        # Validación para asegurarse de que hay más de un predictor y que el tamaño de las matrices coincide
+        if predictors.ndim == 1:
+            predictors = predictors.reshape(-1, 1)
+        
+        if predictors.shape[0] != response.shape[0]:
+            raise ValueError("El número de predictores y respuestas debe coincidir.")
+
+        # Modelo de regresión lineal
         model = LinearRegression()
         model.fit(predictors, response)
 
+        # Resultados
         coefficients = model.coef_.tolist()
         intercept = model.intercept_.tolist()
-
         predictions = model.predict(predictors)
         r_squared = r2_score(response, predictions)
 
@@ -1578,6 +1588,7 @@ def linear_regression():
             'r_squared': r_squared
         })
     except Exception as e:
+        print(f"Error en regresión lineal: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -1586,40 +1597,56 @@ def linear_regression():
 def logistic_regression():
     try:
         data = request.get_json()
-        predictors = np.array(data['predictors'])  # Aceptar múltiples predictores (matriz)
+        
+        # Predictores deben ser una matriz 2D, la respuesta una matriz 1D
+        predictors = np.array(data['predictors'])
         response = np.array(data['response'])
 
-        # Ajustar el modelo con statsmodels para obtener el p-valor
-        model = sm.Logit(response, sm.add_constant(predictors))
-        result = model.fit(disp=False)
-
+        # Validación para asegurarse de que hay más de un predictor y que el tamaño de las matrices coincide
+        if predictors.ndim == 1:
+            predictors = predictors.reshape(-1, 1)
+        
+        if predictors.shape[0] != response.shape[0]:
+            raise ValueError("El número de predictores y respuestas debe coincidir.")
+        
+        # Verificar que la respuesta es binaria
+        if not np.array_equal(np.unique(response), [0, 1]):
+            raise ValueError("La variable de respuesta debe ser binaria (0 o 1).")
+        
+        # Ajustar el modelo con statsmodels
+        predictors = sm.add_constant(predictors)  # Añadir el intercepto manualmente
+        model = sm.Logit(response, predictors)
+        result = model.fit(disp=False)  # Ajustar el modelo
+        
         coefficients = result.params.tolist()
         p_values = result.pvalues.tolist()
-        intercept = coefficients[0]
-        accuracy = result.prsquared  # R² pseudo
-
-        # Predicciones
-        predictions = result.predict(sm.add_constant(predictors)) > 0.5
-        cm = confusion_matrix(response, predictions).tolist()
+        accuracy = accuracy_score(response, result.predict(predictors) > 0.5)
+        cm = confusion_matrix(response, result.predict(predictors) > 0.5).tolist()
 
         return jsonify({
             'model': 'Regresión Logística',
-            'coefficients': coefficients[1:],  # Coeficientes sin el intercepto
-            'intercept': intercept,
+            'coefficients': coefficients,
             'p_values': p_values,
             'accuracy': accuracy,
             'confusion_matrix': cm
         })
     except Exception as e:
+        print(f"Error en regresión logística: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-# Ruta para calcular R² (regresión lineal) con múltiples predictores
+
 @app.route('/api/r_squared', methods=['POST'])
 def calculate_r_squared():
     try:
         data = request.get_json()
-        predictors = np.array(data['predictors'])  # Aceptar múltiples predictores (matriz)
+        predictors = np.array(data['predictors'])
         response = np.array(data['response'])
+
+        if predictors.ndim == 1:
+            predictors = predictors.reshape(-1, 1)
+        
+        if predictors.shape[0] != response.shape[0]:
+            raise ValueError("El número de predictores y respuestas debe coincidir.")
 
         # Modelo de regresión lineal
         model = LinearRegression()
@@ -1639,14 +1666,20 @@ def calculate_r_squared():
         return jsonify({'error': str(e)}), 500
 
 
-# Validación cruzada (regresión lineal) con múltiples predictores
+
 @app.route('/api/cross_validation', methods=['POST'])
 def cross_validation():
     try:
         data = request.get_json()
-        predictors = np.array(data['predictors'])  # Aceptar múltiples predictores (matriz)
+        predictors = np.array(data['predictors'])
         response = np.array(data['response'])
         folds = data.get('folds', 5)  # Número de particiones (folds), por defecto 5
+
+        if predictors.ndim == 1:
+            predictors = predictors.reshape(-1, 1)
+        
+        if predictors.shape[0] != response.shape[0]:
+            raise ValueError("El número de predictores y respuestas debe coincidir.")
 
         # Modelo de regresión lineal
         model = LinearRegression()
