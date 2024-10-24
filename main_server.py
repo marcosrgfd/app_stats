@@ -1554,12 +1554,12 @@ def wilcoxon_test():
 ##########################################################################################
 
 
-# Regresión Lineal
+# Regresión Lineal con soporte para múltiples predictores
 @app.route('/api/linear_regression', methods=['POST'])
 def linear_regression():
     try:
         data = request.get_json()
-        predictors = np.array(data['predictors']).reshape(-1, 1)
+        predictors = np.array(data['predictors'])  # Aceptar múltiples predictores (matriz)
         response = np.array(data['response'])
 
         model = LinearRegression()
@@ -1580,40 +1580,45 @@ def linear_regression():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 # Regresión Logística
 @app.route('/api/logistic_regression', methods=['POST'])
 def logistic_regression():
     try:
         data = request.get_json()
-        predictors = np.array(data['predictors']).reshape(-1, 1)
+        predictors = np.array(data['predictors'])  # Aceptar múltiples predictores (matriz)
         response = np.array(data['response'])
 
-        model = LogisticRegression()
-        model.fit(predictors, response)
+        # Ajustar el modelo con statsmodels para obtener el p-valor
+        model = sm.Logit(response, sm.add_constant(predictors))
+        result = model.fit(disp=False)
 
-        coefficients = model.coef_.tolist()
-        intercept = model.intercept_.tolist()
+        coefficients = result.params.tolist()
+        p_values = result.pvalues.tolist()
+        intercept = coefficients[0]
+        accuracy = result.prsquared  # R² pseudo
 
-        predictions = model.predict(predictors)
-        accuracy = accuracy_score(response, predictions)
+        # Predicciones
+        predictions = result.predict(sm.add_constant(predictors)) > 0.5
         cm = confusion_matrix(response, predictions).tolist()
 
         return jsonify({
             'model': 'Regresión Logística',
-            'coefficients': coefficients,
+            'coefficients': coefficients[1:],  # Coeficientes sin el intercepto
             'intercept': intercept,
+            'p_values': p_values,
             'accuracy': accuracy,
             'confusion_matrix': cm
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# Ruta para calcular R² (regresión lineal)
+# Ruta para calcular R² (regresión lineal) con múltiples predictores
 @app.route('/api/r_squared', methods=['POST'])
 def calculate_r_squared():
     try:
         data = request.get_json()
-        predictors = np.array(data['predictors']).reshape(-1, 1)
+        predictors = np.array(data['predictors'])  # Aceptar múltiples predictores (matriz)
         response = np.array(data['response'])
 
         # Modelo de regresión lineal
@@ -1633,12 +1638,13 @@ def calculate_r_squared():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# Ruta para realizar validación cruzada (regresión lineal)
+
+# Validación cruzada (regresión lineal) con múltiples predictores
 @app.route('/api/cross_validation', methods=['POST'])
 def cross_validation():
     try:
         data = request.get_json()
-        predictors = np.array(data['predictors']).reshape(-1, 1)
+        predictors = np.array(data['predictors'])  # Aceptar múltiples predictores (matriz)
         response = np.array(data['response'])
         folds = data.get('folds', 5)  # Número de particiones (folds), por defecto 5
 
