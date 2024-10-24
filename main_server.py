@@ -51,6 +51,7 @@ from scipy.stats import friedmanchisquare
 from scipy.stats import fisher_exact
 from statsmodels.stats.contingency_tables import cochrans_q
 from statsmodels.stats.contingency_tables import mcnemar
+import scikit_posthocs as sp  # Importar la librería correcta
 
 # MODELS
 from sklearn.linear_model import LinearRegression, LogisticRegression
@@ -1313,7 +1314,7 @@ def mann_whitney():
 
 
 
-# Kruskal Wallis H test
+# Kruskal Wallis H test con comparaciones múltiples
 @app.route('/api/kruskal', methods=['POST'])
 def kruskal_wallis():
     try:
@@ -1329,6 +1330,7 @@ def kruskal_wallis():
         group8 = data.get('group8', [])
         group9 = data.get('group9', [])
         group10 = data.get('group10', [])
+        multiple_comparisons = data.get('multipleComparisons', False)
 
         # Convertir los datos de cada grupo a float
         groups = [[float(x) for x in group] for group in [group1, group2, group3, group4, group5, group6, group7, group8, group9, group10] if group]
@@ -1351,7 +1353,8 @@ def kruskal_wallis():
             significance = "not significant"
             reject_null = "Do not reject the null hypothesis"
 
-        return jsonify({
+        # Resultados básicos de Kruskal-Wallis
+        kw_results = {
             'test': 'Kruskal-Wallis',
             'statistic': stat,
             'pValue': p_value,
@@ -1359,8 +1362,46 @@ def kruskal_wallis():
             'decision': reject_null,
             'num_groups': len(groups),
             'total_observations': sum(len(group) for group in groups)
-        })
-    
+        }
+
+        # Comparaciones múltiples si está habilitado
+        if multiple_comparisons:
+            # Verificar que haya al menos tres grupos para realizar comparaciones múltiples
+            if len(groups) < 3:
+                return jsonify({'error': 'Se requieren al menos tres grupos para realizar comparaciones múltiples.'}), 400
+
+            try:
+                # Preparar los datos para las comparaciones múltiples
+                all_data = []
+                labels = []
+                for i, group in enumerate(groups):
+                    all_data.extend(group)
+                    labels.extend([f'Grupo {i+1}'] * len(group))
+
+                # Convertir a DataFrame para usar en las pruebas
+                df = pd.DataFrame({'value': all_data, 'group': labels})
+
+                # Realizar la prueba de Dunn
+                dunn = sp.posthoc_dunn(df, val_col='value', group_col='group', p_adjust='bonferroni')
+
+                # Procesar los resultados de Dunn
+                dunn_summary = "Comparaciones múltiples (Dunn con corrección de Bonferroni):\n"
+                for i in range(len(dunn)):
+                    for j in range(i+1, len(dunn)):
+                        dunn_summary += (
+                            f"----------------------------\n"
+                            f"Comparación: Grupo {i+1} vs Grupo {j+1}\n"
+                            f"  • p-Value ajustado: {dunn.iloc[i, j]:.3f}\n"
+                        )
+
+                # Agregar el resumen de Dunn al resultado
+                kw_results['dunn'] = dunn_summary
+
+            except Exception as e:
+                return jsonify({'error': f'Error al ejecutar la prueba de Dunn: {str(e)}'}), 500
+
+        return jsonify(kw_results)
+
     except Exception as e:
         return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
 
