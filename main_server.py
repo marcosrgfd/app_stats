@@ -1406,23 +1406,27 @@ def kruskal_wallis():
         return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
 
 
-# Friedman Test
+# Friedman Test con comparaciones múltiples
 @app.route('/api/friedman', methods=['POST'])
 def friedman_test():
     try:
         data = request.get_json()
-        groups = data['groups']
+        groups = data.get('groups', [])
+        multiple_comparisons = data.get('multipleComparisons', False)
 
+        # Validación de que haya al menos 3 grupos
         if len(groups) < 3:
-            return jsonify({'error': 'At least 3 groups are required for the Friedman test.'}), 400
+            return jsonify({'error': 'Se requieren al menos 3 grupos para la prueba de Friedman.'}), 400
 
+        # Validar que todos los grupos tengan el mismo número de observaciones
         num_observations = len(groups[0])
         if not all(len(g) == num_observations for g in groups):
-            return jsonify({'error': 'All groups must have the same number of observations.'}), 400
+            return jsonify({'error': 'Todos los grupos deben tener el mismo número de observaciones.'}), 400
 
+        # Realizar la prueba de Friedman
         stat, p_value = stats.friedmanchisquare(*groups)
 
-        # Determine significance of the p-value
+        # Determinar la significancia del valor p
         if p_value < 0.05:
             significance = "significant"
             reject_null = "Reject the null hypothesis"
@@ -1433,7 +1437,8 @@ def friedman_test():
             significance = "not significant"
             reject_null = "Do not reject the null hypothesis"
 
-        return jsonify({
+        # Resultados básicos de Friedman
+        friedman_results = {
             'test': 'Friedman',
             'statistic': stat,
             'pValue': p_value,
@@ -1441,10 +1446,44 @@ def friedman_test():
             'decision': reject_null,
             'num_groups': len(groups),
             'total_observations': num_observations * len(groups)
-        })
+        }
+
+        # Comparaciones múltiples si está habilitado
+        if multiple_comparisons:
+            try:
+                # Preparar los datos en un DataFrame para la prueba de Nemenyi
+                all_data = []
+                labels = []
+                for i, group in enumerate(groups):
+                    all_data.extend(group)
+                    labels.extend([f'Grupo {i+1}'] * num_observations)
+
+                df = pd.DataFrame({'value': all_data, 'group': labels})
+
+                # Realizar la prueba de Nemenyi
+                nemenyi = sp.posthoc_nemenyi_friedman(df['value'], df['group'])
+
+                # Procesar los resultados de Nemenyi
+                nemenyi_summary = "Comparaciones múltiples (Nemenyi):\n"
+                for i in range(len(nemenyi)):
+                    for j in range(i+1, len(nemenyi)):
+                        nemenyi_summary += (
+                            f"----------------------------\n"
+                            f"Comparación: Grupo {i+1} vs Grupo {j+1}\n"
+                            f"  • p-Value ajustado: {nemenyi.iloc[i, j]:.3f}\n"
+                        )
+
+                # Agregar el resumen de Nemenyi al resultado
+                friedman_results['nemenyi'] = nemenyi_summary
+
+            except Exception as e:
+                return jsonify({'error': f'Error al ejecutar la prueba de Nemenyi: {str(e)}'}), 500
+
+        return jsonify(friedman_results)
 
     except Exception as e:
-        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
+        return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
+
 
 
 # Fisher exact test
