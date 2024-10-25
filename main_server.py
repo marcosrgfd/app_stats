@@ -1451,22 +1451,17 @@ def friedman_test():
         # Comparaciones múltiples si está habilitado
         if multiple_comparisons:
             try:
-                # Preparar los datos en un DataFrame para la prueba de Nemenyi
-                all_data = []
-                labels = []
-                for i, group in enumerate(groups):
-                    all_data.extend(group)
-                    labels.extend([f'Grupo {i+1}'] * num_observations)
-
-                df = pd.DataFrame({'value': all_data, 'group': labels})
+                # Preparar los datos en un DataFrame en formato de bloques
+                # Cada columna será un grupo y cada fila una observación
+                df = pd.DataFrame({f'Grupo {i+1}': group for i, group in enumerate(groups)})
 
                 # Realizar la prueba de Nemenyi
-                nemenyi = sp.posthoc_nemenyi_friedman(df['value'], df['group'])
+                nemenyi = sp.posthoc_nemenyi_friedman(df)
 
-                # Procesar los resultados de Nemenyi
+                # Procesar los resultados de Nemenyi en formato de texto
                 nemenyi_summary = "Comparaciones múltiples (Nemenyi):\n"
                 for i in range(len(nemenyi)):
-                    for j in range(i+1, len(nemenyi)):
+                    for j in range(i + 1, len(nemenyi)):
                         nemenyi_summary += (
                             f"----------------------------\n"
                             f"Comparación: Grupo {i+1} vs Grupo {j+1}\n"
