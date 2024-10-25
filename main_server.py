@@ -1034,18 +1034,19 @@ def levene_test():
         print(f'Error al ejecutar la prueba de Levene: {str(e)}')
         return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
 
-# Ruta para la prueba t de Student con opción pareado
+# Ruta para la prueba t de Student con opción pareado y unilateral/bilateral
 @app.route('/api/ttest', methods=['POST'])
 def t_test():
     data = request.get_json()
     sample1 = data['sample1']
     sample2 = data['sample2']
     paired = data.get('paired', False)
-    
+    alternative = data.get('alternative', 'two-sided')  # Configuración de unilateral/bilateral
+
     if paired:
-        stat, p_value = stats.ttest_rel(sample1, sample2)
+        stat, p_value = stats.ttest_rel(sample1, sample2, alternative=alternative)
     else:
-        stat, p_value = stats.ttest_ind(sample1, sample2)
+        stat, p_value = stats.ttest_ind(sample1, sample2, alternative=alternative)
 
     # Determine significance of the p-value
     if p_value < 0.05:
@@ -1285,13 +1286,16 @@ def anova_two_way():
     except Exception as e:
         return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
 
-# Mann Whitey U test
+# Mann-Whitney U Test con opción unilateral/bilateral
 @app.route('/api/mannwhitney', methods=['POST'])
 def mann_whitney():
     data = request.get_json()
     sample1 = data['sample1']
     sample2 = data['sample2']
-    stat, p_value = stats.mannwhitneyu(sample1, sample2)
+    alternative = data.get('alternative', 'two-sided')  # Configuración de unilateral/bilateral
+
+    # Realizar la prueba Mann-Whitney
+    stat, p_value = stats.mannwhitneyu(sample1, sample2, alternative=alternative)
 
     # Determine significance of the p-value
     if p_value < 0.05:
@@ -1588,19 +1592,21 @@ def cochran_test():
     except Exception as e:
         return jsonify({'error': f'Internal server error: {str(e)}'}), 500
 
+# Wilcoxon Signed-Rank Test con opción unilateral/bilateral
 @app.route('/api/wilcoxon', methods=['POST'])
 def wilcoxon_test():
     try:
         data = request.get_json()
         sample1 = data['sample1']
         sample2 = data['sample2']
+        alternative = data.get('alternative', 'two-sided')  # Configuración de unilateral/bilateral
 
         # Asegurarse de que ambas muestras tengan el mismo número de observaciones
         if len(sample1) != len(sample2):
             return jsonify({'error': 'Las dos muestras deben tener el mismo número de observaciones para la prueba Wilcoxon.'}), 400
 
         # Ejecutar la prueba de Wilcoxon
-        stat, p_value = stats.wilcoxon(sample1, sample2)
+        stat, p_value = stats.wilcoxon(sample1, sample2, alternative=alternative)
 
         # Determinar significancia del p-valor
         if p_value < 0.05:
@@ -1620,7 +1626,7 @@ def wilcoxon_test():
             'significance': significance,
             'decision': reject_null
         })
-    
+
     except Exception as e:
         return jsonify({'error': f'Internal server error: {str(e)}'}), 500
 
