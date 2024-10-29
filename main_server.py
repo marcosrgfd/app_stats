@@ -1851,33 +1851,29 @@ def logistic_regression():
 
 
 # Regresión de Cox
+# Regresión de Cox
 @app.route('/api/cox_regression', methods=['POST'])
 def cox_regression():
     try:
         data = request.get_json()
-        
-        # Convertir datos a np.array
-        predictors = np.array(data['predictors'])
+
+        # Crear DataFrame de los predictores a partir del JSON recibido
+        predictors = pd.DataFrame(data['predictors'])
         time = np.array(data['time'])
         event = np.array(data['event'])
 
-        # Asegurarse de que los predictores sean una matriz 2D
-        if predictors.ndim == 1:
-            predictors = predictors.reshape(-1, 1)
-
-        # Validar que el número de observaciones sea el mismo en predictores, tiempo y evento
-        if not (predictors.shape[0] == time.shape[0] == event.shape[0]):
+        # Asegurarse de que las dimensiones coinciden
+        if not (len(predictors) == len(time) == len(event)):
             raise ValueError("El número de observaciones debe coincidir en predictores, tiempo y evento.")
 
-        # Convertir a DataFrame para el modelo de Cox
-        df = pd.DataFrame(predictors, columns=[f'Predictor_{i+1}' for i in range(predictors.shape[1])])
-        df['time'] = time
-        df['event'] = event
+        # Añadir columnas de tiempo y evento al DataFrame de predictores
+        predictors['time'] = time
+        predictors['event'] = event
 
         # Ajustar el modelo de regresión de Cox
         cph = CoxPHFitter()
-        cph.fit(df, duration_col='time', event_col='event')
-        
+        cph.fit(predictors, duration_col='time', event_col='event')
+
         # Extraer los resultados
         coefficients = replace_nan_with_none(cph.params_.values.tolist())
         p_values = replace_nan_with_none(cph.summary['p'].values.tolist())
@@ -1893,6 +1889,7 @@ def cox_regression():
     except Exception as e:
         print(f"Error en regresión de Cox: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
 
 
 # Regresión de Poisson
