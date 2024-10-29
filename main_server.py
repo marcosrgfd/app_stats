@@ -57,6 +57,7 @@ import scikit_posthocs as sp  # Importar la librería correcta
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.metrics import r2_score, accuracy_score, confusion_matrix
 from sklearn.model_selection import cross_val_score
+from lifelines import CoxPHFitter
 
 # Cambiar el backend de matplotlib para evitar problemas de hilos en entornos de servidor
 plt.switch_backend('Agg')
@@ -1846,6 +1847,93 @@ def logistic_regression():
         })
     except Exception as e:
         print(f"Error en regresión logística: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+# Regresión de Cox
+@app.route('/api/cox_regression', methods=['POST'])
+def cox_regression():
+    try:
+        data = request.get_json()
+
+        # Variables predictoras y variables de tiempo y evento
+        predictors = pd.DataFrame(data['predictors'])
+        time = data['time']
+        event = data['event']
+
+        # Combinar predictores con variables de tiempo y evento en un DataFrame
+        df = predictors.copy()
+        df['time'] = time
+        df['event'] = event
+
+        # Ajustar el modelo de regresión de Cox
+        cph = CoxPHFitter()
+        cph.fit(df, duration_col='time', event_col='event')
+        
+        # Extraer los resultados
+        coefficients = cph.params_.tolist()
+        p_values = cph.summary['p'].tolist()
+        confidence_intervals = cph.confidence_intervals_.values.tolist()
+
+        return jsonify({
+            'model': 'Regresión de Cox',
+            'coefficients': coefficients,
+            'p_values': p_values,
+            'confidence_intervals': confidence_intervals
+        })
+    except Exception as e:
+        print(f"Error en regresión de Cox: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+# Regresión de Poisson
+@app.route('/api/poisson_regression', methods=['POST'])
+def poisson_regression():
+    try:
+        data = request.get_json()
+
+        # Predictores y respuesta desde el JSON
+        predictors = np.array(data['predictors'])
+        response = np.array(data['response'])
+
+        # Asegurarse de que los predictores sean una matriz 2D
+        if predictors.ndim == 1:
+            predictors = predictors.reshape(-1, 1)
+
+        # Validar que el número de observaciones sea el mismo para predictores y respuesta
+        if predictors.shape[0] != response.shape[0]:
+            raise ValueError("El número de predictores y respuestas debe coincidir.")
+
+        # Añadir una constante (intercepto) a los predictores
+        X = sm.add_constant(predictors)
+
+        # Ajustar el modelo de regresión de Poisson
+        model = sm.GLM(response, X, family=sm.families.Poisson())
+        result = model.fit()
+
+        # Separar el intercepto del resto de los coeficientes
+        intercept = result.params[0]  # El intercepto es el primer valor
+        coefficients = result.params[1:].tolist()  # Coeficientes sin el intercepto
+
+        # Separar p-valores
+        intercept_pvalue = replace_nan_with_none([result.pvalues[0]])[0]  # p-valor del intercepto
+        p_values = replace_nan_with_none(result.pvalues[1:].tolist())  # p-valores sin el intercepto
+
+        # Estadísticos adicionales
+        z_values = replace_nan_with_none(result.tvalues[1:].tolist())
+        confidence_intervals = result.conf_int().tolist()[1:]  # Intervalos de confianza sin el intercepto
+
+        # Devolver los resultados en formato JSON
+        return jsonify({
+            'model': 'Regresión de Poisson',
+            'intercept': intercept,
+            'intercept_pvalue': intercept_pvalue,
+            'coefficients': coefficients,
+            'p_values': p_values,
+            'z_values': z_values,
+            'confidence_intervals': confidence_intervals
+        })
+    except Exception as e:
+        print(f"Error en regresión de Poisson: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 
