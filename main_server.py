@@ -1630,6 +1630,97 @@ def wilcoxon_test():
     except Exception as e:
         return jsonify({'error': f'Internal server error: {str(e)}'}), 500
 
+
+# Ruta para la correlación de Pearson
+@app.route('/api/correlation/pearson', methods=['POST'])
+def pearson_correlation():
+    data = request.get_json()
+    sample1 = data.get('sample1', [])
+    sample2 = data.get('sample2', [])
+
+    # Validar que ambas muestras tengan datos
+    if not sample1 or not sample2:
+        return jsonify({'error': 'Ambas muestras deben contener datos.'}), 400
+
+    # Calcular la correlación de Pearson
+    stat, p_value = stats.pearsonr(sample1, sample2)
+
+    return jsonify({
+        'test': 'Pearson Correlation',
+        'statistic': stat,
+        'pValue': p_value,
+        'significance': 'significant' if p_value < 0.05 else 'not significant',
+        'decision': 'Reject the null hypothesis' if p_value < 0.05 else 'Do not reject the null hypothesis'
+    })
+
+
+# Ruta para la correlación de Spearman
+@app.route('/api/correlation/spearman', methods=['POST'])
+def spearman_correlation():
+    data = request.get_json()
+    sample1 = data.get('sample1', [])
+    sample2 = data.get('sample2', [])
+
+    # Validar que ambas muestras tengan datos
+    if not sample1 or not sample2:
+        return jsonify({'error': 'Ambas muestras deben contener datos.'}), 400
+
+    # Calcular la correlación de Spearman
+    stat, p_value = stats.spearmanr(sample1, sample2)
+
+    return jsonify({
+        'test': 'Spearman Correlation',
+        'statistic': stat,
+        'pValue': p_value,
+        'significance': 'significant' if p_value < 0.05 else 'not significant',
+        'decision': 'Reject the null hypothesis' if p_value < 0.05 else 'Do not reject the null hypothesis'
+    })
+
+# Ruta para la prueba t de Welch (para muestras independientes con varianzas desiguales)
+@app.route('/api/welch_ttest', methods=['POST'])
+def welch_t_test():
+    data = request.get_json()
+    sample1 = data.get('sample1', [])
+    sample2 = data.get('sample2', [])
+
+    # Validar que ambas muestras tengan datos
+    if not sample1 or not sample2:
+        return jsonify({'error': 'Ambas muestras deben contener datos.'}), 400
+
+    # Realizar la prueba t de Welch
+    stat, p_value = stats.ttest_ind(sample1, sample2, equal_var=False)
+
+    return jsonify({
+        'test': 'Welch T-Test',
+        'statistic': stat,
+        'pValue': p_value,
+        'significance': 'significant' if p_value < 0.05 else 'not significant',
+        'decision': 'Reject the null hypothesis' if p_value < 0.05 else 'Do not reject the null hypothesis'
+    })
+
+
+# Ruta para la prueba t de una media
+@app.route('/api/one_sample_ttest', methods=['POST'])
+def one_sample_t_test():
+    data = request.get_json()
+    sample = data.get('sample', [])
+    population_mean = data.get('population_mean', 0)  # Valor de referencia
+
+    # Validar que la muestra tenga datos
+    if not sample:
+        return jsonify({'error': 'La muestra debe contener datos.'}), 400
+
+    # Realizar la prueba t de una muestra
+    stat, p_value = stats.ttest_1samp(sample, population_mean)
+
+    return jsonify({
+        'test': 'One-Sample T-Test',
+        'statistic': stat,
+        'pValue': p_value,
+        'significance': 'significant' if p_value < 0.05 else 'not significant',
+        'decision': 'Reject the null hypothesis' if p_value < 0.05 else 'Do not reject the null hypothesis'
+    })
+    
 ##########################################################################################
 ####################################### MODELOS ##########################################
 ##########################################################################################
