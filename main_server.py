@@ -1850,34 +1850,48 @@ def logistic_regression():
         return jsonify({'error': str(e)}), 500
 
 
-# Regresión de Cox
-# Regresión de Cox
+# Nueva función para reemplazar NaN con None, manejando estructuras anidadas
+def replace_nan_with_none_cox(data):
+    if isinstance(data, list):
+        # Si es una lista, aplicar recursivamente usando la propia función
+        return [replace_nan_with_none_cox(item) for item in data]
+    elif pd.isna(data):  # Verificar si el elemento es NaN
+        return None
+    else:
+        return data
+
+# Endpoint de la regresión de Cox
 @app.route('/api/cox_regression', methods=['POST'])
 def cox_regression():
     try:
         data = request.get_json()
-
-        # Crear DataFrame de los predictores a partir del JSON recibido
-        predictors = pd.DataFrame(data['predictors'])
+        
+        # Convertir datos a np.array
+        predictors = np.array(data['predictors'])
         time = np.array(data['time'])
         event = np.array(data['event'])
 
-        # Asegurarse de que las dimensiones coinciden
-        if not (len(predictors) == len(time) == len(event)):
+        # Asegurarse de que los predictores sean una matriz 2D
+        if predictors.ndim == 1:
+            predictors = predictors.reshape(-1, 1)
+
+        # Validar que el número de observaciones sea el mismo en predictores, tiempo y evento
+        if not (predictors.shape[0] == time.shape[0] == event.shape[0]):
             raise ValueError("El número de observaciones debe coincidir en predictores, tiempo y evento.")
 
-        # Añadir columnas de tiempo y evento al DataFrame de predictores
-        predictors['time'] = time
-        predictors['event'] = event
+        # Convertir a DataFrame para el modelo de Cox
+        df = pd.DataFrame(predictors, columns=[f'Predictor_{i+1}' for i in range(predictors.shape[1])])
+        df['time'] = time
+        df['event'] = event
 
         # Ajustar el modelo de regresión de Cox
         cph = CoxPHFitter()
-        cph.fit(predictors, duration_col='time', event_col='event')
-
-        # Extraer los resultados
-        coefficients = replace_nan_with_none(cph.params_.values.tolist())
-        p_values = replace_nan_with_none(cph.summary['p'].values.tolist())
-        confidence_intervals = replace_nan_with_none(cph.confidence_intervals_.values.tolist())
+        cph.fit(df, duration_col='time', event_col='event')
+        
+        # Extraer los resultados usando la función de reemplazo de NaNs
+        coefficients = replace_nan_with_none_cox(cph.params_.values.tolist())
+        p_values = replace_nan_with_none_cox(cph.summary['p'].values.tolist())
+        confidence_intervals = replace_nan_with_none_cox(cph.confidence_intervals_.values.tolist())
 
         # Devolver los resultados en formato JSON
         return jsonify({
