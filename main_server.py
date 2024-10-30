@@ -1700,12 +1700,35 @@ def spearman_correlation():
     # Calcular la correlación de Spearman
     stat, p_value = stats.spearmanr(sample1, sample2)
 
+    # Crear el gráfico de dispersión con línea de tendencia
+    plt.figure(figsize=(6, 4))
+    plt.scatter(sample1, sample2, color='blue', label='Datos')
+
+    # Ajustar la línea de tendencia usando una regresión lineal
+    m, b = np.polyfit(sample1, sample2, 1)
+    plt.plot(sample1, [m * x + b for x in sample1], color='red', label='Línea de tendencia')
+
+    plt.title('Gráfico de dispersión de Spearman')
+    plt.xlabel('Muestra 1')
+    plt.ylabel('Muestra 2')
+    plt.legend()
+    plt.tight_layout()
+
+    # Guardar el gráfico en base64
+    img = io.BytesIO()
+    plt.savefig(img, format='png')
+    img.seek(0)
+    encoded_img = base64.b64encode(img.getvalue()).decode()
+    plt.close()  # Cerrar el gráfico para liberar memoria
+
+    # Devolver los resultados en formato JSON, incluyendo el gráfico codificado
     return jsonify({
         'test': 'Spearman Correlation',
         'statistic': stat,
         'pValue': p_value,
         'significance': 'significant' if p_value < 0.05 else 'not significant',
-        'decision': 'Reject the null hypothesis' if p_value < 0.05 else 'Do not reject the null hypothesis'
+        'decision': 'Reject the null hypothesis' if p_value < 0.05 else 'Do not reject the null hypothesis',
+        'scatter_plot': encoded_img  # Imagen codificada en base64
     })
 
 # Ruta para la prueba t de Welch (para muestras independientes con varianzas desiguales)
