@@ -1820,6 +1820,7 @@ def linear_regression():
         # Predictores y respuesta desde el JSON
         predictors = np.array(data['predictors'])
         response = np.array(data['response'])
+        show_plot = data.get('showPlot', False)  # Nuevo parámetro para verificar si se debe generar el gráfico
 
         # Asegurarse de que los predictores sean una matriz 2D
         if predictors.ndim == 1:
@@ -1849,8 +1850,32 @@ def linear_regression():
         confidence_intervals = result.conf_int().tolist()[1:]  # Intervalos de confianza sin el intercepto
         r_squared = result.rsquared
 
-        # Devolver los resultados en formato JSON
-        return jsonify({
+        # Generar el gráfico de regresión solo si se solicita
+        scatter_plot_encoded = None
+        if show_plot and predictors.shape[1] == 1:  # Solo generamos el gráfico si hay un predictor
+            plt.figure(figsize=(6, 4))
+            plt.scatter(predictors, response, color='blue', label='Datos')
+            
+            # Generar la línea de regresión
+            predicted_values = intercept + coefficients[0] * predictors.flatten()
+            plt.plot(predictors, predicted_values, color='red', label='Línea de Regresión')
+
+            # Personalizar el gráfico
+            plt.title('Regresión Lineal')
+            plt.xlabel('Predictor')
+            plt.ylabel('Respuesta')
+            plt.legend()
+            plt.tight_layout()
+
+            # Guardar el gráfico en base64
+            img = io.BytesIO()
+            plt.savefig(img, format='png')
+            img.seek(0)
+            scatter_plot_encoded = base64.b64encode(img.getvalue()).decode()
+            plt.close()
+
+        # Construir la respuesta JSON
+        response = {
             'model': 'Regresión Lineal',
             'intercept': intercept,
             'intercept_pvalue': intercept_pvalue,
@@ -1859,10 +1884,17 @@ def linear_regression():
             't_values': t_values,
             'confidence_intervals': confidence_intervals,
             'r_squared': r_squared
-        })
+        }
+
+        # Incluir el gráfico solo si se generó
+        if scatter_plot_encoded:
+            response['scatter_plot'] = scatter_plot_encoded
+
+        return jsonify(response)
     except Exception as e:
         print(f"Error en regresión lineal: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
 
 
 # Regresión Logística
