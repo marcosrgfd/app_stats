@@ -1638,6 +1638,7 @@ def pearson_correlation():
     data = request.get_json()
     sample1 = data.get('sample1', [])
     sample2 = data.get('sample2', [])
+    show_plot = data.get('showPlot', False)  # Nuevo parámetro para verificar si se debe generar el gráfico
 
     # Validar que ambas muestras tengan datos
     if not sample1 or not sample2:
@@ -1651,37 +1652,45 @@ def pearson_correlation():
         # Calcular la correlación de Pearson
         stat, p_value = stats.pearsonr(sample1, sample2)
 
-        # Crear gráfico de dispersión con línea de tendencia
-        plt.figure(figsize=(6, 4))
-        plt.scatter(sample1, sample2, color='skyblue', edgecolor='black', label='Datos')
-        
-        # Ajustar la línea de tendencia
-        slope, intercept = np.polyfit(sample1, sample2, 1)
-        plt.plot(sample1, slope * sample1 + intercept, color='red', linewidth=2, label='Línea de tendencia')
+        # Generar el gráfico solo si se solicita
+        scatter_plot_encoded = None
+        if show_plot:
+            # Crear gráfico de dispersión con línea de tendencia
+            plt.figure(figsize=(6, 4))
+            plt.scatter(sample1, sample2, color='skyblue', edgecolor='black', label='Datos')
+            
+            # Ajustar la línea de tendencia
+            slope, intercept = np.polyfit(sample1, sample2, 1)
+            plt.plot(sample1, slope * sample1 + intercept, color='red', linewidth=2, label='Línea de tendencia')
 
-        # Personalizar el gráfico
-        plt.title('Gráfico de Dispersión con Línea de Tendencia')
-        plt.xlabel('Sample 1')
-        plt.ylabel('Sample 2')
-        plt.legend()
-        plt.tight_layout()
+            # Personalizar el gráfico
+            plt.title('Gráfico de Dispersión con Línea de Tendencia')
+            plt.xlabel('Sample 1')
+            plt.ylabel('Sample 2')
+            plt.legend()
+            plt.tight_layout()
 
-        # Convertir gráfico a base64
-        img = io.BytesIO()
-        plt.savefig(img, format='png')
-        img.seek(0)
-        encoded_img = base64.b64encode(img.getvalue()).decode()
-        plt.close()
+            # Convertir gráfico a base64
+            img = io.BytesIO()
+            plt.savefig(img, format='png')
+            img.seek(0)
+            scatter_plot_encoded = base64.b64encode(img.getvalue()).decode()
+            plt.close()
 
         # Devolver resultados en JSON
-        return jsonify({
+        response = {
             'test': 'Pearson Correlation',
             'statistic': stat,
             'pValue': p_value,
             'significance': 'significant' if p_value < 0.05 else 'not significant',
-            'decision': 'Reject the null hypothesis' if p_value < 0.05 else 'Do not reject the null hypothesis',
-            'scatter_plot': encoded_img  # Imagen codificada en base64
-        })
+            'decision': 'Reject the null hypothesis' if p_value < 0.05 else 'Do not reject the null hypothesis'
+        }
+
+        # Incluir el gráfico solo si se generó
+        if scatter_plot_encoded:
+            response['scatter_plot'] = scatter_plot_encoded
+
+        return jsonify(response)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -1692,44 +1701,61 @@ def spearman_correlation():
     data = request.get_json()
     sample1 = data.get('sample1', [])
     sample2 = data.get('sample2', [])
+    show_plot = data.get('showPlot', False)  # Nuevo parámetro para verificar si se debe generar el gráfico
 
     # Validar que ambas muestras tengan datos
     if not sample1 or not sample2:
         return jsonify({'error': 'Ambas muestras deben contener datos.'}), 400
 
-    # Calcular la correlación de Spearman
-    stat, p_value = stats.spearmanr(sample1, sample2)
+    try:
+        # Convertir muestras a arrays numpy para procesamiento
+        sample1 = np.array(sample1)
+        sample2 = np.array(sample2)
 
-    # Crear el gráfico de dispersión con línea de tendencia
-    plt.figure(figsize=(6, 4))
-    plt.scatter(sample1, sample2, color='blue', label='Datos')
+        # Calcular la correlación de Spearman
+        stat, p_value = stats.spearmanr(sample1, sample2)
 
-    # Ajustar la línea de tendencia usando una regresión lineal
-    m, b = np.polyfit(sample1, sample2, 1)
-    plt.plot(sample1, [m * x + b for x in sample1], color='red', label='Línea de tendencia')
+        # Generar el gráfico solo si se solicita
+        scatter_plot_encoded = None
+        if show_plot:
+            # Crear gráfico de dispersión con línea de tendencia
+            plt.figure(figsize=(6, 4))
+            plt.scatter(sample1, sample2, color='blue', label='Datos')
 
-    plt.title('Gráfico de dispersión de Spearman')
-    plt.xlabel('Muestra 1')
-    plt.ylabel('Muestra 2')
-    plt.legend()
-    plt.tight_layout()
+            # Ajustar la línea de tendencia usando una regresión lineal
+            m, b = np.polyfit(sample1, sample2, 1)
+            plt.plot(sample1, m * sample1 + b, color='red', label='Línea de tendencia')
 
-    # Guardar el gráfico en base64
-    img = io.BytesIO()
-    plt.savefig(img, format='png')
-    img.seek(0)
-    encoded_img = base64.b64encode(img.getvalue()).decode()
-    plt.close()  # Cerrar el gráfico para liberar memoria
+            plt.title('Gráfico de dispersión de Spearman')
+            plt.xlabel('Muestra 1')
+            plt.ylabel('Muestra 2')
+            plt.legend()
+            plt.tight_layout()
 
-    # Devolver los resultados en formato JSON, incluyendo el gráfico codificado
-    return jsonify({
-        'test': 'Spearman Correlation',
-        'statistic': stat,
-        'pValue': p_value,
-        'significance': 'significant' if p_value < 0.05 else 'not significant',
-        'decision': 'Reject the null hypothesis' if p_value < 0.05 else 'Do not reject the null hypothesis',
-        'scatter_plot': encoded_img  # Imagen codificada en base64
-    })
+            # Guardar el gráfico en base64
+            img = io.BytesIO()
+            plt.savefig(img, format='png')
+            img.seek(0)
+            scatter_plot_encoded = base64.b64encode(img.getvalue()).decode()
+            plt.close()  # Cerrar el gráfico para liberar memoria
+
+        # Devolver los resultados en formato JSON
+        response = {
+            'test': 'Spearman Correlation',
+            'statistic': stat,
+            'pValue': p_value,
+            'significance': 'significant' if p_value < 0.05 else 'not significant',
+            'decision': 'Reject the null hypothesis' if p_value < 0.05 else 'Do not reject the null hypothesis'
+        }
+
+        # Incluir el gráfico solo si se generó
+        if scatter_plot_encoded:
+            response['scatter_plot'] = scatter_plot_encoded
+
+        return jsonify(response)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 # Ruta para la prueba t de Welch (para muestras independientes con varianzas desiguales)
 @app.route('/api/welch_ttest', methods=['POST'])
