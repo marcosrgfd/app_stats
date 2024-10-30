@@ -1839,7 +1839,7 @@ def linear_regression():
 
         # Separar el intercepto del resto de los coeficientes
         intercept = result.params[0]  # El intercepto es el primer valor
-        coefficients = result.params[1:].tolist()  # Coeficientes sin el intercepto
+        coefficients = replace_nan_with_none(result.params[1:].tolist())  # Coeficientes sin el intercepto
 
         # Separar p-valores
         intercept_pvalue = replace_nan_with_none([result.pvalues[0]])[0]  # p-valor del intercepto
@@ -1847,7 +1847,7 @@ def linear_regression():
 
         # Estadísticos adicionales
         t_values = replace_nan_with_none(result.tvalues[1:].tolist())
-        confidence_intervals = result.conf_int().tolist()[1:]  # Intervalos de confianza sin el intercepto
+        confidence_intervals = [replace_nan_with_none(ci) for ci in result.conf_int().tolist()[1:]]  # Intervalos de confianza sin el intercepto
         r_squared = result.rsquared
 
         # Generar el gráfico de regresión solo si se solicita
@@ -1894,6 +1894,7 @@ def linear_regression():
     except Exception as e:
         print(f"Error en regresión lineal: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
 
 
 
