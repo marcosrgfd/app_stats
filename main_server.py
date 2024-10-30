@@ -1643,16 +1643,47 @@ def pearson_correlation():
     if not sample1 or not sample2:
         return jsonify({'error': 'Ambas muestras deben contener datos.'}), 400
 
-    # Calcular la correlación de Pearson
-    stat, p_value = stats.pearsonr(sample1, sample2)
+    try:
+        # Convertir muestras a arrays numpy para procesamiento
+        sample1 = np.array(sample1)
+        sample2 = np.array(sample2)
 
-    return jsonify({
-        'test': 'Pearson Correlation',
-        'statistic': stat,
-        'pValue': p_value,
-        'significance': 'significant' if p_value < 0.05 else 'not significant',
-        'decision': 'Reject the null hypothesis' if p_value < 0.05 else 'Do not reject the null hypothesis'
-    })
+        # Calcular la correlación de Pearson
+        stat, p_value = stats.pearsonr(sample1, sample2)
+
+        # Crear gráfico de dispersión con línea de tendencia
+        plt.figure(figsize=(6, 4))
+        plt.scatter(sample1, sample2, color='skyblue', edgecolor='black', label='Datos')
+        
+        # Ajustar la línea de tendencia
+        slope, intercept = np.polyfit(sample1, sample2, 1)
+        plt.plot(sample1, slope * sample1 + intercept, color='red', linewidth=2, label='Línea de tendencia')
+
+        # Personalizar el gráfico
+        plt.title('Gráfico de Dispersión con Línea de Tendencia')
+        plt.xlabel('Sample 1')
+        plt.ylabel('Sample 2')
+        plt.legend()
+        plt.tight_layout()
+
+        # Convertir gráfico a base64
+        img = io.BytesIO()
+        plt.savefig(img, format='png')
+        img.seek(0)
+        encoded_img = base64.b64encode(img.getvalue()).decode()
+        plt.close()
+
+        # Devolver resultados en JSON
+        return jsonify({
+            'test': 'Pearson Correlation',
+            'statistic': stat,
+            'pValue': p_value,
+            'significance': 'significant' if p_value < 0.05 else 'not significant',
+            'decision': 'Reject the null hypothesis' if p_value < 0.05 else 'Do not reject the null hypothesis',
+            'scatter_plot': encoded_img  # Imagen codificada en base64
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 # Ruta para la correlación de Spearman
