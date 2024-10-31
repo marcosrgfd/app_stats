@@ -564,6 +564,7 @@ def calculate_descriptive_statistics(data_series, title='Histograma de Datos'):
         upper_bound = q3 + 1.5 * iqr
         outliers = data_series[(data_series < lower_bound) | (data_series > upper_bound)].tolist()
         outliers = [float(o) if isinstance(o, (np.integer, np.floating)) else o for o in outliers]
+        iqr = float(iqr)
 
         # Crear un histograma y convertirlo a base64
         plt.figure(figsize=(6, 4))
@@ -594,6 +595,7 @@ def calculate_descriptive_statistics(data_series, title='Histograma de Datos'):
             'kurtosis': kurt,
             'q1': q1,
             'q3': q3,
+            'iqr': iqr,
             'p10': p10,
             'p90': p90,
             'iqr': iqr,
