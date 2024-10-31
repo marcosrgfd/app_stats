@@ -400,139 +400,6 @@ def calculate_sample_size_pearson():
 ####################################### DESCRIPTIVE ANALYSIS #######################################
 ####################################################################################################
 
-# Ruta para el análisis descriptivo básico a partir de una lista de datos proporcionada
-@app.route('/calculate_basic_analysis', methods=['POST'])
-def calculate_basic_analysis():
-    try:
-        data = request.get_json()
-        data_list = data.get('data', None)
-
-        if data_list is None or not isinstance(data_list, list):
-            raise ValueError("Los datos proporcionados no son válidos o no se encuentran en el formato adecuado.")
-
-        # Convertir los datos a una Serie de Pandas
-        data_series = pd.Series(data_list)
-
-        # Calcular estadísticas descriptivas
-        result = calculate_descriptive_statistics(data_series)
-
-        return jsonify(result)
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 400
-
-# Variable global para almacenar el DataFrame cargado
-dataframe = None
-
-# Ruta para cargar un archivo y almacenar el DataFrame
-@app.route('/upload_csv_descriptive', methods=['POST'])
-def upload_file_descriptive():
-    global dataframe
-    try:
-        if 'file' not in request.files:
-            return jsonify({'error': 'No se encontró el archivo.'}), 400
-
-        file = request.files['file']
-
-        if file.filename == '':
-            return jsonify({'error': 'El archivo no tiene nombre.'}), 400
-
-        # Determinar el tipo de archivo y leerlo en un DataFrame de Pandas
-        filename = file.filename.lower()
-        if filename.endswith('.csv'):
-            dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("utf-8")))
-        elif filename.endswith(('.xls', '.xlsx')):
-            dataframe = pd.read_excel(io.BytesIO(file.read()))  # Leer archivos Excel desde BytesIO
-        elif filename.endswith('.txt'):
-            dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("utf-8")), delimiter=r'\s+')
-        else:
-            raise ValueError("Formato de archivo no soportado. Proporcione un archivo CSV, XLSX o TXT.")
-
-        # Devolver las columnas disponibles para análisis
-        columns = dataframe.columns.tolist()
-        return jsonify({'message': 'Archivo cargado exitosamente', 'columns': columns})
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 400
-
-# Ruta para el análisis descriptivo de las columnas seleccionadas
-@app.route('/analyze_selected_columns', methods=['POST'])
-def analyze_selected_columns():
-    global dataframe
-    try:
-        if dataframe is None:
-            return jsonify({'error': 'No se ha cargado ningún archivo para analizar.'}), 400
-
-        data = request.get_json()
-        selected_columns = data.get('columns', [])
-
-        if not selected_columns:
-            raise ValueError("No se proporcionaron columnas para analizar.")
-
-        result = {}
-        for column in selected_columns:
-            if column not in dataframe.columns:
-                raise ValueError(f"La columna '{column}' no se encuentra en el DataFrame.")
-
-            if pd.api.types.is_numeric_dtype(dataframe[column]):
-                # Análisis para columnas numéricas
-                data_series = dataframe[column]
-                result[column] = calculate_descriptive_statistics(data_series, title=f'Histograma de {column}')
-            else:
-                # Análisis para columnas categóricas
-                value_counts = dataframe[column].value_counts()
-                percentages = dataframe[column].value_counts(normalize=True) * 100
-                frequencies = value_counts.to_dict()
-                percentages = percentages.to_dict()
-
-                # Crear gráfico de barra horizontal única dividida
-                labels = list(percentages.keys())
-                values = list(percentages.values())
-                colors = plt.get_cmap('Pastel1').colors  # Cambiar a colores más claros usando el colormap 'Pastel1'
-
-                fig, ax = plt.subplots(figsize=(10, 3.5))  # Aumentar el alto del gráfico para más espacio para etiquetas
-                left = 0
-
-                # Dibuja cada sector con su porcentaje correspondiente
-                for i, (label, value) in enumerate(zip(labels, values)):
-                    ax.barh([0], value, left=left, color=colors[i % len(colors)], edgecolor='black')
-                    left += value
-                    # Ajustar el tamaño del texto y posición para que sea más visible
-                    if value > 5:  # Solo mostramos las etiquetas si la sección tiene al menos 5% del ancho
-                        # Mostrar el nombre de la categoría
-                        ax.text(left - value / 2, 0.2, label, ha='center', va='center', fontsize=14, color='black', fontweight='bold')
-                        # Mostrar el porcentaje debajo del nombre
-                        ax.text(left - value / 2, -0.3, f'({value:.1f}%)', ha='center', va='center', fontsize=14, color='black', fontweight='bold')
-
-                # Configurar el gráfico
-                ax.set_xlim(0, 100)
-                ax.set_xlabel('Porcentaje (%)', fontsize=14)
-                ax.set_yticks([])  # Ocultar etiquetas del eje Y
-                ax.set_title(f'Distribución de {column}', fontsize=16, fontweight='bold')
-
-                plt.tight_layout()
-
-                # Guardar el gráfico en formato de imagen
-                img = io.BytesIO()
-                plt.savefig(img, format='png')  # Cambiar 'svg' a 'png', 'jpeg', etc., según sea necesario.
-                img.seek(0)
-                encoded_img = base64.b64encode(img.getvalue()).decode()
-                plt.close()  # Cerrar la figura para liberar memoria
-
-                # Almacenar el resultado del análisis en el diccionario de resultados
-                result[column] = {
-                    'frequencies': frequencies,
-                    'percentages': percentages,
-                    'segmented_bar_chart': encoded_img  # Imagen codificada en base64 del gráfico de barra única
-                }
-
-
-        return jsonify(result)
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 400
-
-@app.route('/calculate_descriptive_statistics', methods=['POST'])
 # Función para calcular estadísticas descriptivas para una o dos muestras
 def calculate_descriptive_statistics(request_body):
     try:
@@ -660,6 +527,223 @@ def calculate_descriptive_statistics(request_body):
 
     except Exception as e:
         return {'error': str(e)}
+    
+# Ruta para el análisis descriptivo básico a partir de una lista de datos proporcionada
+@app.route('/calculate_basic_analysis', methods=['POST'])
+def calculate_basic_analysis():
+    try:
+        data = request.get_json()
+
+        # Obtener la primera muestra
+        data_list1 = data.get('data1', None)
+        if data_list1 is None or not isinstance(data_list1, list):
+            raise ValueError("Los datos de la primera muestra no son válidos o no se encuentran en el formato adecuado.")
+
+        # Convertir la primera muestra a una Serie de Pandas
+        data_series1 = pd.Series(data_list1)
+
+        # Verificar si se ha proporcionado una segunda muestra
+        data_list2 = data.get('data2')
+        if data_list2 is not None:
+            if not isinstance(data_list2, list):
+                raise ValueError("Los datos de la segunda muestra no son válidos o no se encuentran en el formato adecuado.")
+            
+            # Convertir la segunda muestra a una Serie de Pandas
+            data_series2 = pd.Series(data_list2)
+
+            # Calcular estadísticas descriptivas para dos muestras
+            result = calculate_descriptive_statistics({'data1': data_series1, 'data2': data_series2})
+        else:
+            # Calcular estadísticas descriptivas para una sola muestra
+            result = calculate_descriptive_statistics({'data1': data_series1})
+
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+    
+############################## DESDE BASE DE DATOS ###########################################
+
+# Función para calcular estadísticas descriptivas comunes
+def calculate_descriptive_statistics_from_data(data_series, title='Histograma de Datos'):
+    try:
+        # Calcular estadísticas descriptivas
+        mean = float(data_series.mean())
+        median = float(data_series.median())
+        mode = data_series.mode().tolist()  # Puede tener más de un valor
+        mode = [float(m) if isinstance(m, (np.integer, np.floating)) else m for m in mode]
+        std = float(data_series.std())
+        variance = float(data_series.var())
+        min_value = float(data_series.min())
+        max_value = float(data_series.max())
+        range_value = float(max_value - min_value)
+        coef_var = (std / mean) * 100 if mean != 0 else None
+        coef_var = float(coef_var) if coef_var is not None else None
+
+        # Medidas de forma
+        skewness = float(skew(data_series, nan_policy='omit'))
+        kurt = float(kurtosis(data_series, nan_policy='omit'))
+
+        # Medidas de posición
+        q1 = float(data_series.quantile(0.25))
+        q3 = float(data_series.quantile(0.75))
+        p10 = float(data_series.quantile(0.10))
+        p90 = float(data_series.quantile(0.90))
+
+        # Identificación de outliers (rango intercuartílico - IQR)
+        iqr = q3 - q1
+        lower_bound = q1 - 1.5 * iqr
+        upper_bound = q3 + 1.5 * iqr
+        outliers = data_series[(data_series < lower_bound) | (data_series > upper_bound)].tolist()
+        outliers = [float(o) if isinstance(o, (np.integer, np.floating)) else o for o in outliers]
+
+        # Crear un histograma y convertirlo a base64
+        plt.figure(figsize=(6, 4))
+        plt.hist(data_series.dropna(), bins=10, color='skyblue', edgecolor='black')
+        plt.title(title)
+        plt.xlabel('Valor')
+        plt.ylabel('Frecuencia')
+        plt.tight_layout()
+
+        img = io.BytesIO()
+        plt.savefig(img, format='png')  # Cambiar 'svg' a 'png', 'jpeg', etc., según sea necesario.
+        img.seek(0)
+        encoded_img = base64.b64encode(img.getvalue()).decode()
+        plt.close()  # Cerrar la figura para liberar memoria
+
+        # Devolver los resultados en formato JSON
+        return {
+            'mean': mean,
+            'median': median,
+            'mode': mode,
+            'std': std,
+            'variance': variance,
+            'min': min_value,
+            'max': max_value,
+            'range': range_value,
+            'coef_var': coef_var,
+            'skewness': skewness,
+            'kurtosis': kurt,
+            'q1': q1,
+            'q3': q3,
+            'p10': p10,
+            'p90': p90,
+            'iqr': iqr,
+            'outliers': outliers,
+            'histogram': encoded_img  # Imagen codificada en base64
+        }
+    except Exception as e:
+        return {'error': str(e)} 
+
+
+# Ruta para cargar un archivo y almacenar el DataFrame
+@app.route('/upload_csv_descriptive', methods=['POST'])
+def upload_file_descriptive():
+    global dataframe
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'No se encontró el archivo.'}), 400
+
+        file = request.files['file']
+
+        if file.filename == '':
+            return jsonify({'error': 'El archivo no tiene nombre.'}), 400
+
+        # Determinar el tipo de archivo y leerlo en un DataFrame de Pandas
+        filename = file.filename.lower()
+        if filename.endswith('.csv'):
+            dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("utf-8")))
+        elif filename.endswith(('.xls', '.xlsx')):
+            dataframe = pd.read_excel(io.BytesIO(file.read()))  # Leer archivos Excel desde BytesIO
+        elif filename.endswith('.txt'):
+            dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("utf-8")), delimiter=r'\s+')
+        else:
+            raise ValueError("Formato de archivo no soportado. Proporcione un archivo CSV, XLSX o TXT.")
+
+        # Devolver las columnas disponibles para análisis
+        columns = dataframe.columns.tolist()
+        return jsonify({'message': 'Archivo cargado exitosamente', 'columns': columns})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+# Ruta para el análisis descriptivo de las columnas seleccionadas
+@app.route('/analyze_selected_columns', methods=['POST'])
+def analyze_selected_columns():
+    global dataframe
+    try:
+        if dataframe is None:
+            return jsonify({'error': 'No se ha cargado ningún archivo para analizar.'}), 400
+
+        data = request.get_json()
+        selected_columns = data.get('columns', [])
+
+        if not selected_columns:
+            raise ValueError("No se proporcionaron columnas para analizar.")
+
+        result = {}
+        for column in selected_columns:
+            if column not in dataframe.columns:
+                raise ValueError(f"La columna '{column}' no se encuentra en el DataFrame.")
+
+            if pd.api.types.is_numeric_dtype(dataframe[column]):
+                # Análisis para columnas numéricas
+                data_series = dataframe[column]
+                result[column] = calculate_descriptive_statistics_from_data(data_series, title=f'Histograma de {column}')
+            else:
+                # Análisis para columnas categóricas
+                value_counts = dataframe[column].value_counts()
+                percentages = dataframe[column].value_counts(normalize=True) * 100
+                frequencies = value_counts.to_dict()
+                percentages = percentages.to_dict()
+
+                # Crear gráfico de barra horizontal única dividida
+                labels = list(percentages.keys())
+                values = list(percentages.values())
+                colors = plt.get_cmap('Pastel1').colors  # Cambiar a colores más claros usando el colormap 'Pastel1'
+
+                fig, ax = plt.subplots(figsize=(10, 3.5))  # Aumentar el alto del gráfico para más espacio para etiquetas
+                left = 0
+
+                # Dibuja cada sector con su porcentaje correspondiente
+                for i, (label, value) in enumerate(zip(labels, values)):
+                    ax.barh([0], value, left=left, color=colors[i % len(colors)], edgecolor='black')
+                    left += value
+                    # Ajustar el tamaño del texto y posición para que sea más visible
+                    if value > 5:  # Solo mostramos las etiquetas si la sección tiene al menos 5% del ancho
+                        # Mostrar el nombre de la categoría
+                        ax.text(left - value / 2, 0.2, label, ha='center', va='center', fontsize=14, color='black', fontweight='bold')
+                        # Mostrar el porcentaje debajo del nombre
+                        ax.text(left - value / 2, -0.3, f'({value:.1f}%)', ha='center', va='center', fontsize=14, color='black', fontweight='bold')
+
+                # Configurar el gráfico
+                ax.set_xlim(0, 100)
+                ax.set_xlabel('Porcentaje (%)', fontsize=14)
+                ax.set_yticks([])  # Ocultar etiquetas del eje Y
+                ax.set_title(f'Distribución de {column}', fontsize=16, fontweight='bold')
+
+                plt.tight_layout()
+
+                # Guardar el gráfico en formato de imagen
+                img = io.BytesIO()
+                plt.savefig(img, format='png')  # Cambiar 'svg' a 'png', 'jpeg', etc., según sea necesario.
+                img.seek(0)
+                encoded_img = base64.b64encode(img.getvalue()).decode()
+                plt.close()  # Cerrar la figura para liberar memoria
+
+                # Almacenar el resultado del análisis en el diccionario de resultados
+                result[column] = {
+                    'frequencies': frequencies,
+                    'percentages': percentages,
+                    'segmented_bar_chart': encoded_img  # Imagen codificada en base64 del gráfico de barra única
+                }
+
+
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 
 ###############################################################################################
