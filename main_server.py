@@ -406,6 +406,43 @@ def calculate_descriptive_statistics(request_body):
         # Extraer datos de la solicitud
         data_series1 = pd.Series(request_body.get('data1', []))
         data_series2 = request_body.get('data2')
+        category_series = request_body.get('categories')
+
+        if category_series is not None:
+            # Si se proporcionan categorías, convertirlas en una Serie de Pandas
+            category_series = pd.Series(category_series)
+
+            # Calcular estadísticas descriptivas por categoría
+            grouped = data_series1.groupby(category_series)
+            stats_by_category = {
+                category: {
+                    'mean': float(group.mean()),
+                    'median': float(group.median()),
+                    'std': float(group.std()),
+                    'min': float(group.min()),
+                    'max': float(group.max())
+                }
+                for category, group in grouped
+            }
+
+            # Crear boxplot por categorías
+            plt.figure(figsize=(8, 6))
+            sns.boxplot(x=category_series, y=data_series1)
+            plt.title('Boxplot por Categorías')
+            plt.xlabel('Categoría')
+            plt.ylabel('Valor')
+            plt.tight_layout()
+
+            boxplot_img = io.BytesIO()
+            plt.savefig(boxplot_img, format='png')
+            boxplot_img.seek(0)
+            encoded_boxplot_img = base64.b64encode(boxplot_img.getvalue()).decode()
+            plt.close()
+
+            return {
+                'stats_by_category': stats_by_category,
+                'boxplot_by_category': encoded_boxplot_img
+            }
         if data_series2 is not None:
             data_series2 = pd.Series(data_series2)
 
