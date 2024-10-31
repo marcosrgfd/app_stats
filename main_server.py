@@ -624,7 +624,7 @@ def calculate_descriptive_statistics(data_series1, data_series2=None, title='His
         # Si hay dos muestras, realizar análisis conjunto
         mean1 = float(data_series1.mean())
         mean2 = float(data_series2.mean())
-        correlation, _ = pearsonr(data_series1, data_series2)
+        correlation, _ = stats.pearsonr(data_series1, data_series2)
 
         # Crear el gráfico de dispersión con línea de tendencia
         plt.figure(figsize=(6, 4))
