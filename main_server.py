@@ -532,6 +532,7 @@ def analyze_selected_columns():
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
+@app.route('/calculate_descriptive_statistics', methods=['POST'])
 # Función para calcular estadísticas descriptivas para una o dos muestras
 def calculate_descriptive_statistics(request_body):
     try:
