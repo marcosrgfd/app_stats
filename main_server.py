@@ -533,74 +533,110 @@ def analyze_selected_columns():
         return jsonify({'error': str(e)}), 400
 
 # Función para calcular estadísticas descriptivas comunes
-def calculate_descriptive_statistics(data_series, title='Histograma de Datos'):
+# Función para calcular estadísticas descriptivas para una o dos muestras
+def calculate_descriptive_statistics(data_series1, data_series2=None, title='Histograma de Datos'):
     try:
-        # Calcular estadísticas descriptivas
-        mean = float(data_series.mean())
-        median = float(data_series.median())
-        mode = data_series.mode().tolist()  # Puede tener más de un valor
-        mode = [float(m) if isinstance(m, (np.integer, np.floating)) else m for m in mode]
-        std = float(data_series.std())
-        variance = float(data_series.var())
-        min_value = float(data_series.min())
-        max_value = float(data_series.max())
-        range_value = float(max_value - min_value)
-        coef_var = (std / mean) * 100 if mean != 0 else None
-        coef_var = float(coef_var) if coef_var is not None else None
+        # Análisis para una sola muestra
+        def analyze_single_series(data_series, title_suffix):
+            mean = float(data_series.mean())
+            median = float(data_series.median())
+            mode = data_series.mode().tolist()
+            mode = [float(m) if isinstance(m, (np.integer, np.floating)) else m for m in mode]
+            std = float(data_series.std())
+            variance = float(data_series.var())
+            min_value = float(data_series.min())
+            max_value = float(data_series.max())
+            range_value = float(max_value - min_value)
+            coef_var = (std / mean) * 100 if mean != 0 else None
+            coef_var = float(coef_var) if coef_var is not None else None
 
-        # Medidas de forma
-        skewness = float(skew(data_series, nan_policy='omit'))
-        kurt = float(kurtosis(data_series, nan_policy='omit'))
+            # Medidas de forma
+            skewness = float(skew(data_series, nan_policy='omit'))
+            kurt = float(kurtosis(data_series, nan_policy='omit'))
 
-        # Medidas de posición
-        q1 = float(data_series.quantile(0.25))
-        q3 = float(data_series.quantile(0.75))
-        p10 = float(data_series.quantile(0.10))
-        p90 = float(data_series.quantile(0.90))
+            # Medidas de posición
+            q1 = float(data_series.quantile(0.25))
+            q3 = float(data_series.quantile(0.75))
+            p10 = float(data_series.quantile(0.10))
+            p90 = float(data_series.quantile(0.90))
 
-        # Identificación de outliers (rango intercuartílico - IQR)
-        iqr = q3 - q1
-        lower_bound = q1 - 1.5 * iqr
-        upper_bound = q3 + 1.5 * iqr
-        outliers = data_series[(data_series < lower_bound) | (data_series > upper_bound)].tolist()
-        outliers = [float(o) if isinstance(o, (np.integer, np.floating)) else o for o in outliers]
-        iqr = float(iqr)
+            # Identificación de outliers (rango intercuartílico - IQR)
+            iqr = q3 - q1
+            lower_bound = q1 - 1.5 * iqr
+            upper_bound = q3 + 1.5 * iqr
+            outliers = data_series[(data_series < lower_bound) | (data_series > upper_bound)].tolist()
+            outliers = [float(o) if isinstance(o, (np.integer, np.floating)) else o for o in outliers]
+            iqr = float(iqr)
 
-        # Crear un histograma y convertirlo a base64
+            # Crear el histograma y convertirlo a base64
+            plt.figure(figsize=(6, 4))
+            plt.hist(data_series.dropna(), bins=10, color='skyblue', edgecolor='black')
+            plt.title(f'Histograma de Datos {title_suffix}')
+            plt.xlabel('Valor')
+            plt.ylabel('Frecuencia')
+            plt.tight_layout()
+
+            img = io.BytesIO()
+            plt.savefig(img, format='png')
+            img.seek(0)
+            encoded_img = base64.b64encode(img.getvalue()).decode()
+            plt.close()
+
+            # Crear el boxplot y convertirlo a base64
+            plt.figure(figsize=(6, 4))
+            plt.boxplot(data_series.dropna(), vert=False, patch_artist=True, boxprops=dict(facecolor='lightblue'))
+            plt.title(f'Boxplot de Datos {title_suffix}')
+            plt.xlabel('Valor')
+            plt.tight_layout()
+
+            boxplot_img = io.BytesIO()
+            plt.savefig(boxplot_img, format='png')
+            boxplot_img.seek(0)
+            encoded_boxplot_img = base64.b64encode(boxplot_img.getvalue()).decode()
+            plt.close()
+
+            return {
+                'mean': mean,
+                'median': median,
+                'mode': mode,
+                'std': std,
+                'variance': variance,
+                'min': min_value,
+                'max': max_value,
+                'range': range_value,
+                'coef_var': coef_var,
+                'skewness': skewness,
+                'kurtosis': kurt,
+                'q1': q1,
+                'q3': q3,
+                'iqr': iqr,
+                'p10': p10,
+                'p90': p90,
+                'outliers': outliers,
+                'histogram': encoded_img,
+                'boxplot': encoded_boxplot_img
+            }
+
+        # Si solo hay una muestra, devolver las estadísticas para una muestra
+        if data_series2 is None:
+            return analyze_single_series(data_series1, "")
+
+        # Si hay dos muestras, realizar análisis conjunto
+        mean1 = float(data_series1.mean())
+        mean2 = float(data_series2.mean())
+        correlation, _ = pearsonr(data_series1, data_series2)
+
+        # Crear el gráfico de dispersión con línea de tendencia
         plt.figure(figsize=(6, 4))
-        plt.hist(data_series.dropna(), bins=10, color='skyblue', edgecolor='black')
-        plt.title(title)
-        plt.xlabel('Valor')
-        plt.ylabel('Frecuencia')
+        plt.scatter(data_series1, data_series2, color='purple', alpha=0.6)
+        plt.title('Gráfico de Dispersión con Línea de Tendencia')
+        plt.xlabel('Muestra 1')
+        plt.ylabel('Muestra 2')
         plt.tight_layout()
 
-        img = io.BytesIO()
-        plt.savefig(img, format='png')  # Cambiar 'svg' a 'png', 'jpeg', etc., según sea necesario.
-        img.seek(0)
-        encoded_img = base64.b64encode(img.getvalue()).decode()
-        plt.close()  # Cerrar la figura para liberar memoria
-
-        # Crear el boxplot y convertirlo a base64
-        plt.figure(figsize=(6, 4))
-        plt.boxplot(data_series.dropna(), vert=False, patch_artist=True, boxprops=dict(facecolor='lightblue'))
-        plt.title('Boxplot de Datos')
-        plt.xlabel('Valor')
-        plt.tight_layout()
-
-        boxplot_img = io.BytesIO()
-        plt.savefig(boxplot_img, format='png')
-        boxplot_img.seek(0)
-        encoded_boxplot_img = base64.b64encode(boxplot_img.getvalue()).decode()
-        plt.close()
-
-        # Crear un gráfico de dispersión simple (si es relevante)
-        # Nota: Este ejemplo es para visualizar el índice frente a los valores
-        plt.figure(figsize=(6, 4))
-        plt.scatter(range(len(data_series)), data_series, color='purple', alpha=0.6)
-        plt.title('Gráfico de Dispersión')
-        plt.xlabel('Índice')
-        plt.ylabel('Valor')
-        plt.tight_layout()
+        # Añadir la línea de tendencia
+        m, b = np.polyfit(data_series1, data_series2, 1)
+        plt.plot(data_series1, m * data_series1 + b, color='red')
 
         scatter_img = io.BytesIO()
         plt.savefig(scatter_img, format='png')
@@ -608,30 +644,14 @@ def calculate_descriptive_statistics(data_series, title='Histograma de Datos'):
         encoded_scatter_img = base64.b64encode(scatter_img.getvalue()).decode()
         plt.close()
 
-        # Devolver los resultados en formato JSON
+        # Devolver los resultados para dos muestras
         return {
-            'mean': mean,
-            'median': median,
-            'mode': mode,
-            'std': std,
-            'variance': variance,
-            'min': min_value,
-            'max': max_value,
-            'range': range_value,
-            'coef_var': coef_var,
-            'skewness': skewness,
-            'kurtosis': kurt,
-            'q1': q1,
-            'q3': q3,
-            'iqr': iqr,
-            'p10': p10,
-            'p90': p90,
-            'iqr': iqr,
-            'outliers': outliers,
-            'histogram': encoded_img,  # Imagen codificada en base64
-            'boxplot': encoded_boxplot_img,  # Imagen codificada en base64 del boxplot
-            'scatter_plot': encoded_scatter_img  # Imagen codificada en base64 del gráfico de dispersión
+            'mean1': mean1,
+            'mean2': mean2,
+            'correlation': correlation,
+            'scatter_plot': encoded_scatter_img
         }
+
     except Exception as e:
         return {'error': str(e)}
 
