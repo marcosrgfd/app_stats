@@ -533,43 +533,49 @@ def analyze_selected_columns():
         return jsonify({'error': str(e)}), 400
 
 # Función para calcular estadísticas descriptivas para una o dos muestras
-def calculate_descriptive_statistics(data_series1, data_series2=None, title='Histograma de Datos'):
+def calculate_descriptive_statistics(request_body):
     try:
+        # Extraer datos de la solicitud
+        data_series1 = pd.Series(request_body.get('data1', []))
+        data_series2 = request_body.get('data2')
+        if data_series2 is not None:
+            data_series2 = pd.Series(data_series2)
+
         # Análisis para una sola muestra
-        def analyze_single_series(data_series1, title_suffix):
-            mean = float(data_series1.mean())
-            median = float(data_series1.median())
-            mode = data_series1.mode().tolist()
+        def analyze_single_series(data_series, title_suffix):
+            mean = float(data_series.mean())
+            median = float(data_series.median())
+            mode = data_series.mode().tolist()
             mode = [float(m) if isinstance(m, (np.integer, np.floating)) else m for m in mode]
-            std = float(data_series1.std())
-            variance = float(data_series1.var())
-            min_value = float(data_series1.min())
-            max_value = float(data_series1.max())
+            std = float(data_series.std())
+            variance = float(data_series.var())
+            min_value = float(data_series.min())
+            max_value = float(data_series.max())
             range_value = float(max_value - min_value)
             coef_var = (std / mean) * 100 if mean != 0 else None
             coef_var = float(coef_var) if coef_var is not None else None
 
             # Medidas de forma
-            skewness = float(skew(data_series1, nan_policy='omit'))
-            kurt = float(kurtosis(data_series1, nan_policy='omit'))
+            skewness = float(skew(data_series, nan_policy='omit'))
+            kurt = float(kurtosis(data_series, nan_policy='omit'))
 
             # Medidas de posición
-            q1 = float(data_series1.quantile(0.25))
-            q3 = float(data_series1.quantile(0.75))
-            p10 = float(data_series1.quantile(0.10))
-            p90 = float(data_series1.quantile(0.90))
+            q1 = float(data_series.quantile(0.25))
+            q3 = float(data_series.quantile(0.75))
+            p10 = float(data_series.quantile(0.10))
+            p90 = float(data_series.quantile(0.90))
 
             # Identificación de outliers (rango intercuartílico - IQR)
             iqr = q3 - q1
             lower_bound = q1 - 1.5 * iqr
             upper_bound = q3 + 1.5 * iqr
-            outliers = data_series1[(data_series1 < lower_bound) | (data_series1 > upper_bound)].tolist()
+            outliers = data_series[(data_series < lower_bound) | (data_series > upper_bound)].tolist()
             outliers = [float(o) if isinstance(o, (np.integer, np.floating)) else o for o in outliers]
             iqr = float(iqr)
 
             # Crear el histograma y convertirlo a base64
             plt.figure(figsize=(6, 4))
-            plt.hist(data_series1.dropna(), bins=10, color='skyblue', edgecolor='black')
+            plt.hist(data_series.dropna(), bins=10, color='skyblue', edgecolor='black')
             plt.title(f'Histograma de Datos {title_suffix}')
             plt.xlabel('Valor')
             plt.ylabel('Frecuencia')
@@ -583,7 +589,7 @@ def calculate_descriptive_statistics(data_series1, data_series2=None, title='His
 
             # Crear el boxplot y convertirlo a base64
             plt.figure(figsize=(6, 4))
-            plt.boxplot(data_series1.dropna(), vert=False, patch_artist=True, boxprops=dict(facecolor='lightblue'))
+            plt.boxplot(data_series.dropna(), vert=False, patch_artist=True, boxprops=dict(facecolor='lightblue'))
             plt.title(f'Boxplot de Datos {title_suffix}')
             plt.xlabel('Valor')
             plt.tight_layout()
