@@ -581,7 +581,19 @@ def calculate_basic_analysis():
 
         # Verificar si se ha proporcionado una segunda muestra
         data_list2 = data.get('data2')
-        if data_list2 is not None:
+        category_list = data.get('categories')
+
+        if category_list is not None:
+            if not isinstance(category_list, list):
+                raise ValueError("Las categorías no son válidas o no se encuentran en el formato adecuado.")
+            
+            # Convertir las categorías a una Serie de Pandas
+            category_series = pd.Series(category_list)
+
+            # Calcular estadísticas descriptivas por categorías
+            result = calculate_descriptive_statistics({'data1': data_series1, 'categories': category_series})
+        
+        elif data_list2 is not None:
             if not isinstance(data_list2, list):
                 raise ValueError("Los datos de la segunda muestra no son válidos o no se encuentran en el formato adecuado.")
             
@@ -590,6 +602,7 @@ def calculate_basic_analysis():
 
             # Calcular estadísticas descriptivas para dos muestras
             result = calculate_descriptive_statistics({'data1': data_series1, 'data2': data_series2})
+        
         else:
             # Calcular estadísticas descriptivas para una sola muestra
             result = calculate_descriptive_statistics({'data1': data_series1})
