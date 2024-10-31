@@ -580,6 +580,34 @@ def calculate_descriptive_statistics(data_series, title='Histograma de Datos'):
         encoded_img = base64.b64encode(img.getvalue()).decode()
         plt.close()  # Cerrar la figura para liberar memoria
 
+        # Crear el boxplot y convertirlo a base64
+        plt.figure(figsize=(6, 4))
+        plt.boxplot(data_series.dropna(), vert=False, patch_artist=True, boxprops=dict(facecolor='lightblue'))
+        plt.title('Boxplot de Datos')
+        plt.xlabel('Valor')
+        plt.tight_layout()
+
+        boxplot_img = io.BytesIO()
+        plt.savefig(boxplot_img, format='png')
+        boxplot_img.seek(0)
+        encoded_boxplot_img = base64.b64encode(boxplot_img.getvalue()).decode()
+        plt.close()
+
+        # Crear un gráfico de dispersión simple (si es relevante)
+        # Nota: Este ejemplo es para visualizar el índice frente a los valores
+        plt.figure(figsize=(6, 4))
+        plt.scatter(range(len(data_series)), data_series, color='purple', alpha=0.6)
+        plt.title('Gráfico de Dispersión')
+        plt.xlabel('Índice')
+        plt.ylabel('Valor')
+        plt.tight_layout()
+
+        scatter_img = io.BytesIO()
+        plt.savefig(scatter_img, format='png')
+        scatter_img.seek(0)
+        encoded_scatter_img = base64.b64encode(scatter_img.getvalue()).decode()
+        plt.close()
+
         # Devolver los resultados en formato JSON
         return {
             'mean': mean,
@@ -600,7 +628,9 @@ def calculate_descriptive_statistics(data_series, title='Histograma de Datos'):
             'p90': p90,
             'iqr': iqr,
             'outliers': outliers,
-            'histogram': encoded_img  # Imagen codificada en base64
+            'histogram': encoded_img,  # Imagen codificada en base64
+            'boxplot': encoded_boxplot_img,  # Imagen codificada en base64 del boxplot
+            'scatter_plot': encoded_scatter_img  # Imagen codificada en base64 del gráfico de dispersión
         }
     except Exception as e:
         return {'error': str(e)}
