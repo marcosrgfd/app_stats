@@ -426,7 +426,7 @@ def calculate_descriptive_statistics(request_body):
             }
 
             # Crear boxplot por categorías
-            plt.figure(figsize=(10, 7.5))
+            plt.figure(figsize=(12, 9))
             sns.boxplot(x=category_series, y=data_series1)
             plt.title('Boxplot por Categorías')
             plt.xlabel('Categoría')
