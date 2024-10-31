@@ -414,16 +414,26 @@ def calculate_descriptive_statistics(request_body):
 
             # Calcular estadísticas descriptivas por categoría
             grouped = data_series1.groupby(category_series)
-            stats_by_category = {
-                category: {
-                    'mean': float(group.mean()),
-                    'median': float(group.median()),
-                    'std': float(group.std()),
-                    'min': float(group.min()),
-                    'max': float(group.max())
-                }
-                for category, group in grouped
-            }
+            stats_by_category = {}
+
+            for category, group in grouped:
+                if len(group) > 1:
+                    stats_by_category[category] = {
+                        'mean': float(group.mean()),
+                        'median': float(group.median()),
+                        'std': float(group.std()),
+                        'min': float(group.min()),
+                        'max': float(group.max())
+                    }
+                else:
+                    # Si el grupo solo tiene un elemento, algunas estadísticas no son válidas
+                    stats_by_category[category] = {
+                        'mean': float(group.mean()),
+                        'median': float(group.median()),
+                        'std': None,  # No se puede calcular la desviación estándar
+                        'min': float(group.min()),
+                        'max': float(group.max())
+                    }
 
             # Crear boxplot por categorías
             plt.figure(figsize=(8, 6))
@@ -443,6 +453,7 @@ def calculate_descriptive_statistics(request_body):
                 'stats_by_category': stats_by_category,
                 'boxplot_by_category': encoded_boxplot_img
             }
+
         if data_series2 is not None:
             data_series2 = pd.Series(data_series2)
 
