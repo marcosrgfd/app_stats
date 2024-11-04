@@ -673,6 +673,19 @@ def calculate_descriptive_statistics_from_data(data_series, title='Histograma de
         encoded_img = base64.b64encode(img.getvalue()).decode()
         plt.close()  # Cerrar la figura para liberar memoria
 
+        # Crear el boxplot y convertirlo a base64
+        plt.figure(figsize=(6, 4))
+        plt.boxplot(data_series.dropna(), vert=False, patch_artist=True, boxprops=dict(facecolor='lightblue'))
+        plt.title(f'Boxplot de {title}')
+        plt.xlabel('Valor')
+        plt.tight_layout()
+
+        boxplot_img = io.BytesIO()
+        plt.savefig(boxplot_img, format='png')
+        boxplot_img.seek(0)
+        encoded_boxplot_img = base64.b64encode(boxplot_img.getvalue()).decode()
+        plt.close()
+
         # Devolver los resultados en formato JSON
         return {
             'mean': mean,
@@ -692,10 +705,11 @@ def calculate_descriptive_statistics_from_data(data_series, title='Histograma de
             'p90': p90,
             'iqr': iqr,
             'outliers': outliers,
-            'histogram': encoded_img  # Imagen codificada en base64
+            'histogram': encoded_img,
+            'boxplot': encoded_boxplot_img
         }
     except Exception as e:
-        return {'error': str(e)} 
+        return {'error': str(e)}
 
 
 # Ruta para cargar un archivo y almacenar el DataFrame
@@ -729,7 +743,7 @@ def upload_file_descriptive():
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
-# Ruta para el análisis descriptivo de las columnas seleccionadas
+# Ruta para el análisis descriptivo de columnas seleccionadas
 @app.route('/analyze_selected_columns', methods=['POST'])
 def analyze_selected_columns():
     global dataframe
@@ -739,67 +753,83 @@ def analyze_selected_columns():
 
         data = request.get_json()
         selected_columns = data.get('columns', [])
+        data_series2 = data.get('data2')
+        category_series = data.get('categories')
 
         if not selected_columns:
             raise ValueError("No se proporcionaron columnas para analizar.")
 
         result = {}
-        for column in selected_columns:
-            if column not in dataframe.columns:
-                raise ValueError(f"La columna '{column}' no se encuentra en el DataFrame.")
 
-            if pd.api.types.is_numeric_dtype(dataframe[column]):
-                # Análisis para columnas numéricas
-                data_series = dataframe[column]
-                result[column] = calculate_descriptive_statistics_from_data(data_series, title=f'Histograma de {column}')
-            else:
-                # Análisis para columnas categóricas
-                value_counts = dataframe[column].value_counts()
-                percentages = dataframe[column].value_counts(normalize=True) * 100
-                frequencies = value_counts.to_dict()
-                percentages = percentages.to_dict()
-
-                # Crear gráfico de barra horizontal única dividida
-                labels = list(percentages.keys())
-                values = list(percentages.values())
-                colors = plt.get_cmap('Pastel1').colors  # Cambiar a colores más claros usando el colormap 'Pastel1'
-
-                fig, ax = plt.subplots(figsize=(10, 3.5))  # Aumentar el alto del gráfico para más espacio para etiquetas
-                left = 0
-
-                # Dibuja cada sector con su porcentaje correspondiente
-                for i, (label, value) in enumerate(zip(labels, values)):
-                    ax.barh([0], value, left=left, color=colors[i % len(colors)], edgecolor='black')
-                    left += value
-                    # Ajustar el tamaño del texto y posición para que sea más visible
-                    if value > 5:  # Solo mostramos las etiquetas si la sección tiene al menos 5% del ancho
-                        # Mostrar el nombre de la categoría
-                        ax.text(left - value / 2, 0.2, label, ha='center', va='center', fontsize=14, color='black', fontweight='bold')
-                        # Mostrar el porcentaje debajo del nombre
-                        ax.text(left - value / 2, -0.3, f'({value:.1f}%)', ha='center', va='center', fontsize=14, color='black', fontweight='bold')
-
-                # Configurar el gráfico
-                ax.set_xlim(0, 100)
-                ax.set_xlabel('Porcentaje (%)', fontsize=14)
-                ax.set_yticks([])  # Ocultar etiquetas del eje Y
-                ax.set_title(f'Distribución de {column}', fontsize=16, fontweight='bold')
-
-                plt.tight_layout()
-
-                # Guardar el gráfico en formato de imagen
-                img = io.BytesIO()
-                plt.savefig(img, format='png')  # Cambiar 'svg' a 'png', 'jpeg', etc., según sea necesario.
-                img.seek(0)
-                encoded_img = base64.b64encode(img.getvalue()).decode()
-                plt.close()  # Cerrar la figura para liberar memoria
-
-                # Almacenar el resultado del análisis en el diccionario de resultados
-                result[column] = {
-                    'frequencies': frequencies,
-                    'percentages': percentages,
-                    'segmented_bar_chart': encoded_img  # Imagen codificada en base64 del gráfico de barra única
+        # Análisis cuando se proporciona una columna numérica y una variable categórica
+        if category_series is not None:
+            category_series = pd.Series(category_series)
+            data_series = dataframe[selected_columns[0]]
+            grouped = data_series.groupby(category_series)
+            stats_by_category = {
+                category: {
+                    'mean': float(group.mean()),
+                    'median': float(group.median()),
+                    'std': float(group.std()),
+                    'min': float(group.min()),
+                    'max': float(group.max())
                 }
+                for category, group in grouped
+            }
 
+            # Crear boxplot por categorías
+            plt.figure(figsize=(8, 6))
+            sns.boxplot(x=category_series, y=data_series)
+            plt.title('Boxplot por Categorías')
+            plt.xlabel('Categoría')
+            plt.ylabel('Valor')
+            plt.tight_layout()
+
+            boxplot_img = io.BytesIO()
+            plt.savefig(boxplot_img, format='png')
+            boxplot_img.seek(0)
+            encoded_boxplot_img = base64.b64encode(boxplot_img.getvalue()).decode()
+            plt.close()
+
+            result['stats_by_category'] = stats_by_category
+            result['boxplot_by_category'] = encoded_boxplot_img
+
+        # Análisis cuando se proporcionan dos muestras numéricas
+        elif data_series2 is not None:
+            data_series1 = dataframe[selected_columns[0]]
+            data_series2 = pd.Series(data_series2)
+
+            mean1 = float(data_series1.mean())
+            mean2 = float(data_series2.mean())
+            correlation, _ = stats.pearsonr(data_series1, data_series2)
+
+            # Crear gráfico de dispersión con línea de tendencia
+            plt.figure(figsize=(6, 4))
+            plt.scatter(data_series1, data_series2, color='purple', alpha=0.6)
+            plt.title('Gráfico de Dispersión con Línea de Tendencia')
+            plt.xlabel('Muestra 1')
+            plt.ylabel('Muestra 2')
+            plt.tight_layout()
+
+            # Añadir la línea de tendencia
+            m, b = np.polyfit(data_series1, data_series2, 1)
+            plt.plot(data_series1, m * data_series1 + b, color='red')
+
+            scatter_img = io.BytesIO()
+            plt.savefig(scatter_img, format='png')
+            scatter_img.seek(0)
+            encoded_scatter_img = base64.b64encode(scatter_img.getvalue()).decode()
+            plt.close()
+
+            result['mean1'] = mean1
+            result['mean2'] = mean2
+            result['correlation'] = correlation
+            result['scatter_plot'] = encoded_scatter_img
+
+        # Análisis para una sola columna numérica
+        else:
+            data_series = dataframe[selected_columns[0]]
+            result[selected_columns[0]] = calculate_descriptive_statistics_from_data(data_series)
 
         return jsonify(result)
 
