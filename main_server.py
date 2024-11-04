@@ -626,90 +626,8 @@ def calculate_basic_analysis():
     
 ############################## DESDE BASE DE DATOS ###########################################
 
-# Función para calcular estadísticas descriptivas comunes
-def calculate_descriptive_statistics_from_data(data_series, title='Histograma de Datos'):
-    try:
-        # Calcular estadísticas descriptivas
-        mean = float(data_series.mean())
-        median = float(data_series.median())
-        mode = data_series.mode().tolist()  # Puede tener más de un valor
-        mode = [float(m) if isinstance(m, (np.integer, np.floating)) else m for m in mode]
-        std = float(data_series.std())
-        variance = float(data_series.var())
-        min_value = float(data_series.min())
-        max_value = float(data_series.max())
-        range_value = float(max_value - min_value)
-        coef_var = (std / mean) * 100 if mean != 0 else None
-        coef_var = float(coef_var) if coef_var is not None else None
-
-        # Medidas de forma
-        skewness = float(skew(data_series, nan_policy='omit'))
-        kurt = float(kurtosis(data_series, nan_policy='omit'))
-
-        # Medidas de posición
-        q1 = float(data_series.quantile(0.25))
-        q3 = float(data_series.quantile(0.75))
-        p10 = float(data_series.quantile(0.10))
-        p90 = float(data_series.quantile(0.90))
-
-        # Identificación de outliers (rango intercuartílico - IQR)
-        iqr = q3 - q1
-        lower_bound = q1 - 1.5 * iqr
-        upper_bound = q3 + 1.5 * iqr
-        outliers = data_series[(data_series < lower_bound) | (data_series > upper_bound)].tolist()
-        outliers = [float(o) if isinstance(o, (np.integer, np.floating)) else o for o in outliers]
-
-        # Crear un histograma y convertirlo a base64
-        plt.figure(figsize=(6, 4))
-        plt.hist(data_series.dropna(), bins=10, color='skyblue', edgecolor='black')
-        plt.title(title)
-        plt.xlabel('Valor')
-        plt.ylabel('Frecuencia')
-        plt.tight_layout()
-
-        img = io.BytesIO()
-        plt.savefig(img, format='png')
-        img.seek(0)
-        encoded_img = base64.b64encode(img.getvalue()).decode()
-        plt.close()
-
-        # Crear el boxplot y convertirlo a base64
-        plt.figure(figsize=(6, 4))
-        plt.boxplot(data_series.dropna(), vert=False, patch_artist=True, boxprops=dict(facecolor='lightblue'))
-        plt.title(f'Boxplot de {title}')
-        plt.xlabel('Valor')
-        plt.tight_layout()
-
-        boxplot_img = io.BytesIO()
-        plt.savefig(boxplot_img, format='png')
-        boxplot_img.seek(0)
-        encoded_boxplot_img = base64.b64encode(boxplot_img.getvalue()).decode()
-        plt.close()
-
-        # Devolver los resultados en formato JSON
-        return {
-            'mean': mean,
-            'median': median,
-            'mode': mode,
-            'std': std,
-            'variance': variance,
-            'min': min_value,
-            'max': max_value,
-            'range': range_value,
-            'coef_var': coef_var,
-            'skewness': skewness,
-            'kurtosis': kurt,
-            'q1': q1,
-            'q3': q3,
-            'p10': p10,
-            'p90': p90,
-            'iqr': iqr,
-            'outliers': outliers,
-            'histogram': encoded_img,
-            'boxplot': encoded_boxplot_img
-        }
-    except Exception as e:
-        return {'error': str(e)}
+# Variable global para almacenar el DataFrame cargado
+dataframe = None
 
 # Ruta para cargar un archivo y almacenar el DataFrame
 @app.route('/upload_csv_descriptive', methods=['POST'])
@@ -724,27 +642,43 @@ def upload_file_descriptive():
         if file.filename == '':
             return jsonify({'error': 'El archivo no tiene nombre.'}), 400
 
-        # Determinar el tipo de archivo y leerlo en un DataFrame de Pandas
         filename = file.filename.lower()
-        if filename.endswith('.csv'):
-            dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("utf-8")))
-        elif filename.endswith(('.xls', '.xlsx')):
-            dataframe = pd.read_excel(io.BytesIO(file.read()))
-        elif filename.endswith('.txt'):
-            dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("utf-8")), delimiter=r'\s+')
-        else:
-            raise ValueError("Formato de archivo no soportado. Proporcione un archivo CSV, XLSX o TXT.")
 
-        # Clasificar las columnas en numéricas y categóricas
-        numeric_columns = dataframe.select_dtypes(include='number').columns.tolist()
-        categorical_columns = dataframe.select_dtypes(exclude='number').columns.tolist()
+        if filename.endswith('.csv'):
+            try:
+                dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("utf-8")), delimiter=',')
+            except UnicodeDecodeError:
+                dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("ISO-8859-1")), delimiter=',')
+            except pd.errors.ParserError:
+                dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("utf-8")), delimiter=';')
+        elif filename.endswith(('.xls', '.xlsx')):
+            try:
+                file_stream = io.BytesIO(file.read())
+                dataframe = pd.read_excel(file_stream, engine='openpyxl')
+            except ValueError as e:
+                return jsonify({'error': f'Error al leer el archivo Excel: {str(e)}'}), 400
+        elif filename.endswith('.txt'):
+            try:
+                dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("utf-8")), delimiter=r'\s+')
+            except UnicodeDecodeError:
+                dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("ISO-8859-1")), delimiter=r'\s+')
+        else:
+            return jsonify({'error': 'Formato de archivo no soportado. Proporcione un archivo CSV, XLSX, XLS o TXT.'}), 400
+
+        if dataframe.empty:
+            return jsonify({'error': 'El archivo está vacío o no se pudo procesar correctamente.'}), 400
+
+        dataframe.columns = dataframe.columns.str.strip()
+        dataframe = dataframe.fillna("N/A")
+
+        numeric_columns = dataframe.select_dtypes(include=['number']).columns.tolist()
+        categorical_columns = dataframe.select_dtypes(exclude=['number']).columns.tolist()
 
         return jsonify({
             'message': 'Archivo cargado exitosamente',
             'numeric_columns': numeric_columns,
             'categorical_columns': categorical_columns
         })
-
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
@@ -781,13 +715,12 @@ def analyze_selected_columns():
             mean2 = float(data_series2.mean())
             correlation, _ = stats.pearsonr(data_series1, data_series2)
 
+            # Crear gráfico de dispersión con línea de tendencia
             plt.figure(figsize=(6, 4))
-            plt.scatter(data_series1, data_series2, color='purple', alpha=0.6)
+            plt.scatter(data_series1, data_series2, color='blue', alpha=0.6)
             plt.title('Gráfico de Dispersión con Línea de Tendencia')
             plt.xlabel(selected_columns[0])
             plt.ylabel(selected_columns[1])
-            plt.tight_layout()
-
             m, b = np.polyfit(data_series1, data_series2, 1)
             plt.plot(data_series1, m * data_series1 + b, color='red')
 
@@ -809,7 +742,7 @@ def analyze_selected_columns():
             category_series = dataframe[category_column]
             grouped = data_series.groupby(category_series)
             stats_by_category = {
-                category: {
+                str(category): {
                     'mean': float(group.mean()),
                     'median': float(group.median()),
                     'std': float(group.std()),
@@ -819,13 +752,10 @@ def analyze_selected_columns():
                 for category, group in grouped
             }
 
+            # Crear boxplot por categorías
             plt.figure(figsize=(8, 6))
             sns.boxplot(x=category_series, y=data_series)
-            plt.title('Boxplot por Categorías')
-            plt.xlabel(category_column)
-            plt.ylabel(selected_columns[0])
-            plt.tight_layout()
-
+            plt.title(f'Boxplot de {selected_columns[0]} según {category_column}')
             boxplot_img = io.BytesIO()
             plt.savefig(boxplot_img, format='png')
             boxplot_img.seek(0)
@@ -839,9 +769,49 @@ def analyze_selected_columns():
             raise ValueError("Tipo de análisis no válido.")
 
         return jsonify(result)
-
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
+# Helper function to calculate descriptive statistics
+def calculate_descriptive_statistics_from_data(data_series):
+    try:
+        mean = float(data_series.mean())
+        median = float(data_series.median())
+        mode = data_series.mode().tolist()
+        std = float(data_series.std())
+        variance = float(data_series.var())
+        min_value = float(data_series.min())
+        max_value = float(data_series.max())
+        range_value = max_value - min_value
+        coef_var = (std / mean * 100) if mean != 0 else None
+
+        skewness = float(stats.skew(data_series))
+        kurtosis_value = float(stats.kurtosis(data_series))
+
+        q1 = float(data_series.quantile(0.25))
+        q3 = float(data_series.quantile(0.75))
+        p10 = float(data_series.quantile(0.10))
+        p90 = float(data_series.quantile(0.90))
+
+        return {
+            'mean': mean,
+            'median': median,
+            'mode': mode,
+            'std': std,
+            'variance': variance,
+            'min': min_value,
+            'max': max_value,
+            'range': range_value,
+            'coef_var': coef_var,
+            'skewness': skewness,
+            'kurtosis': kurtosis_value,
+            'q1': q1,
+            'q3': q3,
+            'p10': p10,
+            'p90': p90
+        }
+    except Exception as e:
+        return {'error': str(e)}
 
 
 ###############################################################################################
