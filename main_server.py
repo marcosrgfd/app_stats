@@ -668,10 +668,10 @@ def calculate_descriptive_statistics_from_data(data_series, title='Histograma de
         plt.tight_layout()
 
         img = io.BytesIO()
-        plt.savefig(img, format='png')  # Cambiar 'svg' a 'png', 'jpeg', etc., según sea necesario.
+        plt.savefig(img, format='png')
         img.seek(0)
         encoded_img = base64.b64encode(img.getvalue()).decode()
-        plt.close()  # Cerrar la figura para liberar memoria
+        plt.close()
 
         # Crear el boxplot y convertirlo a base64
         plt.figure(figsize=(6, 4))
@@ -711,7 +711,6 @@ def calculate_descriptive_statistics_from_data(data_series, title='Histograma de
     except Exception as e:
         return {'error': str(e)}
 
-
 # Ruta para cargar un archivo y almacenar el DataFrame
 @app.route('/upload_csv_descriptive', methods=['POST'])
 def upload_file_descriptive():
@@ -730,15 +729,21 @@ def upload_file_descriptive():
         if filename.endswith('.csv'):
             dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("utf-8")))
         elif filename.endswith(('.xls', '.xlsx')):
-            dataframe = pd.read_excel(io.BytesIO(file.read()))  # Leer archivos Excel desde BytesIO
+            dataframe = pd.read_excel(io.BytesIO(file.read()))
         elif filename.endswith('.txt'):
             dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("utf-8")), delimiter=r'\s+')
         else:
             raise ValueError("Formato de archivo no soportado. Proporcione un archivo CSV, XLSX o TXT.")
 
-        # Devolver las columnas disponibles para análisis
-        columns = dataframe.columns.tolist()
-        return jsonify({'message': 'Archivo cargado exitosamente', 'columns': columns})
+        # Clasificar las columnas en numéricas y categóricas
+        numeric_columns = dataframe.select_dtypes(include='number').columns.tolist()
+        categorical_columns = dataframe.select_dtypes(exclude='number').columns.tolist()
+
+        return jsonify({
+            'message': 'Archivo cargado exitosamente',
+            'numeric_columns': numeric_columns,
+            'categorical_columns': categorical_columns
+        })
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
@@ -752,63 +757,38 @@ def analyze_selected_columns():
             return jsonify({'error': 'No se ha cargado ningún archivo para analizar.'}), 400
 
         data = request.get_json()
-        selected_columns = data.get('columns', [])
-        data_series2 = data.get('data2')
-        category_series = data.get('categories')
+        analysis_type = data.get('analysis_type', 'Una muestra')
+        selected_columns = data.get('numeric_columns', [])
+        category_column = data.get('category')
 
         if not selected_columns:
-            raise ValueError("No se proporcionaron columnas para analizar.")
+            raise ValueError("No se proporcionaron columnas numéricas para analizar.")
 
         result = {}
 
-        # Análisis cuando se proporciona una columna numérica y una variable categórica
-        if category_series is not None:
-            category_series = pd.Series(category_series)
+        if analysis_type == "Una muestra":
+            # Análisis para una sola columna numérica
+            if len(selected_columns) != 1:
+                raise ValueError("Seleccione exactamente una columna numérica para este análisis.")
             data_series = dataframe[selected_columns[0]]
-            grouped = data_series.groupby(category_series)
-            stats_by_category = {
-                category: {
-                    'mean': float(group.mean()),
-                    'median': float(group.median()),
-                    'std': float(group.std()),
-                    'min': float(group.min()),
-                    'max': float(group.max())
-                }
-                for category, group in grouped
-            }
+            result[selected_columns[0]] = calculate_descriptive_statistics_from_data(data_series)
 
-            # Crear boxplot por categorías
-            plt.figure(figsize=(8, 6))
-            sns.boxplot(x=category_series, y=data_series)
-            plt.title('Boxplot por Categorías')
-            plt.xlabel('Categoría')
-            plt.ylabel('Valor')
-            plt.tight_layout()
-
-            boxplot_img = io.BytesIO()
-            plt.savefig(boxplot_img, format='png')
-            boxplot_img.seek(0)
-            encoded_boxplot_img = base64.b64encode(boxplot_img.getvalue()).decode()
-            plt.close()
-
-            result['stats_by_category'] = stats_by_category
-            result['boxplot_by_category'] = encoded_boxplot_img
-
-        # Análisis cuando se proporcionan dos muestras numéricas
-        elif data_series2 is not None:
+        elif analysis_type == "Dos muestras":
+            # Análisis para dos columnas numéricas
+            if len(selected_columns) != 2:
+                raise ValueError("Seleccione exactamente dos columnas numéricas para este análisis.")
             data_series1 = dataframe[selected_columns[0]]
-            data_series2 = pd.Series(data_series2)
-
+            data_series2 = dataframe[selected_columns[1]]
             mean1 = float(data_series1.mean())
             mean2 = float(data_series2.mean())
-            correlation, _ = stats.pearsonr(data_series1, data_series2)
+            correlation, _ = pearsonr(data_series1, data_series2)
 
             # Crear gráfico de dispersión con línea de tendencia
             plt.figure(figsize=(6, 4))
             plt.scatter(data_series1, data_series2, color='purple', alpha=0.6)
             plt.title('Gráfico de Dispersión con Línea de Tendencia')
-            plt.xlabel('Muestra 1')
-            plt.ylabel('Muestra 2')
+            plt.xlabel(selected_columns[0])
+            plt.ylabel(selected_columns[1])
             plt.tight_layout()
 
             # Añadir la línea de tendencia
@@ -826,10 +806,43 @@ def analyze_selected_columns():
             result['correlation'] = correlation
             result['scatter_plot'] = encoded_scatter_img
 
-        # Análisis para una sola columna numérica
-        else:
+        elif analysis_type == "En función de una categórica":
+            # Análisis para una columna numérica y una categórica
+            if len(selected_columns) != 1 or not category_column:
+                raise ValueError("Seleccione una columna numérica y una categórica para este análisis.")
             data_series = dataframe[selected_columns[0]]
-            result[selected_columns[0]] = calculate_descriptive_statistics_from_data(data_series)
+            category_series = dataframe[category_column]
+            grouped = data_series.groupby(category_series)
+            stats_by_category = {
+                category: {
+                    'mean': float(group.mean()),
+                    'median': float(group.median()),
+                    'std': float(group.std()),
+                    'min': float(group.min()),
+                    'max': float(group.max())
+                }
+                for category, group in grouped
+            }
+
+            # Crear boxplot por categorías
+            plt.figure(figsize=(8, 6))
+            sns.boxplot(x=category_series, y=data_series)
+            plt.title('Boxplot por Categorías')
+            plt.xlabel(category_column)
+            plt.ylabel(selected_columns[0])
+            plt.tight_layout()
+
+            boxplot_img = io.BytesIO()
+            plt.savefig(boxplot_img, format='png')
+            boxplot_img.seek(0)
+            encoded_boxplot_img = base64.b64encode(boxplot_img.getvalue()).decode()
+            plt.close()
+
+            result['stats_by_category'] = stats_by_category
+            result['boxplot_by_category'] = encoded_boxplot_img
+
+        else:
+            raise ValueError("Tipo de análisis no válido.")
 
         return jsonify(result)
 
