@@ -767,14 +767,12 @@ def analyze_selected_columns():
         result = {}
 
         if analysis_type == "Una muestra":
-            # Análisis para una sola columna numérica
             if len(selected_columns) != 1:
                 raise ValueError("Seleccione exactamente una columna numérica para este análisis.")
             data_series = dataframe[selected_columns[0]]
             result[selected_columns[0]] = calculate_descriptive_statistics_from_data(data_series)
 
         elif analysis_type == "Dos muestras":
-            # Análisis para dos columnas numéricas
             if len(selected_columns) != 2:
                 raise ValueError("Seleccione exactamente dos columnas numéricas para este análisis.")
             data_series1 = dataframe[selected_columns[0]]
@@ -783,7 +781,6 @@ def analyze_selected_columns():
             mean2 = float(data_series2.mean())
             correlation, _ = stats.pearsonr(data_series1, data_series2)
 
-            # Crear gráfico de dispersión con línea de tendencia
             plt.figure(figsize=(6, 4))
             plt.scatter(data_series1, data_series2, color='purple', alpha=0.6)
             plt.title('Gráfico de Dispersión con Línea de Tendencia')
@@ -791,7 +788,6 @@ def analyze_selected_columns():
             plt.ylabel(selected_columns[1])
             plt.tight_layout()
 
-            # Añadir la línea de tendencia
             m, b = np.polyfit(data_series1, data_series2, 1)
             plt.plot(data_series1, m * data_series1 + b, color='red')
 
@@ -807,7 +803,6 @@ def analyze_selected_columns():
             result['scatter_plot'] = encoded_scatter_img
 
         elif analysis_type == "En función de una categórica":
-            # Análisis para una columna numérica y una categórica
             if len(selected_columns) != 1 or not category_column:
                 raise ValueError("Seleccione una columna numérica y una categórica para este análisis.")
             data_series = dataframe[selected_columns[0]]
@@ -824,7 +819,6 @@ def analyze_selected_columns():
                 for category, group in grouped
             }
 
-            # Crear boxplot por categorías
             plt.figure(figsize=(8, 6))
             sns.boxplot(x=category_series, y=data_series)
             plt.title('Boxplot por Categorías')
