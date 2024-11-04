@@ -742,14 +742,14 @@ def analyze_selected_columns():
         elif analysis_type == "En función de una categórica":
             if len(selected_columns) != 1 or not category_column:
                 raise ValueError("Seleccione una columna numérica y una categórica para este análisis.")
-            data_series = dataframe[selected_columns[0]]
-            category_series = dataframe[category_column]
+            data_series = dataframe[selected_columns[0]].fillna(0)  # Rellenar NaN con 0
+            category_series = dataframe[category_column].fillna("N/A")  # Rellenar NaN con "N/A"
             grouped = data_series.groupby(category_series)
             stats_by_category = {
                 str(category): {
-                    'mean': float(group.mean()),
-                    'median': float(group.median()),
-                    'std': float(group.std()),
+                    'mean': float(group.mean()) if not np.isnan(group.mean()) else None,
+                    'median': float(group.median()) if not np.isnan(group.median()) else None,
+                    'std': float(group.std()) if not np.isnan(group.std()) else None,
                     'min': float(group.min()),
                     'max': float(group.max())
                 }
