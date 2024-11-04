@@ -626,6 +626,10 @@ def calculate_basic_analysis():
     
 ############################## DESDE BASE DE DATOS ###########################################
 
+# Función para reemplazar NaN en los resultados
+def replace_nan_with_none(values):
+    return [None if np.isnan(x) else x for x in values]
+
 # Variable global para almacenar el DataFrame cargado
 dataframe = None
 
@@ -772,12 +776,15 @@ def analyze_selected_columns():
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
-# Helper function to calculate descriptive statistics
+# Función para calcular estadísticas descriptivas
 def calculate_descriptive_statistics_from_data(data_series):
     try:
+        # Rellenar NaN con 0 temporalmente para evitar errores en los cálculos
+        data_series = data_series.fillna(0)
+
         mean = float(data_series.mean())
         median = float(data_series.median())
-        mode = data_series.mode().tolist()
+        mode = replace_nan_with_none(data_series.mode().tolist())  # Usar la función para sanitizar
         std = float(data_series.std())
         variance = float(data_series.var())
         min_value = float(data_series.min())
@@ -785,8 +792,9 @@ def calculate_descriptive_statistics_from_data(data_series):
         range_value = max_value - min_value
         coef_var = (std / mean * 100) if mean != 0 else None
 
-        skewness = float(stats.skew(data_series))
-        kurtosis_value = float(stats.kurtosis(data_series))
+        # Sanitizar skewness y kurtosis
+        skewness = None if np.isnan(stats.skew(data_series)) else float(stats.skew(data_series))
+        kurtosis_value = None if np.isnan(stats.kurtosis(data_series)) else float(stats.kurtosis(data_series))
 
         q1 = float(data_series.quantile(0.25))
         q3 = float(data_series.quantile(0.75))
