@@ -781,7 +781,7 @@ def analyze_selected_columns():
             data_series2 = dataframe[selected_columns[1]]
             mean1 = float(data_series1.mean())
             mean2 = float(data_series2.mean())
-            correlation, _ = pearsonr(data_series1, data_series2)
+            correlation, _ = stats.pearsonr(data_series1, data_series2)
 
             # Crear gráfico de dispersión con línea de tendencia
             plt.figure(figsize=(6, 4))
