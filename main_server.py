@@ -750,7 +750,6 @@ def analyze_selected_columns():
            # Crear un gráfico conjunto de histograma y densidad
             plt.figure(figsize=(6, 4))
             plt.hist(data_series.dropna(), bins=10, color='skyblue', edgecolor='black', alpha=0.6)  # Histograma con matplotlib
-            sns.kdeplot(data_series.dropna(), color='red', linewidth=2)  # Curva de densidad con Seaborn
             plt.title(f'Histograma y Gráfico de Densidad de {selected_columns[0]}')
             plt.xlabel('Valor')
             plt.ylabel('Frecuencia')
