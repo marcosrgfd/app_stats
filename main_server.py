@@ -749,8 +749,8 @@ def analyze_selected_columns():
 
            # Crear un gráfico conjunto de histograma y densidad
             plt.figure(figsize=(6, 4))
-            plt.hist(data_series, bins=10, color='skyblue', edgecolor='black', alpha=0.6)  # Histograma con matplotlib
-            plt.title(f'Histograma y Gráfico de Densidad de {selected_columns[0]}')
+            sns.boxplot(x=data_series, color='orange')
+            plt.title(f'Boxplot de {selected_columns[0]}')
             # Guardar la imagen en base64
             joint_hist_density_img = io.BytesIO()
             plt.savefig(joint_hist_density_img, format='png')  # Guardar como 'png'
