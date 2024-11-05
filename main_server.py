@@ -747,20 +747,21 @@ def analyze_selected_columns():
             # Calcular las estadísticas descriptivas
             result[selected_columns[0]] = calculate_descriptive_statistics_from_data(data_series)
 
-            # Crear un gráfico conjunto de histograma y densidad
+           # Crear un gráfico conjunto de histograma y densidad
             plt.figure(figsize=(6, 4))
-            sns.histplot(data_series, bins=20, kde=True, color='skyblue')  # Usar histplot con `kde=True`
+            plt.hist(data_series.dropna(), bins=10, color='skyblue', edgecolor='black', alpha=0.6)  # Histograma con matplotlib
+            sns.kdeplot(data_series.dropna(), color='red', linewidth=2)  # Curva de densidad con Seaborn
             plt.title(f'Histograma y Gráfico de Densidad de {selected_columns[0]}')
             plt.xlabel('Valor')
             plt.ylabel('Frecuencia')
             plt.tight_layout()
-
+            
             # Guardar la imagen en base64
             joint_hist_density_img = io.BytesIO()
-            plt.savefig(joint_hist_density_img, format='png', bbox_inches='tight')
+            plt.savefig(joint_hist_density_img, format='png', bbox_inches='tight')  # Guardar como 'png'
             joint_hist_density_img.seek(0)
             encoded_joint_hist_density_img = base64.b64encode(joint_hist_density_img.getvalue()).decode()
-            plt.close()
+            plt.close()  # Cerrar la figura para liberar memoria
 
             # Crear boxplot
             plt.figure(figsize=(6, 4))
