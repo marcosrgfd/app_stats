@@ -747,24 +747,19 @@ def analyze_selected_columns():
             # Calcular las estadísticas descriptivas
             result[selected_columns[0]] = calculate_descriptive_statistics_from_data(data_series)
 
-            # Crear el histograma (ya lo tienes implementado)
+            # Crear un gráfico conjunto de histograma y densidad
             plt.figure(figsize=(6, 4))
-            plt.hist(data_series, bins=20, color='blue', alpha=0.7)
-            plt.title(f'Histograma de {selected_columns[0]}')
-            histogram_img = io.BytesIO()
-            plt.savefig(histogram_img, format='png')
-            histogram_img.seek(0)
-            encoded_histogram_img = base64.b64encode(histogram_img.getvalue()).decode()
-            plt.close()
+            sns.histplot(data_series, bins=20, kde=True, color='skyblue')  # Usar histplot con `kde=True`
+            plt.title(f'Histograma y Gráfico de Densidad de {selected_columns[0]}')
+            plt.xlabel('Valor')
+            plt.ylabel('Frecuencia')
+            plt.tight_layout()
 
-            # Crear gráfico de densidad
-            plt.figure(figsize=(6, 4))
-            sns.kdeplot(data_series, color='blue', shade=True)
-            plt.title(f'Gráfico de Densidad de {selected_columns[0]}')
-            density_img = io.BytesIO()
-            plt.savefig(density_img, format='png')
-            density_img.seek(0)
-            encoded_density_img = base64.b64encode(density_img.getvalue()).decode()
+            # Guardar la imagen en base64
+            joint_hist_density_img = io.BytesIO()
+            plt.savefig(joint_hist_density_img, format='png')
+            joint_hist_density_img.seek(0)
+            encoded_joint_hist_density_img = base64.b64encode(joint_hist_density_img.getvalue()).decode()
             plt.close()
 
             # Crear boxplot
@@ -778,8 +773,7 @@ def analyze_selected_columns():
             plt.close()
 
             # Añadir los gráficos al resultado
-            result['histogram'] = encoded_histogram_img
-            result['density_plot'] = encoded_density_img
+            result['joint_hist_density'] = encoded_joint_hist_density_img
             result['boxplot'] = encoded_boxplot_img
 
         elif analysis_type == "Dos muestras":
