@@ -765,7 +765,7 @@ def analyze_selected_columns():
             plt.close()
 
             # Añadir los gráficos al resultado
-            result['aistogram'] = encoded_histogram_img
+            result['histogram'] = encoded_histogram_img
             result['boxplot'] = encoded_boxplot_img
 
         elif analysis_type == "Dos muestras":
