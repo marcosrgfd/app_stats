@@ -757,7 +757,7 @@ def analyze_selected_columns():
 
             # Guardar la imagen en base64
             joint_hist_density_img = io.BytesIO()
-            plt.savefig(joint_hist_density_img, format='png')
+            plt.savefig(joint_hist_density_img, format='png', bbox_inches='tight')
             joint_hist_density_img.seek(0)
             encoded_joint_hist_density_img = base64.b64encode(joint_hist_density_img.getvalue()).decode()
             plt.close()
@@ -800,22 +800,11 @@ def analyze_selected_columns():
             encoded_scatter_img = base64.b64encode(scatter_img.getvalue()).decode()
             plt.close()
 
-            # Crear gráfico de barras comparativo
-            plt.figure(figsize=(6, 4))
-            plt.bar(['Media de ' + selected_columns[0], 'Media de ' + selected_columns[1]], [mean1, mean2], color=['blue', 'green'])
-            plt.title('Comparación de Medias')
-            bar_chart_img = io.BytesIO()
-            plt.savefig(bar_chart_img, format='png')
-            bar_chart_img.seek(0)
-            encoded_bar_chart_img = base64.b64encode(bar_chart_img.getvalue()).decode()
-            plt.close()
-
             # Añadir los resultados al diccionario
             result['mean1'] = mean1
             result['mean2'] = mean2
             result['correlation'] = correlation
             result['scatter_plot'] = encoded_scatter_img
-            result['bar_chart_means'] = encoded_bar_chart_img
 
 
         elif analysis_type == "En función de una categórica":
@@ -845,19 +834,6 @@ def analyze_selected_columns():
             encoded_boxplot_img = base64.b64encode(boxplot_img.getvalue()).decode()
             plt.close()
 
-            # Crear gráfico de barras de medias por categoría
-            mean_by_category = data_series.groupby(category_series).mean()
-            plt.figure(figsize=(8, 6))
-            mean_by_category.plot(kind='bar', color='teal')
-            plt.title(f'Medias de {selected_columns[0]} por {category_column}')
-            plt.xlabel(category_column)
-            plt.ylabel(f'Media de {selected_columns[0]}')
-            bar_by_category_img = io.BytesIO()
-            plt.savefig(bar_by_category_img, format='png')
-            bar_by_category_img.seek(0)
-            encoded_bar_by_category_img = base64.b64encode(bar_by_category_img.getvalue()).decode()
-            plt.close()
-
             # Crear gráfico de violín
             plt.figure(figsize=(8, 6))
             sns.violinplot(x=category_series, y=data_series)
@@ -871,7 +847,6 @@ def analyze_selected_columns():
             # Añadir los gráficos al resultado
             result['stats_by_category'] = stats_by_category
             result['boxplot_by_category'] = encoded_boxplot_img
-            result['bar_by_category'] = encoded_bar_by_category_img
             result['violin_plot'] = encoded_violin_img
 
 
