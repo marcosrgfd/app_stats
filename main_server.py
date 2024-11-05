@@ -748,20 +748,11 @@ def analyze_selected_columns():
             result[selected_columns[0]] = calculate_descriptive_statistics_from_data(data_series)
 
            # Crear un gráfico conjunto de histograma y densidad
-            plt.figure(figsize=(6, 4))
-            plt.hist(data_series.dropna(), bins=10, color='skyblue', edgecolor='black', alpha=0.6)  # Histograma con matplotlib
-            sns.kdeplot(data_series.dropna(), color='red', linewidth=2)  # Curva de densidad con Seaborn
-            plt.title(f'Histograma y Gráfico de Densidad de {selected_columns[0]}')
-            plt.xlabel('Valor')
-            plt.ylabel('Frecuencia')
-            plt.tight_layout()
-
-            # Guardar la imagen en base64
             histogram_img = io.BytesIO()
-            plt.savefig(histogram_img, format='png', bbox_inches='tight')  # Guardar como 'png'
-            histogram_img.seek(0)
+            plt.savefig(histogram_img, format='png', bbox_inches='tight')
+            histogram_img.seek(0)  # Mueve el puntero al inicio del flujo
             encoded_histogram_img = base64.b64encode(histogram_img.getvalue()).decode()
-            plt.close()  # Cerrar la figura para liberar memoria
+            histogram_img.close()  # Cierra el flujo
 
             # Crear boxplot
             plt.figure(figsize=(6, 4))
@@ -774,7 +765,7 @@ def analyze_selected_columns():
             plt.close()
 
             # Añadir los gráficos al resultado
-            result['histogram'] = encoded_histogram_img
+            result['aistogram'] = encoded_histogram_img
             result['boxplot'] = encoded_boxplot_img
 
         elif analysis_type == "Dos muestras":
