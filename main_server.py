@@ -774,7 +774,7 @@ def analyze_selected_columns():
             plt.close()
 
             # Añadir los gráficos al resultado
-            result['joint_hist_density'] = encoded_joint_hist_density_img
+            result['histogram'] = encoded_histogram_img
             result['boxplot'] = encoded_boxplot_img
 
         elif analysis_type == "Dos muestras":
