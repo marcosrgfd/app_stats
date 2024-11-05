@@ -414,26 +414,16 @@ def calculate_descriptive_statistics(request_body):
 
             # Calcular estadísticas descriptivas por categoría
             grouped = data_series1.groupby(category_series)
-            stats_by_category = {}
-
-            for category, group in grouped:
-                if len(group) > 1:
-                    stats_by_category[category] = {
-                        'mean': float(group.mean()),
-                        'median': float(group.median()),
-                        'std': float(group.std()),
-                        'min': float(group.min()),
-                        'max': float(group.max())
-                    }
-                else:
-                    # Si el grupo solo tiene un elemento, algunas estadísticas no son válidas
-                    stats_by_category[category] = {
-                        'mean': float(group.mean()),
-                        'median': float(group.median()),
-                        'std': None,  # No se puede calcular la desviación estándar
-                        'min': float(group.min()),
-                        'max': float(group.max())
-                    }
+            stats_by_category = {
+                category: {
+                    'mean': float(group.mean()),
+                    'median': float(group.median()),
+                    'std': float(group.std()),
+                    'min': float(group.min()),
+                    'max': float(group.max())
+                }
+                for category, group in grouped
+            }
 
             # Crear boxplot por categorías
             plt.figure(figsize=(8, 6))
@@ -449,11 +439,42 @@ def calculate_descriptive_statistics(request_body):
             encoded_boxplot_img = base64.b64encode(boxplot_img.getvalue()).decode()
             plt.close()
 
+            # Crear un gráfico de barras con la media por categoría
+            plt.figure(figsize=(8, 6))
+            grouped_means = grouped.mean()
+            grouped_means.plot(kind='bar', color='teal')
+            plt.title('Media por Categoría')
+            plt.xlabel('Categoría')
+            plt.ylabel('Media')
+            plt.tight_layout()
+
+            barplot_img = io.BytesIO()
+            plt.savefig(barplot_img, format='png')
+            barplot_img.seek(0)
+            encoded_barplot_img = base64.b64encode(barplot_img.getvalue()).decode()
+            plt.close()
+
+            # Crear gráfico de violín por categorías
+            plt.figure(figsize=(8, 6))
+            sns.violinplot(x=category_series, y=data_series1)
+            plt.title('Gráfico de Violín por Categorías')
+            plt.xlabel('Categoría')
+            plt.ylabel('Valor')
+            plt.tight_layout()
+
+            violin_img = io.BytesIO()
+            plt.savefig(violin_img, format='png')
+            violin_img.seek(0)
+            encoded_violin_img = base64.b64encode(violin_img.getvalue()).decode()
+            plt.close()
+
             return {
                 'stats_by_category': stats_by_category,
-                'boxplot_by_category': encoded_boxplot_img
+                'boxplot_by_category': encoded_boxplot_img,
+                'barplot_by_category': encoded_barplot_img,
+                'violin_plot_by_category': encoded_violin_img
             }
-
+        
         if data_series2 is not None:
             data_series2 = pd.Series(data_series2)
 
@@ -516,6 +537,19 @@ def calculate_descriptive_statistics(request_body):
             encoded_boxplot_img = base64.b64encode(boxplot_img.getvalue()).decode()
             plt.close()
 
+            # Crear el gráfico de densidad y convertirlo a base64
+            plt.figure(figsize=(6, 4))
+            sns.kdeplot(data_series.dropna(), shade=True, color='green')
+            plt.title(f'Gráfico de Densidad {title_suffix}')
+            plt.xlabel('Valor')
+            plt.tight_layout()
+
+            density_img = io.BytesIO()
+            plt.savefig(density_img, format='png')
+            density_img.seek(0)
+            encoded_density_img = base64.b64encode(density_img.getvalue()).decode()
+            plt.close()
+
             return {
                 'mean': mean,
                 'median': median,
@@ -535,7 +569,8 @@ def calculate_descriptive_statistics(request_body):
                 'p90': p90,
                 'outliers': outliers,
                 'histogram': encoded_img,
-                'boxplot': encoded_boxplot_img
+                'boxplot': encoded_boxplot_img,
+                'density_plot': encoded_density_img
             }
 
         # Si solo hay una muestra, devolver las estadísticas para una muestra
