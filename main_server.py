@@ -708,7 +708,44 @@ def analyze_selected_columns():
             if len(selected_columns) != 1:
                 raise ValueError("Seleccione exactamente una columna numérica para este análisis.")
             data_series = dataframe[selected_columns[0]]
+
+            # Calcular las estadísticas descriptivas
             result[selected_columns[0]] = calculate_descriptive_statistics_from_data(data_series)
+
+            # Crear el histograma (ya lo tienes implementado)
+            plt.figure(figsize=(6, 4))
+            plt.hist(data_series, bins=20, color='blue', alpha=0.7)
+            plt.title(f'Histograma de {selected_columns[0]}')
+            histogram_img = io.BytesIO()
+            plt.savefig(histogram_img, format='png')
+            histogram_img.seek(0)
+            encoded_histogram_img = base64.b64encode(histogram_img.getvalue()).decode()
+            plt.close()
+
+            # Crear gráfico de densidad
+            plt.figure(figsize=(6, 4))
+            sns.kdeplot(data_series, color='blue', shade=True)
+            plt.title(f'Gráfico de Densidad de {selected_columns[0]}')
+            density_img = io.BytesIO()
+            plt.savefig(density_img, format='png')
+            density_img.seek(0)
+            encoded_density_img = base64.b64encode(density_img.getvalue()).decode()
+            plt.close()
+
+            # Crear boxplot
+            plt.figure(figsize=(6, 4))
+            sns.boxplot(x=data_series, color='orange')
+            plt.title(f'Boxplot de {selected_columns[0]}')
+            boxplot_img = io.BytesIO()
+            plt.savefig(boxplot_img, format='png')
+            boxplot_img.seek(0)
+            encoded_boxplot_img = base64.b64encode(boxplot_img.getvalue()).decode()
+            plt.close()
+
+            # Añadir los gráficos al resultado
+            result['histogram'] = encoded_histogram_img
+            result['density_plot'] = encoded_density_img
+            result['boxplot'] = encoded_boxplot_img
 
         elif analysis_type == "Dos muestras":
             if len(selected_columns) != 2:
@@ -719,7 +756,7 @@ def analyze_selected_columns():
             mean2 = float(data_series2.mean())
             correlation, _ = stats.pearsonr(data_series1, data_series2)
 
-            # Crear gráfico de dispersión con línea de tendencia
+            # Crear gráfico de dispersión con línea de tendencia (ya implementado)
             plt.figure(figsize=(6, 4))
             plt.scatter(data_series1, data_series2, color='blue', alpha=0.6)
             plt.title('Gráfico de Dispersión con Línea de Tendencia')
@@ -734,10 +771,23 @@ def analyze_selected_columns():
             encoded_scatter_img = base64.b64encode(scatter_img.getvalue()).decode()
             plt.close()
 
+            # Crear gráfico de barras comparativo
+            plt.figure(figsize=(6, 4))
+            plt.bar(['Media de ' + selected_columns[0], 'Media de ' + selected_columns[1]], [mean1, mean2], color=['blue', 'green'])
+            plt.title('Comparación de Medias')
+            bar_chart_img = io.BytesIO()
+            plt.savefig(bar_chart_img, format='png')
+            bar_chart_img.seek(0)
+            encoded_bar_chart_img = base64.b64encode(bar_chart_img.getvalue()).decode()
+            plt.close()
+
+            # Añadir los resultados al diccionario
             result['mean1'] = mean1
             result['mean2'] = mean2
             result['correlation'] = correlation
             result['scatter_plot'] = encoded_scatter_img
+            result['bar_chart_means'] = encoded_bar_chart_img
+
 
         elif analysis_type == "En función de una categórica":
             if len(selected_columns) != 1 or not category_column:
@@ -756,7 +806,7 @@ def analyze_selected_columns():
                 for category, group in grouped
             }
 
-            # Crear boxplot por categorías
+            # Crear boxplot por categorías (ya implementado)
             plt.figure(figsize=(8, 6))
             sns.boxplot(x=category_series, y=data_series)
             plt.title(f'Boxplot de {selected_columns[0]} según {category_column}')
@@ -766,8 +816,35 @@ def analyze_selected_columns():
             encoded_boxplot_img = base64.b64encode(boxplot_img.getvalue()).decode()
             plt.close()
 
+            # Crear gráfico de barras de medias por categoría
+            mean_by_category = data_series.groupby(category_series).mean()
+            plt.figure(figsize=(8, 6))
+            mean_by_category.plot(kind='bar', color='teal')
+            plt.title(f'Medias de {selected_columns[0]} por {category_column}')
+            plt.xlabel(category_column)
+            plt.ylabel(f'Media de {selected_columns[0]}')
+            bar_by_category_img = io.BytesIO()
+            plt.savefig(bar_by_category_img, format='png')
+            bar_by_category_img.seek(0)
+            encoded_bar_by_category_img = base64.b64encode(bar_by_category_img.getvalue()).decode()
+            plt.close()
+
+            # Crear gráfico de violín
+            plt.figure(figsize=(8, 6))
+            sns.violinplot(x=category_series, y=data_series)
+            plt.title(f'Gráfico de Violín de {selected_columns[0]} según {category_column}')
+            violin_img = io.BytesIO()
+            plt.savefig(violin_img, format='png')
+            violin_img.seek(0)
+            encoded_violin_img = base64.b64encode(violin_img.getvalue()).decode()
+            plt.close()
+
+            # Añadir los gráficos al resultado
             result['stats_by_category'] = stats_by_category
             result['boxplot_by_category'] = encoded_boxplot_img
+            result['bar_by_category'] = encoded_bar_by_category_img
+            result['violin_plot'] = encoded_violin_img
+
 
         else:
             raise ValueError("Tipo de análisis no válido.")
@@ -779,27 +856,25 @@ def analyze_selected_columns():
 # Función para calcular estadísticas descriptivas
 def calculate_descriptive_statistics_from_data(data_series):
     try:
-        # Rellenar NaN con 0 temporalmente para evitar errores en los cálculos
-        data_series = data_series.fillna(0)
-
-        mean = float(data_series.mean())
-        median = float(data_series.median())
-        mode = replace_nan_with_none(data_series.mode().tolist())  # Usar la función para sanitizar
-        std = float(data_series.std())
-        variance = float(data_series.var())
-        min_value = float(data_series.min())
-        max_value = float(data_series.max())
+        # Ignorar NaN en lugar de reemplazarlos con 0
+        mean = float(data_series.mean(skipna=True))
+        median = float(data_series.median(skipna=True))
+        mode = replace_nan_with_none(data_series.mode(dropna=True).tolist())  # Usar dropna=True para la moda
+        std = float(data_series.std(skipna=True))
+        variance = float(data_series.var(skipna=True))
+        min_value = float(data_series.min(skipna=True))
+        max_value = float(data_series.max(skipna=True))
         range_value = max_value - min_value
         coef_var = (std / mean * 100) if mean != 0 else None
 
         # Sanitizar skewness y kurtosis
-        skewness = None if np.isnan(stats.skew(data_series)) else float(stats.skew(data_series))
-        kurtosis_value = None if np.isnan(stats.kurtosis(data_series)) else float(stats.kurtosis(data_series))
+        skewness = None if np.isnan(stats.skew(data_series.dropna())) else float(stats.skew(data_series.dropna()))
+        kurtosis_value = None if np.isnan(stats.kurtosis(data_series.dropna())) else float(stats.kurtosis(data_series.dropna()))
 
-        q1 = float(data_series.quantile(0.25))
-        q3 = float(data_series.quantile(0.75))
-        p10 = float(data_series.quantile(0.10))
-        p90 = float(data_series.quantile(0.90))
+        q1 = float(data_series.quantile(0.25, interpolation='linear'))
+        q3 = float(data_series.quantile(0.75, interpolation='linear'))
+        p10 = float(data_series.quantile(0.10, interpolation='linear'))
+        p90 = float(data_series.quantile(0.90, interpolation='linear'))
 
         return {
             'mean': mean,
@@ -820,7 +895,6 @@ def calculate_descriptive_statistics_from_data(data_series):
         }
     except Exception as e:
         return {'error': str(e)}
-
 
 ###############################################################################################
 ####################################### GENERATE CHARTS #######################################
