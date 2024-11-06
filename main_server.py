@@ -845,51 +845,48 @@ def analyze_selected_columns():
             plt.close()
 
             # Crear el gráfico combinado de nubes de puntos, boxplot y medio violín
-            plt.figure(figsize=(12, 6))
+            # Crear la figura y el eje
+            fig, ax = plt.subplots(figsize=(8, 4))
             
-            # Paleta de colores para las categorías
+            # Generar una paleta de colores basada en el número de categorías únicas
             palette = sns.color_palette("Set2", len(category_series.unique()))
             
-            # Ajustes de desplazamiento y alineación de elementos
-            point_offset = -0.15  # Desplazamiento de puntos de lluvia a la izquierda
-            box_offset = 0.0      # Boxplot centrado
-            violin_offset = 0.15  # Medio violín a la derecha
-            
-            # Raincloud Plot: puntos a la izquierda, boxplot en el centro, medio violín a la derecha
+            # Iterar sobre cada categoría única en `category_series`
             for i, category in enumerate(category_series.unique()):
+                # Filtrar datos de la categoría actual
                 cat_data = data_series[category_series == category]
             
-                # Puntos de lluvia (nube de puntos) a la izquierda
-                sns.stripplot(
-                    x=np.full(len(cat_data), i + point_offset), y=cat_data,
-                    color=palette[i], size=3, alpha=0.6, jitter=0.15
+                # Dibujar boxplot horizontal
+                bp = ax.boxplot(
+                    [cat_data], positions=[i + 1], patch_artist=True, vert=False, widths=0.3
                 )
+                # Asignar color y transparencia al boxplot
+                bp['boxes'][0].set_facecolor(palette[i])
+                bp['boxes'][0].set_alpha(0.4)
             
-                # Boxplot en el centro
-                sns.boxplot(
-                    x=np.full(len(cat_data), i + box_offset), y=cat_data,
-                    width=0.2, showcaps=False,  # Boxplot más estrecho para alinearse con el violín
-                    boxprops={'facecolor': 'None', 'edgecolor': 'black'},
-                    whiskerprops={'linewidth': 1.5},
-                    medianprops={'color': 'black'}, showfliers=False
+                # Dibujar medio violín horizontal
+                vp = ax.violinplot(
+                    [cat_data], positions=[i + 1], points=500, showmeans=False,
+                    showextrema=False, showmedians=False, vert=False
                 )
+                for b in vp['bodies']:
+                    # Limitar el violín a la mitad superior
+                    b.get_paths()[0].vertices[:, 1] = np.clip(b.get_paths()[0].vertices[:, 1], i + 1, i + 1.5)
+                    # Asignar color al violín
+                    b.set_color(palette[i])
             
-                # Medio violín a la derecha (solo la mitad derecha)
-                sns.violinplot(
-                    x=np.full(len(cat_data), i + violin_offset), y=cat_data,
-                    bw=0.2, cut=0, inner=None,
-                    scale='width', color=palette[i], linewidth=1,
-                    split=True, orient='v'
-                )
+                # Dibujar puntos con desplazamiento (jitter)
+                y = np.full(len(cat_data), i + 1)
+                y_jitter = y + np.random.uniform(-0.05, 0.05, size=len(cat_data))
+                ax.scatter(cat_data, y_jitter, s=3, color=palette[i], alpha=0.5)
             
-            # Configuración final del gráfico
-            plt.xticks(ticks=range(len(category_series.unique())), labels=category_series.unique(), rotation=0)
-            plt.xlabel(category_column)
-            plt.ylabel(selected_columns[0])
-            plt.title(f'Gráfico de Nube de Puntos, Boxplot y Medio Violín de {selected_columns[0]} según {category_column}')
-            plt.tight_layout()
+            # Etiquetas y configuración del gráfico
+            ax.set_yticks(np.arange(1, len(category_series.unique()) + 1))
+            ax.set_yticklabels(category_series.unique())
+            ax.set_xlabel('Values')
+            ax.set_title('Raincloud Plot')
             
-            # Guardar el gráfico en base64 como violin_plot
+            # Guardar el gráfico en formato base64
             violin_img = io.BytesIO()
             plt.savefig(violin_img, format='png', bbox_inches='tight', dpi=100)
             violin_img.seek(0)
