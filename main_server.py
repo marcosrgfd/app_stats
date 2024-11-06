@@ -759,7 +759,7 @@ def analyze_selected_columns():
             sns.boxplot(x=data_series, color='orange')
             plt.title(f'Boxplot de {selected_columns[0]}')
             boxplot_img = io.BytesIO()
-            plt.savefig(boxplot_img, format='png')
+            plt.savefig(boxplot_img, format='png', bbox_inches='tight', dpi=100)
             boxplot_img.seek(0)
             encoded_boxplot_img = base64.b64encode(boxplot_img.getvalue()).decode()
             plt.close()
