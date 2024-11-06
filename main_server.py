@@ -811,8 +811,8 @@ def analyze_selected_columns():
             result['correlation'] = correlation
             result['scatter_plot'] = encoded_scatter_img
 
-        # Análisis de una muestra según una categórica (boxplot por categorías)
-        elif analysis_type == "En función de una categórica":
+        # Análisis en función de una categórica
+        if analysis_type == "En función de una categórica":
             if len(selected_columns) != 1 or not category_column:
                 return jsonify({'error': "Seleccione una columna numérica y una categórica para este análisis."}), 400
             
@@ -832,9 +832,9 @@ def analyze_selected_columns():
                 for category, group in grouped
             }
 
-            # Crear boxplot por categorías
+            # Crear boxplot por categorías con ancho reducido y colores personalizados
             plt.figure(figsize=(8, 6))
-            sns.boxplot(x=category_series, y=data_series)
+            sns.boxplot(x=category_series, y=data_series, palette="Set2", width=0.4)  # Ajuste de ancho y paleta de colores
             plt.title(f'Boxplot de {selected_columns[0]} según {category_column}')
             plt.xlabel(category_column)
             plt.ylabel(selected_columns[0])
@@ -844,9 +844,12 @@ def analyze_selected_columns():
             encoded_boxplot_img = base64.b64encode(boxplot_img.getvalue()).decode()
             plt.close()
 
-            # Crear gráfico de violín por categorías
+            # Crear gráfico de violín con diseño mejorado y puntos individuales
             plt.figure(figsize=(8, 6))
-            sns.violinplot(x=category_series, y=data_series)
+            sns.violinplot(x=category_series, y=data_series, palette="Set2", inner=None, bw=0.2)  # bw ajusta el suavizado
+            sns.boxplot(x=category_series, y=data_series, width=0.2, showcaps=False, boxprops={'facecolor':'None'}, showfliers=False)  # Boxplot dentro del violín
+            sns.stripplot(x=category_series, y=data_series, color="k", size=2, alpha=0.6)  # Puntos individuales
+            
             plt.title(f'Gráfico de Violín de {selected_columns[0]} según {category_column}')
             plt.xlabel(category_column)
             plt.ylabel(selected_columns[0])
