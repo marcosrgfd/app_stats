@@ -850,10 +850,10 @@ def analyze_selected_columns():
             # Paleta de colores para las categorías
             palette = sns.color_palette("Set2", len(category_series.unique()))
             
-            # Ajustes de desplazamiento
-            point_offset = -0.1  # Desplazamiento de puntos de lluvia a la izquierda
-            box_offset = 0.0     # Boxplot centrado
-            violin_offset = 0.1  # Medio violín a la derecha
+            # Ajustes de desplazamiento y alineación de elementos
+            point_offset = -0.15  # Desplazamiento de puntos de lluvia a la izquierda
+            box_offset = 0.0      # Boxplot centrado
+            violin_offset = 0.15  # Medio violín a la derecha
             
             # Raincloud Plot: puntos a la izquierda, boxplot en el centro, medio violín a la derecha
             for i, category in enumerate(category_series.unique()):
@@ -861,14 +861,14 @@ def analyze_selected_columns():
             
                 # Puntos de lluvia (nube de puntos) a la izquierda
                 sns.stripplot(
-                    x=[i + point_offset] * len(cat_data), y=cat_data,
+                    x=np.full(len(cat_data), i + point_offset), y=cat_data,
                     color=palette[i], size=3, alpha=0.6, jitter=0.15
                 )
             
                 # Boxplot en el centro
                 sns.boxplot(
-                    x=[i + box_offset] * len(cat_data), y=cat_data,
-                    width=0.3, showcaps=False,  # Boxplot más ancho
+                    x=np.full(len(cat_data), i + box_offset), y=cat_data,
+                    width=0.2, showcaps=False,  # Boxplot más estrecho para alinearse con el violín
                     boxprops={'facecolor': 'None', 'edgecolor': 'black'},
                     whiskerprops={'linewidth': 1.5},
                     medianprops={'color': 'black'}, showfliers=False
@@ -876,9 +876,10 @@ def analyze_selected_columns():
             
                 # Medio violín a la derecha (solo la mitad derecha)
                 sns.violinplot(
-                    x=[i + violin_offset] * len(cat_data), y=cat_data,
-                    bw=0.2, cut=0, split=True, inner=None,
-                    scale='width', color=palette[i], linewidth=1, orient='v'
+                    x=np.full(len(cat_data), i + violin_offset), y=cat_data,
+                    bw=0.2, cut=0, inner=None,
+                    scale='width', color=palette[i], linewidth=1,
+                    split=True, orient='v'
                 )
             
             # Configuración final del gráfico
