@@ -844,15 +844,47 @@ def analyze_selected_columns():
             encoded_boxplot_img = base64.b64encode(boxplot_img.getvalue()).decode()
             plt.close()
 
-            # Crear gráfico de violín con diseño mejorado y puntos individuales
+            # Crear el gráfico combinado de nubes de puntos, boxplot y medio violín
             plt.figure(figsize=(8, 6))
-            sns.violinplot(x=category_series, y=data_series, palette="Set2", inner=None, bw=0.2)  # bw ajusta el suavizado
-            sns.boxplot(x=category_series, y=data_series, width=0.2, showcaps=False, boxprops={'facecolor':'None'}, showfliers=False)  # Boxplot dentro del violín
-            sns.stripplot(x=category_series, y=data_series, color="k", size=2, alpha=0.6)  # Puntos individuales
-            
-            plt.title(f'Gráfico de Violín de {selected_columns[0]} según {category_column}')
+
+            # Medio violín (solo en un lado)
+            sns.violinplot(
+                x=category_series, 
+                y=data_series, 
+                palette="Set2", 
+                split=True, 
+                inner=None,  # Sin estadísticas internas en el violín
+                linewidth=1  # Línea de borde más gruesa
+            )
+
+            # Boxplot superpuesto en el centro del violín
+            sns.boxplot(
+                x=category_series, 
+                y=data_series, 
+                width=0.15,  # Boxplot más estrecho
+                showcaps=False,  # Ocultar extremos
+                boxprops={'facecolor': 'None', 'edgecolor': 'black'},  # Sin relleno y con borde negro
+                whiskerprops={'linewidth': 1.5},  # Ajustar grosor de los bigotes
+                showfliers=False  # Ocultar valores atípicos
+            )
+
+            # Nube de puntos (raincloud) en un lado
+            sns.stripplot(
+                x=category_series, 
+                y=data_series, 
+                color="black", 
+                size=3,  # Tamaño de los puntos
+                jitter=0.15,  # Separación entre puntos para mejorar la visualización
+                alpha=0.6  # Transparencia
+            )
+
+            # Configuración del gráfico
+            plt.title(f'Gráfico de Nube de Puntos, Boxplot y Medio Violín de {selected_columns[0]} según {category_column}')
             plt.xlabel(category_column)
             plt.ylabel(selected_columns[0])
+            plt.tight_layout()
+
+            # Guardar el gráfico como imagen en base64
             violin_img = io.BytesIO()
             plt.savefig(violin_img, format='png', bbox_inches='tight', dpi=100)
             violin_img.seek(0)
