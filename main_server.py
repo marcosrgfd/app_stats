@@ -735,24 +735,31 @@ def analyze_selected_columns():
         category_column = data.get('category')
 
         if not selected_columns:
-            raise ValueError("No se proporcionaron columnas numéricas para analizar.")
+            return jsonify({'error': "No se proporcionaron columnas numéricas para analizar."}), 400
 
         result = {}
 
+        # Análisis de una muestra (histograma y boxplot)
         if analysis_type == "Una muestra":
             if len(selected_columns) != 1:
-                raise ValueError("Seleccione exactamente una columna numérica para este análisis.")
-            data_series = dataframe[selected_columns[0]]
+                return jsonify({'error': "Seleccione exactamente una columna numérica para este análisis."}), 400
+            
+            data_series = dataframe[selected_columns[0]].dropna()
 
-            # Calcular las estadísticas descriptivas
+            # Calcular estadísticas descriptivas
             result[selected_columns[0]] = calculate_descriptive_statistics_from_data(data_series)
 
-           # Crear un gráfico conjunto de histograma y densidad
+            # Crear histograma con curva de densidad
+            plt.figure(figsize=(8, 6))
+            sns.histplot(data_series, bins=20, kde=True, color='skyblue')
+            plt.xlabel(selected_columns[0])
+            plt.ylabel('Frecuencia')
+            plt.title(f'Histograma de {selected_columns[0]}')
             histogram_img = io.BytesIO()
-            plt.savefig(histogram_img, format='png', bbox_inches='tight')
-            histogram_img.seek(0)  # Mueve el puntero al inicio del flujo
+            plt.savefig(histogram_img, format='png', bbox_inches='tight', dpi=100)
+            histogram_img.seek(0)
             encoded_histogram_img = base64.b64encode(histogram_img.getvalue()).decode()
-            histogram_img.close()  # Cierra el flujo
+            plt.close()
 
             # Crear boxplot
             plt.figure(figsize=(8, 6))
@@ -768,26 +775,32 @@ def analyze_selected_columns():
             result['histogram'] = encoded_histogram_img
             result['boxplot'] = encoded_boxplot_img
 
+        # Análisis de dos muestras (scatter plot y correlación)
         elif analysis_type == "Dos muestras":
             if len(selected_columns) != 2:
-                raise ValueError("Seleccione exactamente dos columnas numéricas para este análisis.")
-            data_series1 = dataframe[selected_columns[0]]
-            data_series2 = dataframe[selected_columns[1]]
+                return jsonify({'error': "Seleccione exactamente dos columnas numéricas para este análisis."}), 400
+
+            data_series1 = dataframe[selected_columns[0]].dropna()
+            data_series2 = dataframe[selected_columns[1]].dropna()
+
+            # Verificar que ambas columnas tengan la misma longitud después de eliminar NaN
+            if len(data_series1) != len(data_series2):
+                return jsonify({'error': "Las columnas seleccionadas tienen diferentes cantidades de datos válidos."}), 400
+
             mean1 = float(data_series1.mean())
             mean2 = float(data_series2.mean())
             correlation, _ = stats.pearsonr(data_series1, data_series2)
 
-            # Crear gráfico de dispersión con línea de tendencia (ya implementado)
-            plt.figure(figsize=(6, 4))
-            plt.scatter(data_series1, data_series2, color='blue', alpha=0.6)
+            # Crear gráfico de dispersión con línea de tendencia
+            plt.figure(figsize=(8, 6))
+            sns.scatterplot(x=data_series1, y=data_series2, color='blue', alpha=0.6, s=80, edgecolor='w')
             plt.title('Gráfico de Dispersión con Línea de Tendencia')
             plt.xlabel(selected_columns[0])
             plt.ylabel(selected_columns[1])
             m, b = np.polyfit(data_series1, data_series2, 1)
             plt.plot(data_series1, m * data_series1 + b, color='red')
-
             scatter_img = io.BytesIO()
-            plt.savefig(scatter_img, format='png')
+            plt.savefig(scatter_img, format='png', bbox_inches='tight', dpi=100)
             scatter_img.seek(0)
             encoded_scatter_img = base64.b64encode(scatter_img.getvalue()).decode()
             plt.close()
@@ -798,12 +811,15 @@ def analyze_selected_columns():
             result['correlation'] = correlation
             result['scatter_plot'] = encoded_scatter_img
 
-
+        # Análisis de una muestra según una categórica (boxplot por categorías)
         elif analysis_type == "En función de una categórica":
             if len(selected_columns) != 1 or not category_column:
-                raise ValueError("Seleccione una columna numérica y una categórica para este análisis.")
-            data_series = dataframe[selected_columns[0]].fillna(0)  # Rellenar NaN con 0
-            category_series = dataframe[category_column].fillna("N/A")  # Rellenar NaN con "N/A"
+                return jsonify({'error': "Seleccione una columna numérica y una categórica para este análisis."}), 400
+            
+            data_series = dataframe[selected_columns[0]].dropna()
+            category_series = dataframe[category_column].dropna()
+            
+            # Agrupar y calcular estadísticas descriptivas por categoría
             grouped = data_series.groupby(category_series)
             stats_by_category = {
                 str(category): {
@@ -816,36 +832,40 @@ def analyze_selected_columns():
                 for category, group in grouped
             }
 
-            # Crear boxplot por categorías (ya implementado)
+            # Crear boxplot por categorías
             plt.figure(figsize=(8, 6))
             sns.boxplot(x=category_series, y=data_series)
             plt.title(f'Boxplot de {selected_columns[0]} según {category_column}')
+            plt.xlabel(category_column)
+            plt.ylabel(selected_columns[0])
             boxplot_img = io.BytesIO()
-            plt.savefig(boxplot_img, format='png')
+            plt.savefig(boxplot_img, format='png', bbox_inches='tight', dpi=100)
             boxplot_img.seek(0)
             encoded_boxplot_img = base64.b64encode(boxplot_img.getvalue()).decode()
             plt.close()
 
-            # Crear gráfico de violín
+            # Crear gráfico de violín por categorías
             plt.figure(figsize=(8, 6))
             sns.violinplot(x=category_series, y=data_series)
             plt.title(f'Gráfico de Violín de {selected_columns[0]} según {category_column}')
+            plt.xlabel(category_column)
+            plt.ylabel(selected_columns[0])
             violin_img = io.BytesIO()
-            plt.savefig(violin_img, format='png')
+            plt.savefig(violin_img, format='png', bbox_inches='tight', dpi=100)
             violin_img.seek(0)
             encoded_violin_img = base64.b64encode(violin_img.getvalue()).decode()
             plt.close()
 
-            # Añadir los gráficos al resultado
+            # Añadir los gráficos y estadísticas al resultado
             result['stats_by_category'] = stats_by_category
             result['boxplot_by_category'] = encoded_boxplot_img
             result['violin_plot'] = encoded_violin_img
 
-
         else:
-            raise ValueError("Tipo de análisis no válido.")
+            return jsonify({'error': "Tipo de análisis no válido."}), 400
 
         return jsonify(result)
+
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
