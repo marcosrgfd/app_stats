@@ -755,7 +755,7 @@ def analyze_selected_columns():
             histogram_img.close()  # Cierra el flujo
 
             # Crear boxplot
-            plt.figure(figsize=(6, 4))
+            plt.figure(figsize=(8, 6))
             sns.boxplot(x=data_series, color='orange')
             plt.title(f'Boxplot de {selected_columns[0]}')
             boxplot_img = io.BytesIO()
