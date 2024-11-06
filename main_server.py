@@ -812,7 +812,7 @@ def analyze_selected_columns():
             result['scatter_plot'] = encoded_scatter_img
 
         # Análisis en función de una categórica
-        if analysis_type == "En función de una categórica":
+        elif analysis_type == "En función de una categórica":
             if len(selected_columns) != 1 or not category_column:
                 return jsonify({'error': "Seleccione una columna numérica y una categórica para este análisis."}), 400
             
