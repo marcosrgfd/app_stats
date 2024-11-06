@@ -846,7 +846,7 @@ def analyze_selected_columns():
 
             # Crear el gráfico combinado de nubes de puntos, boxplot y medio violín
             # Crear la figura y el eje
-            fig, ax = plt.subplots(figsize=(8, 4))
+            fig, ax = plt.subplots(figsize=(8, 7))
             
             # Generar una paleta de colores basada en el número de categorías únicas
             palette = sns.color_palette("Set2", len(category_series.unique()))
