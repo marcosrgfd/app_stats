@@ -400,6 +400,17 @@ def calculate_sample_size_pearson():
 ####################################### DESCRIPTIVE ANALYSIS #######################################
 ####################################################################################################
 
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import io
+import base64
+from scipy.stats import skew, kurtosis, pearsonr
+from flask import Flask, request, jsonify
+
+app = Flask(__name__)
+
 # Función para calcular estadísticas descriptivas para una o dos muestras
 def calculate_descriptive_statistics(request_body):
     try:
@@ -412,9 +423,13 @@ def calculate_descriptive_statistics(request_body):
         show_boxplot = request_body.get('showBoxplot', False)
         show_violinplot = request_body.get('showViolinPlot', False)
         show_raincloudplot = request_body.get('showRaincloudPlot', False)
+        show_histogram = request_body.get('showHistogram', False)
+        show_density = request_body.get('showDensity', False)
+        show_scatter = request_body.get('showScatter', False)
+
+        results = {}  # Inicializar el diccionario de resultados
 
         if category_series is not None:
-            # Si se proporcionan categorías, convertirlas en una Serie de Pandas
             category_series = pd.Series(category_series)
 
             # Calcular estadísticas descriptivas por categoría
@@ -429,224 +444,158 @@ def calculate_descriptive_statistics(request_body):
                 }
                 for category, group in grouped
             }
+            results['stats_by_category'] = stats_by_category
 
-            # Crear boxplot por categorías con estilo personalizado
+            # Generar gráficos específicos para el análisis con categorías
             if show_boxplot:
                 plt.figure(figsize=(8, 6))
-                sns.boxplot(x=category_series, y=data_series1, palette="Set2", width=0.4)  # Ajuste de ancho y paleta de colores
+                sns.boxplot(x=category_series, y=data_series1, palette="Set2", width=0.4)
                 plt.title('Boxplot por Categorías')
                 plt.xlabel('Categoría')
                 plt.ylabel('Valor')
                 plt.tight_layout()
-                
                 boxplot_img = io.BytesIO()
                 plt.savefig(boxplot_img, format='png', bbox_inches='tight', dpi=100)
                 boxplot_img.seek(0)
-                encoded_boxplot_img = base64.b64encode(boxplot_img.getvalue()).decode()
+                results['boxplot_by_category'] = base64.b64encode(boxplot_img.getvalue()).decode()
                 plt.close()
 
-            # Crear gráfico de violín por categorías con estilo personalizado
             if show_violinplot:
                 plt.figure(figsize=(8, 6))
-                sns.violinplot(x=category_series, y=data_series1, palette="Set2", width=0.8)  # Ajuste de ancho y paleta de colores
+                sns.violinplot(x=category_series, y=data_series1, palette="Set2", width=0.8)
                 plt.title('Gráfico de Violín por Categorías')
                 plt.xlabel('Categoría')
                 plt.ylabel('Valor')
                 plt.tight_layout()
-                
                 violin_img = io.BytesIO()
                 plt.savefig(violin_img, format='png', bbox_inches='tight', dpi=100)
                 violin_img.seek(0)
-                encoded_violin_img = base64.b64encode(violin_img.getvalue()).decode()
+                results['violin_plot_by_category'] = base64.b64encode(violin_img.getvalue()).decode()
                 plt.close()
 
-            # Crear el gráfico de Raincloud (nubes de puntos, boxplot y medio violín)
             if show_raincloudplot:
                 fig, ax = plt.subplots(figsize=(10, 8))
                 palette = sns.color_palette("Set2", len(category_series.unique()))
-
-                # Iterar sobre cada categoría
                 for i, category in enumerate(category_series.unique()):
                     cat_data = data_series1[category_series == category]
-
-                    # Dibujar boxplot horizontal
-                    bp = ax.boxplot(
-                        [cat_data], positions=[i + 1], patch_artist=True, vert=False, widths=0.2
-                    )
+                    bp = ax.boxplot([cat_data], positions=[i + 1], patch_artist=True, vert=False, widths=0.2)
                     bp['boxes'][0].set_facecolor(palette[i])
                     bp['boxes'][0].set_alpha(0.4)
-
-                    # Dibujar medio violín horizontal
-                    vp = ax.violinplot(
-                        [cat_data], positions=[i + 1], points=500, showmeans=False,
-                        showextrema=False, showmedians=False, vert=False
-                    )
+                    vp = ax.violinplot([cat_data], positions=[i + 1], showmeans=False, showextrema=False, showmedians=False, vert=False)
                     for b in vp['bodies']:
                         b.get_paths()[0].vertices[:, 1] = np.clip(b.get_paths()[0].vertices[:, 1], i + 1, i + 1.5)
                         b.set_color(palette[i])
-
-                    # Dibujar nubes de puntos (scatter plot) con jitter
-                    y = np.full(len(cat_data), i + 1)
-                    y_jitter = y + np.random.uniform(-0.05, 0.05, size=len(cat_data))
+                    y_jitter = np.full(len(cat_data), i + 1) + np.random.uniform(-0.05, 0.05, len(cat_data))
                     ax.scatter(cat_data, y_jitter, s=3, color=palette[i], alpha=0.5)
-
-                # Etiquetas y configuración del gráfico
                 ax.set_yticks(np.arange(1, len(category_series.unique()) + 1))
                 ax.set_yticklabels(category_series.unique())
                 ax.set_xlabel('Valor')
                 ax.set_title('Raincloud Plot')
                 plt.tight_layout()
-
-                # Guardar el gráfico de Raincloud en formato base64
                 raincloud_img = io.BytesIO()
                 plt.savefig(raincloud_img, format='png', bbox_inches='tight', dpi=100)
                 raincloud_img.seek(0)
-                encoded_raincloud_img = base64.b64encode(raincloud_img.getvalue()).decode()
+                results['raincloud_plot'] = base64.b64encode(raincloud_img.getvalue()).decode()
+                plt.close()
+            return results
+
+        # Análisis para una sola muestra sin categorías
+        def analyze_single_series(data_series, title_suffix):
+            stats = {
+                'mean': float(data_series.mean()),
+                'median': float(data_series.median()),
+                'mode': data_series.mode().tolist(),
+                'std': float(data_series.std()),
+                'variance': float(data_series.var()),
+                'min': float(data_series.min()),
+                'max': float(data_series.max()),
+                'range': float(data_series.max() - data_series.min()),
+                'coef_var': float((data_series.std() / data_series.mean()) * 100) if data_series.mean() != 0 else None,
+                'skewness': float(skew(data_series, nan_policy='omit')),
+                'kurtosis': float(kurtosis(data_series, nan_policy='omit')),
+                'q1': float(data_series.quantile(0.25)),
+                'q3': float(data_series.quantile(0.75)),
+                'iqr': float(data_series.quantile(0.75) - data_series.quantile(0.25)),
+                'p10': float(data_series.quantile(0.10)),
+                'p90': float(data_series.quantile(0.90)),
+                'outliers': data_series[(data_series < (data_series.quantile(0.25) - 1.5 * (data_series.quantile(0.75) - data_series.quantile(0.25)))) |
+                                         (data_series > (data_series.quantile(0.75) + 1.5 * (data_series.quantile(0.75) - data_series.quantile(0.25))))].tolist()
+            }
+
+            # Generar gráficos si están solicitados
+            if show_histogram:
+                plt.figure(figsize=(6, 4))
+                plt.hist(data_series.dropna(), bins=10, color='skyblue', edgecolor='black')
+                plt.title(f'Histograma de Datos {title_suffix}')
+                plt.xlabel('Valor')
+                plt.ylabel('Frecuencia')
+                plt.tight_layout()
+                img = io.BytesIO()
+                plt.savefig(img, format='png')
+                img.seek(0)
+                stats['histogram'] = base64.b64encode(img.getvalue()).decode()
                 plt.close()
 
-            return {
-                'stats_by_category': stats_by_category,
-                'boxplot_by_category': encoded_boxplot_img,
-                'violin_plot_by_category': encoded_violin_img,
-                'raincloud_plot': encoded_raincloud_img
-            }
-        
-        if data_series2 is not None:
-            data_series2 = pd.Series(data_series2)
+            if show_boxplot:
+                plt.figure(figsize=(6, 4))
+                plt.boxplot(data_series.dropna(), vert=False, patch_artist=True, boxprops=dict(facecolor='lightblue'))
+                plt.title(f'Boxplot de Datos {title_suffix}')
+                plt.xlabel('Valor')
+                plt.tight_layout()
+                boxplot_img = io.BytesIO()
+                plt.savefig(boxplot_img, format='png')
+                boxplot_img.seek(0)
+                stats['boxplot'] = base64.b64encode(boxplot_img.getvalue()).decode()
+                plt.close()
 
-        # Análisis para una sola muestra
-        def analyze_single_series(data_series, title_suffix):
-            mean = float(data_series.mean())
-            median = float(data_series.median())
-            mode = data_series.mode().tolist()
-            mode = [float(m) if isinstance(m, (np.integer, np.floating)) else m for m in mode]
-            std = float(data_series.std())
-            variance = float(data_series.var())
-            min_value = float(data_series.min())
-            max_value = float(data_series.max())
-            range_value = float(max_value - min_value)
-            coef_var = (std / mean) * 100 if mean != 0 else None
-            coef_var = float(coef_var) if coef_var is not None else None
-
-            # Medidas de forma
-            skewness = float(skew(data_series, nan_policy='omit'))
-            kurt = float(kurtosis(data_series, nan_policy='omit'))
-
-            # Medidas de posición
-            q1 = float(data_series.quantile(0.25))
-            q3 = float(data_series.quantile(0.75))
-            p10 = float(data_series.quantile(0.10))
-            p90 = float(data_series.quantile(0.90))
-
-            # Identificación de outliers (rango intercuartílico - IQR)
-            iqr = q3 - q1
-            lower_bound = q1 - 1.5 * iqr
-            upper_bound = q3 + 1.5 * iqr
-            outliers = data_series[(data_series < lower_bound) | (data_series > upper_bound)].tolist()
-            outliers = [float(o) if isinstance(o, (np.integer, np.floating)) else o for o in outliers]
-            iqr = float(iqr)
-
-            # Crear el histograma y convertirlo a base64
-            plt.figure(figsize=(6, 4))
-            plt.hist(data_series.dropna(), bins=10, color='skyblue', edgecolor='black')
-            plt.title(f'Histograma de Datos {title_suffix}')
-            plt.xlabel('Valor')
-            plt.ylabel('Frecuencia')
-            plt.tight_layout()
-
-            img = io.BytesIO()
-            plt.savefig(img, format='png')
-            img.seek(0)
-            encoded_img = base64.b64encode(img.getvalue()).decode()
-            plt.close()
-
-            # Crear el boxplot y convertirlo a base64
-            plt.figure(figsize=(6, 4))
-            plt.boxplot(data_series.dropna(), vert=False, patch_artist=True, boxprops=dict(facecolor='lightblue'))
-            plt.title(f'Boxplot de Datos {title_suffix}')
-            plt.xlabel('Valor')
-            plt.tight_layout()
-
-            boxplot_img = io.BytesIO()
-            plt.savefig(boxplot_img, format='png')
-            boxplot_img.seek(0)
-            encoded_boxplot_img = base64.b64encode(boxplot_img.getvalue()).decode()
-            plt.close()
-
-            # Crear el gráfico de densidad y convertirlo a base64
-            plt.figure(figsize=(6, 4))
-            sns.kdeplot(data_series.dropna(), shade=True, color='green')
-            plt.title(f'Gráfico de Densidad {title_suffix}')
-            plt.xlabel('Valor')
-            plt.tight_layout()
-
-            density_img = io.BytesIO()
-            plt.savefig(density_img, format='png')
-            density_img.seek(0)
-            encoded_density_img = base64.b64encode(density_img.getvalue()).decode()
-            plt.close()
-
-            return {
-                'mean': mean,
-                'median': median,
-                'mode': mode,
-                'std': std,
-                'variance': variance,
-                'min': min_value,
-                'max': max_value,
-                'range': range_value,
-                'coef_var': coef_var,
-                'skewness': skewness,
-                'kurtosis': kurt,
-                'q1': q1,
-                'q3': q3,
-                'iqr': iqr,
-                'p10': p10,
-                'p90': p90,
-                'outliers': outliers,
-                'histogram': encoded_img,
-                'boxplot': encoded_boxplot_img,
-                'density_plot': encoded_density_img
-            }
+            if show_density:
+                plt.figure(figsize=(6, 4))
+                sns.kdeplot(data_series.dropna(), shade=True, color='green')
+                plt.title(f'Gráfico de Densidad {title_suffix}')
+                plt.xlabel('Valor')
+                plt.tight_layout()
+                density_img = io.BytesIO()
+                plt.savefig(density_img, format='png')
+                density_img.seek(0)
+                stats['density_plot'] = base64.b64encode(density_img.getvalue()).decode()
+                plt.close()
+            return stats
 
         # Si solo hay una muestra, devolver las estadísticas para una muestra
         if data_series2 is None:
-            return analyze_single_series(data_series1, "")
+            results.update(analyze_single_series(data_series1, ""))
+            return results
 
         # Si hay dos muestras, realizar análisis conjunto
         mean1 = float(data_series1.mean())
         mean2 = float(data_series2.mean())
-        correlation, _ = stats.pearsonr(data_series1, data_series2)
+        correlation, _ = pearsonr(data_series1, data_series2)
 
-        # Crear el gráfico de dispersión con línea de tendencia
-        plt.figure(figsize=(6, 4))
-        plt.scatter(data_series1, data_series2, color='purple', alpha=0.6)
-        plt.title('Gráfico de Dispersión con Línea de Tendencia')
-        plt.xlabel('Muestra 1')
-        plt.ylabel('Muestra 2')
-        plt.tight_layout()
-
-        # Añadir la línea de tendencia
-        m, b = np.polyfit(data_series1, data_series2, 1)
-        plt.plot(data_series1, m * data_series1 + b, color='red')
-
-        scatter_img = io.BytesIO()
-        plt.savefig(scatter_img, format='png')
-        scatter_img.seek(0)
-        encoded_scatter_img = base64.b64encode(scatter_img.getvalue()).decode()
-        plt.close()
-
-        # Devolver los resultados para dos muestras
-        return {
+        results.update({
             'mean1': mean1,
             'mean2': mean2,
-            'correlation': correlation,
-            'scatter_plot': encoded_scatter_img
-        }
+            'correlation': correlation
+        })
+
+        if show_scatter:
+            plt.figure(figsize=(6, 4))
+            plt.scatter(data_series1, data_series2, color='purple', alpha=0.6)
+            plt.title('Gráfico de Dispersión con Línea de Tendencia')
+            plt.xlabel('Muestra 1')
+            plt.ylabel('Muestra 2')
+            plt.tight_layout()
+            m, b = np.polyfit(data_series1, data_series2, 1)
+            plt.plot(data_series1, m * data_series1 + b, color='red')
+            scatter_img = io.BytesIO()
+            plt.savefig(scatter_img, format='png')
+            scatter_img.seek(0)
+            results['scatter_plot'] = base64.b64encode(scatter_img.getvalue()).decode()
+            plt.close()
+        return results
 
     except Exception as e:
         return {'error': str(e)}
-    
+
 # Ruta para el análisis descriptivo básico a partir de una lista de datos proporcionada
 @app.route('/calculate_basic_analysis', methods=['POST'])
 def calculate_basic_analysis():
@@ -658,58 +607,56 @@ def calculate_basic_analysis():
         if data_list1 is None or not isinstance(data_list1, list):
             raise ValueError("Los datos de la primera muestra no son válidos o no se encuentran en el formato adecuado.")
 
-        # Convertir la primera muestra a una Serie de Pandas
         data_series1 = pd.Series(data_list1)
 
-        # Verificar si se ha proporcionado una segunda muestra
         data_list2 = data.get('data2')
         category_list = data.get('categories')
 
+        show_boxplot = data.get('showBoxplot', False)
+        show_violinplot = data.get('showViolinPlot', False)
+        show_raincloudplot = data.get('showRaincloudPlot', False)
+        show_histogram = data.get('showHistogram', False)
+        show_density = data.get('showDensity', False)
+        show_scatter = data.get('showScatter', False)
+
+        # Caso 1: Análisis con categorías
         if category_list is not None:
             if not isinstance(category_list, list):
                 raise ValueError("Las categorías no son válidas o no se encuentran en el formato adecuado.")
-            
-            # Convertir las categorías a una Serie de Pandas
             category_series = pd.Series(category_list)
-
-            # Calcular estadísticas descriptivas por categorías
             result = calculate_descriptive_statistics({
                 'data1': data_series1, 
                 'categories': category_series,
-                'showBoxplot': data.get('showBoxplot'),
-                'showViolinPlot': data.get('showViolinPlot'),
-                'showRaincloudPlot': data.get('showRaincloudPlot')
+                'showBoxplot': show_boxplot,
+                'showViolinPlot': show_violinplot,
+                'showRaincloudPlot': show_raincloudplot
             })
-        
+
+        # Caso 2: Análisis para dos muestras
         elif data_list2 is not None:
             if not isinstance(data_list2, list):
                 raise ValueError("Los datos de la segunda muestra no son válidos o no se encuentran en el formato adecuado.")
-            
-            # Convertir la segunda muestra a una Serie de Pandas
             data_series2 = pd.Series(data_list2)
-
-            # Calcular estadísticas descriptivas para dos muestras
             result = calculate_descriptive_statistics({
                 'data1': data_series1, 
                 'data2': data_series2,
-                'showBoxplot': data.get('showBoxplot'),
-                'showViolinPlot': data.get('showViolinPlot'),
-                'showRaincloudPlot': data.get('showRaincloudPlot')
+                'showScatter': show_scatter
             })
-        
+
+        # Caso 3: Análisis para una sola muestra
         else:
-            # Calcular estadísticas descriptivas para una sola muestra
             result = calculate_descriptive_statistics({
                 'data1': data_series1,
-                'showBoxplot': data.get('showBoxplot'),
-                'showViolinPlot': data.get('showViolinPlot'),
-                'showRaincloudPlot': data.get('showRaincloudPlot')
+                'showBoxplot': show_boxplot,
+                'showHistogram': show_histogram,
+                'showDensity': show_density
             })
 
         return jsonify(result)
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
 
     
 ############################## DESDE BASE DE DATOS ###########################################
