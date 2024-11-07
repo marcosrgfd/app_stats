@@ -734,6 +734,13 @@ def analyze_selected_columns():
         selected_columns = data.get('numeric_columns', [])
         category_column = data.get('category')
 
+        # Parámetros para los gráficos solicitados
+        show_boxplot = data.get('showBoxplot', False)
+        show_histogram = data.get('showHistogram', False)
+        show_scatter = data.get('showScatter', False)
+        show_violinplot = data.get('showViolinPlot', False)
+        show_raincloudplot = data.get('showRaincloudPlot', False)
+
         if not selected_columns:
             return jsonify({'error': "No se proporcionaron columnas numéricas para analizar."}), 400
 
@@ -749,31 +756,29 @@ def analyze_selected_columns():
             # Calcular estadísticas descriptivas
             result[selected_columns[0]] = calculate_descriptive_statistics_from_data(data_series)
 
-            # Crear histograma con curva de densidad
-            plt.figure(figsize=(8, 6))
-            sns.histplot(data_series, bins=20, kde=True, color='skyblue')
-            plt.xlabel(selected_columns[0])
-            plt.ylabel('Frecuencia')
-            plt.title(f'Histograma de {selected_columns[0]}')
-            histogram_img = io.BytesIO()
-            plt.savefig(histogram_img, format='png', bbox_inches='tight', dpi=100)
-            histogram_img.seek(0)
-            encoded_histogram_img = base64.b64encode(histogram_img.getvalue()).decode()
-            plt.close()
+            # Crear histograma si solicitado
+            if show_histogram:
+                plt.figure(figsize=(8, 6))
+                sns.histplot(data_series, bins=20, kde=True, color='skyblue')
+                plt.xlabel(selected_columns[0])
+                plt.ylabel('Frecuencia')
+                plt.title(f'Histograma de {selected_columns[0]}')
+                histogram_img = io.BytesIO()
+                plt.savefig(histogram_img, format='png', bbox_inches='tight', dpi=100)
+                histogram_img.seek(0)
+                result['histogram'] = base64.b64encode(histogram_img.getvalue()).decode()
+                plt.close()
 
-            # Crear boxplot
-            plt.figure(figsize=(8, 6))
-            sns.boxplot(x=data_series, color='orange')
-            plt.title(f'Boxplot de {selected_columns[0]}')
-            boxplot_img = io.BytesIO()
-            plt.savefig(boxplot_img, format='png', bbox_inches='tight', dpi=100)
-            boxplot_img.seek(0)
-            encoded_boxplot_img = base64.b64encode(boxplot_img.getvalue()).decode()
-            plt.close()
-
-            # Añadir los gráficos al resultado
-            result['histogram'] = encoded_histogram_img
-            result['boxplot'] = encoded_boxplot_img
+            # Crear boxplot si solicitado
+            if show_boxplot:
+                plt.figure(figsize=(8, 6))
+                sns.boxplot(x=data_series, color='orange')
+                plt.title(f'Boxplot de {selected_columns[0]}')
+                boxplot_img = io.BytesIO()
+                plt.savefig(boxplot_img, format='png', bbox_inches='tight', dpi=100)
+                boxplot_img.seek(0)
+                result['boxplot'] = base64.b64encode(boxplot_img.getvalue()).decode()
+                plt.close()
 
         # Análisis de dos muestras (scatter plot y correlación)
         elif analysis_type == "Dos muestras":
@@ -783,33 +788,27 @@ def analyze_selected_columns():
             data_series1 = dataframe[selected_columns[0]].dropna()
             data_series2 = dataframe[selected_columns[1]].dropna()
 
-            # Verificar que ambas columnas tengan la misma longitud después de eliminar NaN
             if len(data_series1) != len(data_series2):
                 return jsonify({'error': "Las columnas seleccionadas tienen diferentes cantidades de datos válidos."}), 400
 
-            mean1 = float(data_series1.mean())
-            mean2 = float(data_series2.mean())
-            correlation, _ = stats.pearsonr(data_series1, data_series2)
+            result['mean1'] = float(data_series1.mean())
+            result['mean2'] = float(data_series2.mean())
+            result['correlation'], _ = stats.pearsonr(data_series1, data_series2)
 
-            # Crear gráfico de dispersión con línea de tendencia
-            plt.figure(figsize=(8, 6))
-            sns.scatterplot(x=data_series1, y=data_series2, color='blue', alpha=0.6, s=80, edgecolor='w')
-            plt.title('Gráfico de Dispersión con Línea de Tendencia')
-            plt.xlabel(selected_columns[0])
-            plt.ylabel(selected_columns[1])
-            m, b = np.polyfit(data_series1, data_series2, 1)
-            plt.plot(data_series1, m * data_series1 + b, color='red')
-            scatter_img = io.BytesIO()
-            plt.savefig(scatter_img, format='png', bbox_inches='tight', dpi=100)
-            scatter_img.seek(0)
-            encoded_scatter_img = base64.b64encode(scatter_img.getvalue()).decode()
-            plt.close()
-
-            # Añadir los resultados al diccionario
-            result['mean1'] = mean1
-            result['mean2'] = mean2
-            result['correlation'] = correlation
-            result['scatter_plot'] = encoded_scatter_img
+            # Crear scatter plot si solicitado
+            if show_scatter:
+                plt.figure(figsize=(8, 6))
+                sns.scatterplot(x=data_series1, y=data_series2, color='blue', alpha=0.6, s=80, edgecolor='w')
+                plt.title('Gráfico de Dispersión con Línea de Tendencia')
+                plt.xlabel(selected_columns[0])
+                plt.ylabel(selected_columns[1])
+                m, b = np.polyfit(data_series1, data_series2, 1)
+                plt.plot(data_series1, m * data_series1 + b, color='red')
+                scatter_img = io.BytesIO()
+                plt.savefig(scatter_img, format='png', bbox_inches='tight', dpi=100)
+                scatter_img.seek(0)
+                result['scatter_plot'] = base64.b64encode(scatter_img.getvalue()).decode()
+                plt.close()
 
         # Análisis en función de una categórica
         elif analysis_type == "En función de una categórica":
@@ -818,7 +817,7 @@ def analyze_selected_columns():
             
             data_series = dataframe[selected_columns[0]].dropna()
             category_series = dataframe[category_column].dropna()
-            
+
             # Agrupar y calcular estadísticas descriptivas por categoría
             grouped = data_series.groupby(category_series)
             stats_by_category = {
@@ -832,86 +831,58 @@ def analyze_selected_columns():
                 for category, group in grouped
             }
 
-            # Crear boxplot por categorías con ancho reducido y colores personalizados
-            plt.figure(figsize=(8, 6))
-            sns.boxplot(x=category_series, y=data_series, palette="Set2", width=0.4)  # Ajuste de ancho y paleta de colores
-            plt.title(f'Boxplot de {selected_columns[0]} según {category_column}')
-            plt.xlabel(category_column)
-            plt.ylabel(selected_columns[0])
-            boxplot_img = io.BytesIO()
-            plt.savefig(boxplot_img, format='png', bbox_inches='tight', dpi=100)
-            boxplot_img.seek(0)
-            encoded_boxplot_img = base64.b64encode(boxplot_img.getvalue()).decode()
-            plt.close()
+            # Gráficos específicos por categoría si solicitados
+            if show_boxplot:
+                plt.figure(figsize=(8, 6))
+                sns.boxplot(x=category_series, y=data_series, palette="Set2", width=0.4)
+                plt.title(f'Boxplot de {selected_columns[0]} según {category_column}')
+                plt.xlabel(category_column)
+                plt.ylabel(selected_columns[0])
+                boxplot_img = io.BytesIO()
+                plt.savefig(boxplot_img, format='png', bbox_inches='tight', dpi=100)
+                boxplot_img.seek(0)
+                result['boxplot_by_category'] = base64.b64encode(boxplot_img.getvalue()).decode()
+                plt.close()
 
-            # Crear gráfico de violín por categorías con ancho reducido y colores personalizados
-            plt.figure(figsize=(8, 6))
-            sns.violinplot(x=category_series, y=data_series, palette="Set2", width=0.8)  # Ajuste de ancho y paleta de colores
-            plt.title(f'Gráfico de violín de {selected_columns[0]} según {category_column}')
-            plt.xlabel(category_column)
-            plt.ylabel(selected_columns[0])
-            # Guardar imagen del gráfico de violín
-            violin_img = io.BytesIO()
-            plt.savefig(violin_img, format='png', bbox_inches='tight', dpi=100)
-            violin_img.seek(0)
-            encoded_violin_img = base64.b64encode(violin_img.getvalue()).decode()
-            plt.close()
+            if show_violinplot:
+                plt.figure(figsize=(8, 6))
+                sns.violinplot(x=category_series, y=data_series, palette="Set2", width=0.8)
+                plt.title(f'Violin Plot de {selected_columns[0]} según {category_column}')
+                plt.xlabel(category_column)
+                plt.ylabel(selected_columns[0])
+                violin_img = io.BytesIO()
+                plt.savefig(violin_img, format='png', bbox_inches='tight', dpi=100)
+                violin_img.seek(0)
+                result['violin_by_category'] = base64.b64encode(violin_img.getvalue()).decode()
+                plt.close()
 
-            # Crear el gráfico combinado de nubes de puntos, boxplot y medio violín
-            # Crear la figura y el eje
-            fig, ax = plt.subplots(figsize=(10, 8))
+            if show_raincloudplot:
+                fig, ax = plt.subplots(figsize=(10, 8))
+                palette = sns.color_palette("Set2", len(category_series.unique()))
+                for i, category in enumerate(category_series.unique()):
+                    cat_data = data_series[category_series == category]
+                    bp = ax.boxplot([cat_data], positions=[i + 1], patch_artist=True, vert=False, widths=0.2)
+                    bp['boxes'][0].set_facecolor(palette[i])
+                    bp['boxes'][0].set_alpha(0.4)
+                    vp = ax.violinplot([cat_data], positions=[i + 1], points=500, showmeans=False,
+                                        showextrema=False, showmedians=False, vert=False)
+                    for b in vp['bodies']:
+                        b.get_paths()[0].vertices[:, 1] = np.clip(b.get_paths()[0].vertices[:, 1], i + 1, i + 1.5)
+                        b.set_color(palette[i])
+                    y = np.full(len(cat_data), i + 1)
+                    y_jitter = y + np.random.uniform(-0.05, 0.05, size=len(cat_data))
+                    ax.scatter(cat_data, y_jitter, s=3, color=palette[i], alpha=0.5)
+                ax.set_yticks(np.arange(1, len(category_series.unique()) + 1))
+                ax.set_yticklabels(category_series.unique())
+                ax.set_xlabel('Valores')
+                ax.set_title(f'Raincloud Plot de {selected_columns[0]} según {category_column}')
+                raincloud_img = io.BytesIO()
+                plt.savefig(raincloud_img, format='png', bbox_inches='tight', dpi=100)
+                raincloud_img.seek(0)
+                result['raincloud_plot'] = base64.b64encode(raincloud_img.getvalue()).decode()
+                plt.close()
 
-            # Generar una paleta de colores basada en el número de categorías únicas
-            palette = sns.color_palette("Set2", len(category_series.unique()))
-
-            # Iterar sobre cada categoría única en `category_series`
-            for i, category in enumerate(category_series.unique()):
-                # Filtrar datos de la categoría actual
-                cat_data = data_series[category_series == category]
-
-                # Dibujar boxplot horizontal
-                bp = ax.boxplot(
-                    [cat_data], positions=[i + 1], patch_artist=True, vert=False, widths=0.2
-                )
-                # Asignar color y transparencia al boxplot
-                bp['boxes'][0].set_facecolor(palette[i])
-                bp['boxes'][0].set_alpha(0.4)
-
-                # Dibujar medio violín horizontal
-                vp = ax.violinplot(
-                    [cat_data], positions=[i + 1], points=500, showmeans=False,
-                    showextrema=False, showmedians=False, vert=False
-                )
-                for b in vp['bodies']:
-                    # Limitar el violín a la mitad superior
-                    b.get_paths()[0].vertices[:, 1] = np.clip(b.get_paths()[0].vertices[:, 1], i + 1, i + 1.5)
-                    # Asignar color al violín
-                    b.set_color(palette[i])
-
-                # Dibujar puntos con desplazamiento (jitter)
-                y = np.full(len(cat_data), i + 1)
-                y_jitter = y + np.random.uniform(-0.05, 0.05, size=len(cat_data))
-                ax.scatter(cat_data, y_jitter, s=3, color=palette[i], alpha=0.5)
-
-            # Etiquetas y configuración del gráfico
-            ax.set_yticks(np.arange(1, len(category_series.unique()) + 1))
-            ax.set_yticklabels(category_series.unique())
-            ax.set_xlabel('Values')
-            ax.set_title('Raincloud Plot')
-
-            # Guardar el gráfico en formato base64
-            raincloud_img = io.BytesIO()
-            plt.savefig(raincloud_img, format='png', bbox_inches='tight', dpi=100)
-            raincloud_img.seek(0)
-            encoded_raincloud_img = base64.b64encode(raincloud_img.getvalue()).decode()
-            plt.close()
-
-
-            # Añadir los gráficos y estadísticas al resultado
             result['stats_by_category'] = stats_by_category
-            result['boxplot_by_category'] = encoded_boxplot_img
-            result['violin_by_category'] = encoded_violin_img
-            result['raincloud_plot'] = encoded_raincloud_img
 
         else:
             return jsonify({'error': "Tipo de análisis no válido."}), 400
