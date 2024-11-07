@@ -400,17 +400,6 @@ def calculate_sample_size_pearson():
 ####################################### DESCRIPTIVE ANALYSIS #######################################
 ####################################################################################################
 
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-import io
-import base64
-from scipy.stats import skew, kurtosis, pearsonr
-from flask import Flask, request, jsonify
-
-app = Flask(__name__)
-
 # Función para calcular estadísticas descriptivas para una o dos muestras
 def calculate_descriptive_statistics(request_body):
     try:
@@ -569,7 +558,7 @@ def calculate_descriptive_statistics(request_body):
         # Si hay dos muestras, realizar análisis conjunto
         mean1 = float(data_series1.mean())
         mean2 = float(data_series2.mean())
-        correlation, _ = pearsonr(data_series1, data_series2)
+        correlation, _ = stats.pearsonr(data_series1, data_series2)
 
         results.update({
             'mean1': mean1,
