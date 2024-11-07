@@ -425,54 +425,82 @@ def calculate_descriptive_statistics(request_body):
                 for category, group in grouped
             }
 
-            # Crear boxplot por categorías
+            # Crear boxplot por categorías con estilo personalizado
             plt.figure(figsize=(8, 6))
-            sns.boxplot(x=category_series, y=data_series1)
+            sns.boxplot(x=category_series, y=data_series1, palette="Set2", width=0.4)  # Ajuste de ancho y paleta de colores
             plt.title('Boxplot por Categorías')
             plt.xlabel('Categoría')
             plt.ylabel('Valor')
             plt.tight_layout()
-
+            
             boxplot_img = io.BytesIO()
-            plt.savefig(boxplot_img, format='png')
+            plt.savefig(boxplot_img, format='png', bbox_inches='tight', dpi=100)
             boxplot_img.seek(0)
             encoded_boxplot_img = base64.b64encode(boxplot_img.getvalue()).decode()
             plt.close()
 
-            # Crear un gráfico de barras con la media por categoría
+            # Crear gráfico de violín por categorías con estilo personalizado
             plt.figure(figsize=(8, 6))
-            grouped_means = grouped.mean()
-            grouped_means.plot(kind='bar', color='teal')
-            plt.title('Media por Categoría')
-            plt.xlabel('Categoría')
-            plt.ylabel('Media')
-            plt.tight_layout()
-
-            barplot_img = io.BytesIO()
-            plt.savefig(barplot_img, format='png')
-            barplot_img.seek(0)
-            encoded_barplot_img = base64.b64encode(barplot_img.getvalue()).decode()
-            plt.close()
-
-            # Crear gráfico de violín por categorías
-            plt.figure(figsize=(8, 6))
-            sns.violinplot(x=category_series, y=data_series1)
+            sns.violinplot(x=category_series, y=data_series1, palette="Set2", width=0.8)  # Ajuste de ancho y paleta de colores
             plt.title('Gráfico de Violín por Categorías')
             plt.xlabel('Categoría')
             plt.ylabel('Valor')
             plt.tight_layout()
-
+            
             violin_img = io.BytesIO()
-            plt.savefig(violin_img, format='png')
+            plt.savefig(violin_img, format='png', bbox_inches='tight', dpi=100)
             violin_img.seek(0)
             encoded_violin_img = base64.b64encode(violin_img.getvalue()).decode()
+            plt.close()
+
+            # Crear el gráfico de Raincloud (nubes de puntos, boxplot y medio violín)
+            fig, ax = plt.subplots(figsize=(10, 8))
+            palette = sns.color_palette("Set2", len(category_series.unique()))
+
+            # Iterar sobre cada categoría
+            for i, category in enumerate(category_series.unique()):
+                cat_data = data_series1[category_series == category]
+
+                # Dibujar boxplot horizontal
+                bp = ax.boxplot(
+                    [cat_data], positions=[i + 1], patch_artist=True, vert=False, widths=0.2
+                )
+                bp['boxes'][0].set_facecolor(palette[i])
+                bp['boxes'][0].set_alpha(0.4)
+
+                # Dibujar medio violín horizontal
+                vp = ax.violinplot(
+                    [cat_data], positions=[i + 1], points=500, showmeans=False,
+                    showextrema=False, showmedians=False, vert=False
+                )
+                for b in vp['bodies']:
+                    b.get_paths()[0].vertices[:, 1] = np.clip(b.get_paths()[0].vertices[:, 1], i + 1, i + 1.5)
+                    b.set_color(palette[i])
+
+                # Dibujar nubes de puntos (scatter plot) con jitter
+                y = np.full(len(cat_data), i + 1)
+                y_jitter = y + np.random.uniform(-0.05, 0.05, size=len(cat_data))
+                ax.scatter(cat_data, y_jitter, s=3, color=palette[i], alpha=0.5)
+
+            # Etiquetas y configuración del gráfico
+            ax.set_yticks(np.arange(1, len(category_series.unique()) + 1))
+            ax.set_yticklabels(category_series.unique())
+            ax.set_xlabel('Valor')
+            ax.set_title('Raincloud Plot')
+            plt.tight_layout()
+
+            # Guardar el gráfico de Raincloud en formato base64
+            raincloud_img = io.BytesIO()
+            plt.savefig(raincloud_img, format='png', bbox_inches='tight', dpi=100)
+            raincloud_img.seek(0)
+            encoded_raincloud_img = base64.b64encode(raincloud_img.getvalue()).decode()
             plt.close()
 
             return {
                 'stats_by_category': stats_by_category,
                 'boxplot_by_category': encoded_boxplot_img,
-                'barplot_by_category': encoded_barplot_img,
-                'violin_plot_by_category': encoded_violin_img
+                'violin_plot_by_category': encoded_violin_img,
+                'raincloud_plot': encoded_raincloud_img
             }
         
         if data_series2 is not None:
