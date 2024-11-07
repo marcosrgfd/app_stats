@@ -68,7 +68,7 @@ app = Flask(__name__)
 ####################################### SAMPLE SIZE #######################################
 ###########################################################################################
 
-# Ruta para el cálculo de tamaño muestral para comparación de medias (ttest)
+# Ruta para el cálculo de tamaño muestral para comparación de medias
 @app.route('/calculate_sample_size', methods=['POST'])
 def calculate_sample_size():
     try:
@@ -123,13 +123,13 @@ def calculate_sample_size_proportion():
         alternative = data.get('alternative', 'two-sided')  # Tipo de prueba ('two-sided', 'larger', 'smaller')
 
         # Calcular el tamaño del efecto utilizando Cohen's h
-        effect_size = abs(2 * (math.asin(math.sqrt(p1)) - math.asin(math.sqrt(p2))))
+        effect_size = 2 * (math.asin(math.sqrt(p1)) - math.asin(math.sqrt(p2)))
 
         # Configurar el análisis de poder para prueba de proporciones independientes
         analysis = NormalIndPower()
 
         # Calcular el tamaño muestral necesario
-        sample_size = analysis.solve_power(effect_size=effect_size, alpha=alpha, power=power, alternative=alternative)
+        sample_size = analysis.solve_power(effect_size=abs(effect_size), alpha=alpha, power=power, alternative=alternative)
 
         if isinstance(sample_size, np.ndarray):
             sample_size = sample_size.item()  # Convertir a escalar si es un array de un solo valor
@@ -307,11 +307,11 @@ def calculate_sample_size_fisher():
         alternative = data.get('alternative', 'two-sided')  # Tipo de prueba ('two-sided', 'larger', 'smaller')
 
         # Calcular el tamaño del efecto utilizando un enfoque aproximado (Cohen's h)
-        effect_size = abs(2 * (math.asin(math.sqrt(p1)) - math.asin(math.sqrt(p2))))
+        effect_size = 2 * (math.asin(math.sqrt(p1)) - math.asin(math.sqrt(p2)))
 
         # Utilizar NormalIndPower como aproximación
         analysis = NormalIndPower()
-        sample_size = analysis.solve_power(effect_size=effect_size, alpha=alpha, power=power, alternative=alternative)
+        sample_size = analysis.solve_power(effect_size=abs(effect_size), alpha=alpha, power=power, alternative=alternative)
 
         if isinstance(sample_size, np.ndarray):
             sample_size = sample_size.item()
