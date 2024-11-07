@@ -844,26 +844,39 @@ def analyze_selected_columns():
             encoded_boxplot_img = base64.b64encode(boxplot_img.getvalue()).decode()
             plt.close()
 
+            # Crear gráfico de violín por categorías con ancho reducido y colores personalizados
+            plt.figure(figsize=(8, 6))
+            sns.violinplot(x=category_series, y=data_series, palette="Set2", width=0.8)  # Ajuste de ancho y paleta de colores
+            plt.title(f'Gráfico de violín de {selected_columns[0]} según {category_column}')
+            plt.xlabel(category_column)
+            plt.ylabel(selected_columns[0])
+            # Guardar imagen del gráfico de violín
+            violin_img = io.BytesIO()
+            plt.savefig(violin_img, format='png', bbox_inches='tight', dpi=100)
+            violin_img.seek(0)
+            encoded_violin_img = base64.b64encode(violin_img.getvalue()).decode()
+            plt.close()
+
             # Crear el gráfico combinado de nubes de puntos, boxplot y medio violín
             # Crear la figura y el eje
-            fig, ax = plt.subplots(figsize=(8, 7))
-            
+            fig, ax = plt.subplots(figsize=(10, 8))
+
             # Generar una paleta de colores basada en el número de categorías únicas
             palette = sns.color_palette("Set2", len(category_series.unique()))
-            
+
             # Iterar sobre cada categoría única en `category_series`
             for i, category in enumerate(category_series.unique()):
                 # Filtrar datos de la categoría actual
                 cat_data = data_series[category_series == category]
-            
+
                 # Dibujar boxplot horizontal
                 bp = ax.boxplot(
-                    [cat_data], positions=[i + 1], patch_artist=True, vert=False, widths=0.3
+                    [cat_data], positions=[i + 1], patch_artist=True, vert=False, widths=0.2
                 )
                 # Asignar color y transparencia al boxplot
                 bp['boxes'][0].set_facecolor(palette[i])
                 bp['boxes'][0].set_alpha(0.4)
-            
+
                 # Dibujar medio violín horizontal
                 vp = ax.violinplot(
                     [cat_data], positions=[i + 1], points=500, showmeans=False,
@@ -874,29 +887,31 @@ def analyze_selected_columns():
                     b.get_paths()[0].vertices[:, 1] = np.clip(b.get_paths()[0].vertices[:, 1], i + 1, i + 1.5)
                     # Asignar color al violín
                     b.set_color(palette[i])
-            
+
                 # Dibujar puntos con desplazamiento (jitter)
                 y = np.full(len(cat_data), i + 1)
                 y_jitter = y + np.random.uniform(-0.05, 0.05, size=len(cat_data))
                 ax.scatter(cat_data, y_jitter, s=3, color=palette[i], alpha=0.5)
-            
+
             # Etiquetas y configuración del gráfico
             ax.set_yticks(np.arange(1, len(category_series.unique()) + 1))
             ax.set_yticklabels(category_series.unique())
             ax.set_xlabel('Values')
             ax.set_title('Raincloud Plot')
-            
+
             # Guardar el gráfico en formato base64
-            violin_img = io.BytesIO()
-            plt.savefig(violin_img, format='png', bbox_inches='tight', dpi=100)
-            violin_img.seek(0)
-            encoded_violin_img = base64.b64encode(violin_img.getvalue()).decode()
+            raincloud_img = io.BytesIO()
+            plt.savefig(raincloud_img, format='png', bbox_inches='tight', dpi=100)
+            raincloud_img.seek(0)
+            encoded_raincloud_img = base64.b64encode(raincloud_img.getvalue()).decode()
             plt.close()
+
 
             # Añadir los gráficos y estadísticas al resultado
             result['stats_by_category'] = stats_by_category
             result['boxplot_by_category'] = encoded_boxplot_img
-            result['violin_plot'] = encoded_violin_img
+            result['violin_by_category'] = encoded_violin_img
+            result['raincloud_plot'] = encoded_raincloud_img
 
         else:
             return jsonify({'error': "Tipo de análisis no válido."}), 400
