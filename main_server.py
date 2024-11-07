@@ -408,6 +408,11 @@ def calculate_descriptive_statistics(request_body):
         data_series2 = request_body.get('data2')
         category_series = request_body.get('categories')
 
+        # Verificar si el cliente solicitó gráficos específicos
+        show_boxplot = request_body.get('showBoxplot', False)
+        show_violinplot = request_body.get('showViolinPlot', False)
+        show_raincloudplot = request_body.get('showRaincloudPlot', False)
+
         if category_series is not None:
             # Si se proporcionan categorías, convertirlas en una Serie de Pandas
             category_series = pd.Series(category_series)
@@ -426,75 +431,78 @@ def calculate_descriptive_statistics(request_body):
             }
 
             # Crear boxplot por categorías con estilo personalizado
-            plt.figure(figsize=(8, 6))
-            sns.boxplot(x=category_series, y=data_series1, palette="Set2", width=0.4)  # Ajuste de ancho y paleta de colores
-            plt.title('Boxplot por Categorías')
-            plt.xlabel('Categoría')
-            plt.ylabel('Valor')
-            plt.tight_layout()
-            
-            boxplot_img = io.BytesIO()
-            plt.savefig(boxplot_img, format='png', bbox_inches='tight', dpi=100)
-            boxplot_img.seek(0)
-            encoded_boxplot_img = base64.b64encode(boxplot_img.getvalue()).decode()
-            plt.close()
+            if show_boxplot:
+                plt.figure(figsize=(8, 6))
+                sns.boxplot(x=category_series, y=data_series1, palette="Set2", width=0.4)  # Ajuste de ancho y paleta de colores
+                plt.title('Boxplot por Categorías')
+                plt.xlabel('Categoría')
+                plt.ylabel('Valor')
+                plt.tight_layout()
+                
+                boxplot_img = io.BytesIO()
+                plt.savefig(boxplot_img, format='png', bbox_inches='tight', dpi=100)
+                boxplot_img.seek(0)
+                encoded_boxplot_img = base64.b64encode(boxplot_img.getvalue()).decode()
+                plt.close()
 
             # Crear gráfico de violín por categorías con estilo personalizado
-            plt.figure(figsize=(8, 6))
-            sns.violinplot(x=category_series, y=data_series1, palette="Set2", width=0.8)  # Ajuste de ancho y paleta de colores
-            plt.title('Gráfico de Violín por Categorías')
-            plt.xlabel('Categoría')
-            plt.ylabel('Valor')
-            plt.tight_layout()
-            
-            violin_img = io.BytesIO()
-            plt.savefig(violin_img, format='png', bbox_inches='tight', dpi=100)
-            violin_img.seek(0)
-            encoded_violin_img = base64.b64encode(violin_img.getvalue()).decode()
-            plt.close()
+            if show_violinplot:
+                plt.figure(figsize=(8, 6))
+                sns.violinplot(x=category_series, y=data_series1, palette="Set2", width=0.8)  # Ajuste de ancho y paleta de colores
+                plt.title('Gráfico de Violín por Categorías')
+                plt.xlabel('Categoría')
+                plt.ylabel('Valor')
+                plt.tight_layout()
+                
+                violin_img = io.BytesIO()
+                plt.savefig(violin_img, format='png', bbox_inches='tight', dpi=100)
+                violin_img.seek(0)
+                encoded_violin_img = base64.b64encode(violin_img.getvalue()).decode()
+                plt.close()
 
             # Crear el gráfico de Raincloud (nubes de puntos, boxplot y medio violín)
-            fig, ax = plt.subplots(figsize=(10, 8))
-            palette = sns.color_palette("Set2", len(category_series.unique()))
+            if show_raincloudplot:
+                fig, ax = plt.subplots(figsize=(10, 8))
+                palette = sns.color_palette("Set2", len(category_series.unique()))
 
-            # Iterar sobre cada categoría
-            for i, category in enumerate(category_series.unique()):
-                cat_data = data_series1[category_series == category]
+                # Iterar sobre cada categoría
+                for i, category in enumerate(category_series.unique()):
+                    cat_data = data_series1[category_series == category]
 
-                # Dibujar boxplot horizontal
-                bp = ax.boxplot(
-                    [cat_data], positions=[i + 1], patch_artist=True, vert=False, widths=0.2
-                )
-                bp['boxes'][0].set_facecolor(palette[i])
-                bp['boxes'][0].set_alpha(0.4)
+                    # Dibujar boxplot horizontal
+                    bp = ax.boxplot(
+                        [cat_data], positions=[i + 1], patch_artist=True, vert=False, widths=0.2
+                    )
+                    bp['boxes'][0].set_facecolor(palette[i])
+                    bp['boxes'][0].set_alpha(0.4)
 
-                # Dibujar medio violín horizontal
-                vp = ax.violinplot(
-                    [cat_data], positions=[i + 1], points=500, showmeans=False,
-                    showextrema=False, showmedians=False, vert=False
-                )
-                for b in vp['bodies']:
-                    b.get_paths()[0].vertices[:, 1] = np.clip(b.get_paths()[0].vertices[:, 1], i + 1, i + 1.5)
-                    b.set_color(palette[i])
+                    # Dibujar medio violín horizontal
+                    vp = ax.violinplot(
+                        [cat_data], positions=[i + 1], points=500, showmeans=False,
+                        showextrema=False, showmedians=False, vert=False
+                    )
+                    for b in vp['bodies']:
+                        b.get_paths()[0].vertices[:, 1] = np.clip(b.get_paths()[0].vertices[:, 1], i + 1, i + 1.5)
+                        b.set_color(palette[i])
 
-                # Dibujar nubes de puntos (scatter plot) con jitter
-                y = np.full(len(cat_data), i + 1)
-                y_jitter = y + np.random.uniform(-0.05, 0.05, size=len(cat_data))
-                ax.scatter(cat_data, y_jitter, s=3, color=palette[i], alpha=0.5)
+                    # Dibujar nubes de puntos (scatter plot) con jitter
+                    y = np.full(len(cat_data), i + 1)
+                    y_jitter = y + np.random.uniform(-0.05, 0.05, size=len(cat_data))
+                    ax.scatter(cat_data, y_jitter, s=3, color=palette[i], alpha=0.5)
 
-            # Etiquetas y configuración del gráfico
-            ax.set_yticks(np.arange(1, len(category_series.unique()) + 1))
-            ax.set_yticklabels(category_series.unique())
-            ax.set_xlabel('Valor')
-            ax.set_title('Raincloud Plot')
-            plt.tight_layout()
+                # Etiquetas y configuración del gráfico
+                ax.set_yticks(np.arange(1, len(category_series.unique()) + 1))
+                ax.set_yticklabels(category_series.unique())
+                ax.set_xlabel('Valor')
+                ax.set_title('Raincloud Plot')
+                plt.tight_layout()
 
-            # Guardar el gráfico de Raincloud en formato base64
-            raincloud_img = io.BytesIO()
-            plt.savefig(raincloud_img, format='png', bbox_inches='tight', dpi=100)
-            raincloud_img.seek(0)
-            encoded_raincloud_img = base64.b64encode(raincloud_img.getvalue()).decode()
-            plt.close()
+                # Guardar el gráfico de Raincloud en formato base64
+                raincloud_img = io.BytesIO()
+                plt.savefig(raincloud_img, format='png', bbox_inches='tight', dpi=100)
+                raincloud_img.seek(0)
+                encoded_raincloud_img = base64.b64encode(raincloud_img.getvalue()).decode()
+                plt.close()
 
             return {
                 'stats_by_category': stats_by_category,
@@ -665,7 +673,13 @@ def calculate_basic_analysis():
             category_series = pd.Series(category_list)
 
             # Calcular estadísticas descriptivas por categorías
-            result = calculate_descriptive_statistics({'data1': data_series1, 'categories': category_series})
+            result = calculate_descriptive_statistics({
+                'data1': data_series1, 
+                'categories': category_series,
+                'showBoxplot': data.get('showBoxplot'),
+                'showViolinPlot': data.get('showViolinPlot'),
+                'showRaincloudPlot': data.get('showRaincloudPlot')
+            })
         
         elif data_list2 is not None:
             if not isinstance(data_list2, list):
@@ -675,11 +689,22 @@ def calculate_basic_analysis():
             data_series2 = pd.Series(data_list2)
 
             # Calcular estadísticas descriptivas para dos muestras
-            result = calculate_descriptive_statistics({'data1': data_series1, 'data2': data_series2})
+            result = calculate_descriptive_statistics({
+                'data1': data_series1, 
+                'data2': data_series2,
+                'showBoxplot': data.get('showBoxplot'),
+                'showViolinPlot': data.get('showViolinPlot'),
+                'showRaincloudPlot': data.get('showRaincloudPlot')
+            })
         
         else:
             # Calcular estadísticas descriptivas para una sola muestra
-            result = calculate_descriptive_statistics({'data1': data_series1})
+            result = calculate_descriptive_statistics({
+                'data1': data_series1,
+                'showBoxplot': data.get('showBoxplot'),
+                'showViolinPlot': data.get('showViolinPlot'),
+                'showRaincloudPlot': data.get('showRaincloudPlot')
+            })
 
         return jsonify(result)
 
