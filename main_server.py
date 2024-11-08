@@ -394,7 +394,7 @@ def calculate_sample_size_pearson():
         return jsonify({'error': str(e)}), 400
 
     
-# Ruta para el cálculo de tamaño muestral para estudios de Supervivencia (Log-rank test)    
+# Ruta para el cálculo de tamaño muestral para estudios de Supervivencia (Log-rank test)
 @app.route('/calculate_sample_size_logrank', methods=['POST'])
 def calculate_sample_size_logrank():
     try:
@@ -405,9 +405,14 @@ def calculate_sample_size_logrank():
         power = data.get('power', 0.8)  # Potencia estadística
         p1 = data.get('p1', 0.5)  # Proporción esperada de eventos en el grupo control
         p2 = data.get('p2', 0.3)  # Proporción esperada de eventos en el grupo tratamiento
+        alternative = data.get('alternative', 'two-sided')  # Tipo de hipótesis (unilateral o bilateral)
 
-        # Calcular los valores críticos
-        z_alpha = norm.ppf(1 - alpha / 2)
+        # Ajustar el valor crítico según el tipo de hipótesis
+        if alternative == 'two-sided':
+            z_alpha = norm.ppf(1 - alpha / 2)
+        else:
+            z_alpha = norm.ppf(1 - alpha)
+
         z_beta = norm.ppf(power)
 
         # Proporción combinada de eventos
@@ -423,6 +428,7 @@ def calculate_sample_size_logrank():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
 
 # Ruta para el cálculo de tamaño muestral para estudios Longitudinales o de Medidas Repetidas
 @app.route('/calculate_sample_size_longitudinal', methods=['POST'])
@@ -460,18 +466,25 @@ def calculate_sample_size_non_inferiority():
         power = data.get('power', 0.8)  # Potencia estadística
         margin = data.get('margin', 0.1)  # Margen de no inferioridad
         effect_size = data.get('effect_size', None)  # Tamaño del efecto (Cohen's d)
+        alternative = data.get('alternative', 'larger')  # Tipo de hipótesis (unilateral)
 
         if effect_size is None:
             raise ValueError("El tamaño del efecto es necesario para el cálculo.")
 
         # Configurar el análisis de poder para no inferioridad
         analysis = TTestIndPower()
-        sample_size = analysis.solve_power(effect_size=effect_size - margin, alpha=alpha, power=power, alternative='larger')
+        sample_size = analysis.solve_power(
+            effect_size=effect_size - margin,
+            alpha=alpha,
+            power=power,
+            alternative=alternative
+        )
 
         return jsonify({'sample_size': round(sample_size), 'effect_size': effect_size})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
 
 # Ruta para el cálculo de tamaño muestral para pruebas de Equivalencia (TOST)
 @app.route('/calculate_sample_size_tost', methods=['POST'])
