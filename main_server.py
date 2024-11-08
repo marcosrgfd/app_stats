@@ -394,7 +394,113 @@ def calculate_sample_size_pearson():
         return jsonify({'error': str(e)}), 400
 
     
+# Ruta para el cálculo de tamaño muestral para estudios de Supervivencia (Log-rank test)    
+@app.route('/calculate_sample_size_logrank', methods=['POST'])
+def calculate_sample_size_logrank():
+    try:
+        data = request.get_json()
 
+        # Obtener los parámetros de la solicitud
+        alpha = data.get('alpha', 0.05)  # Nivel de significancia
+        power = data.get('power', 0.8)  # Potencia estadística
+        p1 = data.get('p1', 0.5)  # Proporción esperada de eventos en el grupo control
+        p2 = data.get('p2', 0.3)  # Proporción esperada de eventos en el grupo tratamiento
+
+        # Calcular los valores críticos
+        z_alpha = norm.ppf(1 - alpha / 2)
+        z_beta = norm.ppf(power)
+
+        # Proporción combinada de eventos
+        p_combined = (p1 + p2) / 2
+
+        # Tamaño del efecto para log-rank test
+        effect_size = abs(p1 - p2) / math.sqrt(p_combined * (1 - p_combined))
+
+        # Calcular el tamaño muestral necesario
+        sample_size = ((z_alpha + z_beta) ** 2) / (effect_size ** 2)
+
+        return jsonify({'sample_size': math.ceil(sample_size), 'effect_size': effect_size})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+# Ruta para el cálculo de tamaño muestral para estudios Longitudinales o de Medidas Repetidas
+@app.route('/calculate_sample_size_longitudinal', methods=['POST'])
+def calculate_sample_size_longitudinal():
+    try:
+        data = request.get_json()
+
+        # Obtener los parámetros de la solicitud
+        alpha = data.get('alpha', 0.05)  # Nivel de significancia
+        power = data.get('power', 0.8)  # Potencia estadística
+        effect_size = data.get('effect_size', 0.5)  # Tamaño del efecto
+        n_measurements = data.get('n_measurements', 3)  # Número de mediciones
+        rho = data.get('rho', 0.5)  # Correlación intra-sujeto
+
+        # Ajustar el tamaño del efecto considerando la correlación intra-sujeto
+        adjusted_effect_size = effect_size / math.sqrt(1 + (n_measurements - 1) * rho)
+
+        # Configurar el análisis de poder
+        analysis = TTestPower()
+        sample_size = analysis.solve_power(effect_size=adjusted_effect_size, alpha=alpha, power=power)
+
+        return jsonify({'sample_size': round(sample_size), 'adjusted_effect_size': adjusted_effect_size})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+# Ruta para el cálculo de tamaño muestral para pruebas de No Inferioridad
+@app.route('/calculate_sample_size_non_inferiority', methods=['POST'])
+def calculate_sample_size_non_inferiority():
+    try:
+        data = request.get_json()
+
+        # Obtener los parámetros de la solicitud
+        alpha = data.get('alpha', 0.05)  # Nivel de significancia
+        power = data.get('power', 0.8)  # Potencia estadística
+        margin = data.get('margin', 0.1)  # Margen de no inferioridad
+        effect_size = data.get('effect_size', None)  # Tamaño del efecto (Cohen's d)
+
+        if effect_size is None:
+            raise ValueError("El tamaño del efecto es necesario para el cálculo.")
+
+        # Configurar el análisis de poder para no inferioridad
+        analysis = TTestIndPower()
+        sample_size = analysis.solve_power(effect_size=effect_size - margin, alpha=alpha, power=power, alternative='larger')
+
+        return jsonify({'sample_size': round(sample_size), 'effect_size': effect_size})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+# Ruta para el cálculo de tamaño muestral para pruebas de Equivalencia (TOST)
+@app.route('/calculate_sample_size_tost', methods=['POST'])
+def calculate_sample_size_tost():
+    try:
+        data = request.get_json()
+
+        # Obtener los parámetros de la solicitud
+        alpha = data.get('alpha', 0.05)  # Nivel de significancia
+        power = data.get('power', 0.8)  # Potencia estadística
+        lower_margin = data.get('lower_margin', -0.1)  # Margen inferior de equivalencia
+        upper_margin = data.get('upper_margin', 0.1)  # Margen superior de equivalencia
+        effect_size = data.get('effect_size', None)  # Tamaño del efecto (Cohen's d)
+
+        if effect_size is None:
+            raise ValueError("El tamaño del efecto es necesario para el cálculo.")
+
+        # Configurar el análisis de poder para prueba TOST
+        analysis = TTestIndPower()
+        sample_size_lower = analysis.solve_power(effect_size=effect_size - lower_margin, alpha=alpha / 2, power=power, alternative='larger')
+        sample_size_upper = analysis.solve_power(effect_size=effect_size - upper_margin, alpha=alpha / 2, power=power, alternative='smaller')
+
+        # Tomar el tamaño muestral máximo de ambas pruebas
+        sample_size = max(sample_size_lower, sample_size_upper)
+
+        return jsonify({'sample_size': round(sample_size), 'effect_size': effect_size})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 ####################################################################################################
 ####################################### DESCRIPTIVE ANALYSIS #######################################
