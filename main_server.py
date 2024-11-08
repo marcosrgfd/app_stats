@@ -480,10 +480,15 @@ def calculate_sample_size_non_inferiority():
             alternative=alternative
         )
 
+        # Convertir a escalar si es un array
+        if isinstance(sample_size, np.ndarray):
+            sample_size = sample_size.item()
+
         return jsonify({'sample_size': round(sample_size), 'effect_size': effect_size})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
 
 
 # Ruta para el cálculo de tamaño muestral para pruebas de Equivalencia (TOST)
@@ -506,6 +511,12 @@ def calculate_sample_size_tost():
         analysis = TTestIndPower()
         sample_size_lower = analysis.solve_power(effect_size=effect_size - lower_margin, alpha=alpha / 2, power=power, alternative='larger')
         sample_size_upper = analysis.solve_power(effect_size=effect_size - upper_margin, alpha=alpha / 2, power=power, alternative='smaller')
+
+        # Convertir los resultados a escalares si son arrays
+        if isinstance(sample_size_lower, np.ndarray):
+            sample_size_lower = sample_size_lower.item()
+        if isinstance(sample_size_upper, np.ndarray):
+            sample_size_upper = sample_size_upper.item()
 
         # Tomar el tamaño muestral máximo de ambas pruebas
         sample_size = max(sample_size_lower, sample_size_upper)
