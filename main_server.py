@@ -59,10 +59,61 @@ from sklearn.metrics import r2_score, accuracy_score, confusion_matrix
 from sklearn.model_selection import cross_val_score
 from lifelines import CoxPHFitter
 
+# MANEJO DE FEEDBACK
+import requests
+
+
 # Cambiar el backend de matplotlib para evitar problemas de hilos en entornos de servidor
 plt.switch_backend('Agg')
 
 app = Flask(__name__)
+
+# Ruta para enviar feedback a través de EmailJS
+@app.route('/send_feedback', methods=['POST'])
+def send_feedback():
+    try:
+        data = request.get_json()
+        message = data.get('message', '')
+
+        # Verifica que el mensaje no esté vacío
+        if not message:
+            return jsonify({'error': 'El mensaje no puede estar vacío.'}), 400
+
+        # Credenciales de EmailJS
+        EMAILJS_SERVICE_ID = 'service_pj2xdwe'
+        EMAILJS_TEMPLATE_ID = 'template_se4w52h'
+        EMAILJS_USER_ID = 'YvoyFAPjmjxZ5n9FK'
+
+        # Endpoint de la API de EmailJS
+        url = 'https://api.emailjs.com/api/v1.0/email/send'
+
+        # Datos para la solicitud a EmailJS
+        payload = {
+            'service_id': EMAILJS_SERVICE_ID,
+            'template_id': EMAILJS_TEMPLATE_ID,
+            'user_id': EMAILJS_USER_ID,
+            'template_params': {
+                'message': message,
+                'from_name': 'Usuario de App',
+                'to_name': 'Equipo',
+            }
+        }
+
+        headers = {
+            'Content-Type': 'application/json',
+        }
+
+        # Realiza la solicitud POST a EmailJS
+        response = requests.post(url, headers=headers, json=payload)
+
+        # Verifica la respuesta
+        if response.status_code == 200:
+            return jsonify({'success': True, 'message': 'Feedback enviado correctamente.'}), 200
+        else:
+            return jsonify({'error': 'Error al enviar feedback. Intenta de nuevo.'}), 500
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 ###########################################################################################
 ####################################### SAMPLE SIZE #######################################
