@@ -81,9 +81,9 @@ def send_feedback():
             return jsonify({'error': 'El mensaje no puede estar vacío.'}), 400
 
         # Configuración de EmailJS
-        EMAILJS_SERVICE_ID = 'service_pj2xdwe'
-        EMAILJS_TEMPLATE_ID = 'template_se4w52h'
-        EMAILJS_PRIVATE_KEY = 'OKkhWqJedjesgeDdCvTCV'  # Coloca aquí tu clave privada
+        EMAILJS_SERVICE_ID = 'service_pj2xdwe'  # Verifica que el ID del servicio esté correcto
+        EMAILJS_TEMPLATE_ID = 'template_se4w52h'  # Verifica que el ID de la plantilla esté correcto
+        EMAILJS_USER_ID = 'YvoyFAPjmjxZ5n9FK'  # Asegúrate de que este sea el User ID (clave pública)
 
         # URL de la API de EmailJS
         url = 'https://api.emailjs.com/api/v1.0/email/send'
@@ -102,7 +102,7 @@ def send_feedback():
 
         headers = {
             'Content-Type': 'application/json',
-            'Authorization': f'Bearer {EMAILJS_PRIVATE_KEY}',
+            'Authorization': f'Bearer {EMAILJS_USER_ID}',
         }
 
         # Enviar solicitud a EmailJS
