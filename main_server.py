@@ -83,7 +83,7 @@ def send_feedback():
         # Configuración de EmailJS
         EMAILJS_SERVICE_ID = 'service_pj2xdwe'
         EMAILJS_TEMPLATE_ID = 'template_se4w52h'
-        EMAILJS_PRIVATE_KEY = 'OKkh...'  # Coloca aquí tu clave privada
+        EMAILJS_PRIVATE_KEY = 'OKkhWqJedjesgeDdCvTCV'  # Coloca aquí tu clave privada
 
         # URL de la API de EmailJS
         url = 'https://api.emailjs.com/api/v1.0/email/send'
