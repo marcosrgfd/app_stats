@@ -75,16 +75,15 @@ def send_feedback():
         data = request.get_json()
         message = data.get('message', '')
 
-        # Verifica que el mensaje no esté vacío
         if not message:
             return jsonify({'error': 'El mensaje no puede estar vacío.'}), 400
 
-        # Credenciales de EmailJS
+        # Configuración de EmailJS
         EMAILJS_SERVICE_ID = 'service_pj2xdwe'
         EMAILJS_TEMPLATE_ID = 'template_se4w52h'
         EMAILJS_USER_ID = 'YvoyFAPjmjxZ5n9FK'
 
-        # Endpoint de la API de EmailJS
+        # URL de la API de EmailJS
         url = 'https://api.emailjs.com/api/v1.0/email/send'
 
         # Datos para la solicitud a EmailJS
@@ -94,8 +93,8 @@ def send_feedback():
             'user_id': EMAILJS_USER_ID,
             'template_params': {
                 'message': message,
-                'from_name': 'Usuario de App',
-                'to_name': 'Equipo',
+                'from_name': 'Usuario Anónimo',
+                'to_name': 'Equipo de Biomáxima',
             }
         }
 
@@ -103,14 +102,13 @@ def send_feedback():
             'Content-Type': 'application/json',
         }
 
-        # Realiza la solicitud POST a EmailJS
+        # Enviar solicitud a EmailJS
         response = requests.post(url, headers=headers, json=payload)
 
-        # Verifica la respuesta
         if response.status_code == 200:
             return jsonify({'success': True, 'message': 'Feedback enviado correctamente.'}), 200
         else:
-            return jsonify({'error': 'Error al enviar feedback. Intenta de nuevo.'}), 500
+            return jsonify({'error': 'Error al enviar feedback a través de EmailJS.'}), 500
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
