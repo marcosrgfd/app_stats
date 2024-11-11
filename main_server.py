@@ -61,12 +61,14 @@ from lifelines import CoxPHFitter
 
 # MANEJO DE FEEDBACK
 import requests
+from flask_cors import CORS
 
 
 # Cambiar el backend de matplotlib para evitar problemas de hilos en entornos de servidor
 plt.switch_backend('Agg')
 
 app = Flask(__name__)
+CORS(app)
 
 # Ruta para enviar feedback a través de EmailJS
 @app.route('/send_feedback', methods=['POST'])
