@@ -11,5 +11,6 @@ openpyxl
 scikit_posthocs
 lifelines
 requests
+flask_cors
 
 
