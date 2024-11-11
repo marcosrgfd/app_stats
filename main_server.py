@@ -68,7 +68,7 @@ from flask_cors import CORS
 plt.switch_backend('Agg')
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Ruta para enviar feedback a través de EmailJS
 @app.route('/send_feedback', methods=['POST'])
@@ -102,7 +102,9 @@ def send_feedback():
 
         headers = {
             'Content-Type': 'application/json',
+            'Authorization': 'OKkhWqJedjesgeDdCvTCV'  # Reemplaza con tu Private Key de EmailJS
         }
+
 
         # Enviar solicitud a EmailJS
         response = requests.post(url, headers=headers, json=payload)
@@ -110,7 +112,8 @@ def send_feedback():
         if response.status_code == 200:
             return jsonify({'success': True, 'message': 'Feedback enviado correctamente.'}), 200
         else:
-            return jsonify({'error': 'Error al enviar feedback a través de EmailJS.'}), 500
+            return jsonify({'error': f'Error al enviar feedback: {response.status_code}, {response.text}'}), 500
+
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
