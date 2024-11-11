@@ -83,7 +83,7 @@ def send_feedback():
         # Configuración de EmailJS
         EMAILJS_SERVICE_ID = 'service_pj2xdwe'
         EMAILJS_TEMPLATE_ID = 'template_se4w52h'
-        EMAILJS_USER_ID = 'YvoyFAPjmjxZ5n9FK'
+        EMAILJS_PRIVATE_KEY = 'OKkh...'  # Coloca aquí tu clave privada
 
         # URL de la API de EmailJS
         url = 'https://api.emailjs.com/api/v1.0/email/send'
@@ -92,7 +92,7 @@ def send_feedback():
         payload = {
             'service_id': EMAILJS_SERVICE_ID,
             'template_id': EMAILJS_TEMPLATE_ID,
-            'user_id': EMAILJS_USER_ID,
+            'user_id': 'user_id_placeholder',  # Puedes dejar un valor vacío o cualquier texto
             'template_params': {
                 'message': message,
                 'from_name': 'Usuario Anónimo',
@@ -102,9 +102,8 @@ def send_feedback():
 
         headers = {
             'Content-Type': 'application/json',
-            'Authorization': 'OKkhWqJedjesgeDdCvTCV'  # Reemplaza con tu Private Key de EmailJS
+            'Authorization': f'Bearer {EMAILJS_PRIVATE_KEY}',
         }
-
 
         # Enviar solicitud a EmailJS
         response = requests.post(url, headers=headers, json=payload)
@@ -112,11 +111,11 @@ def send_feedback():
         if response.status_code == 200:
             return jsonify({'success': True, 'message': 'Feedback enviado correctamente.'}), 200
         else:
-            return jsonify({'error': f'Error al enviar feedback: {response.status_code}, {response.text}'}), 500
-
+            return jsonify({'error': f'Error al enviar feedback a través de EmailJS: {response.status_code}, {response.text}'}), 500
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 ###########################################################################################
 ####################################### SAMPLE SIZE #######################################
