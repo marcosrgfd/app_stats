@@ -10,5 +10,6 @@ scikit-learn
 openpyxl
 scikit_posthocs
 lifelines
+requests
 
 
