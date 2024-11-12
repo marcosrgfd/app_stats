@@ -59,63 +59,10 @@ from sklearn.metrics import r2_score, accuracy_score, confusion_matrix
 from sklearn.model_selection import cross_val_score
 from lifelines import CoxPHFitter
 
-# MANEJO DE FEEDBACK
-import requests
-from flask_cors import CORS
-
-
 # Cambiar el backend de matplotlib para evitar problemas de hilos en entornos de servidor
 plt.switch_backend('Agg')
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})
-
-# Ruta para enviar feedback a través de EmailJS
-@app.route('/send_feedback', methods=['POST'])
-def send_feedback():
-    try:
-        data = request.get_json()
-        message = data.get('message', '')
-
-        if not message:
-            return jsonify({'error': 'El mensaje no puede estar vacío.'}), 400
-
-        # Configuración de EmailJS
-        EMAILJS_SERVICE_ID = 'service_pj2xdwe'  # Verifica que el ID del servicio esté correcto
-        EMAILJS_TEMPLATE_ID = 'template_se4w52h'  # Verifica que el ID de la plantilla esté correcto
-        EMAILJS_USER_ID = 'YvoyFAPjmjxZ5n9FK'  # Asegúrate de que este sea el User ID (clave pública)
-
-        # URL de la API de EmailJS
-        url = 'https://api.emailjs.com/api/v1.0/email/send'
-
-        # Datos para la solicitud a EmailJS
-        payload = {
-            'service_id': EMAILJS_SERVICE_ID,
-            'template_id': EMAILJS_TEMPLATE_ID,
-            'user_id': 'user_id_placeholder',  # Puedes dejar un valor vacío o cualquier texto
-            'template_params': {
-                'message': message,
-                'from_name': 'Usuario Anónimo',
-                'to_name': 'Equipo de Biomáxima',
-            }
-        }
-
-        headers = {
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {EMAILJS_USER_ID}',
-        }
-
-        # Enviar solicitud a EmailJS
-        response = requests.post(url, headers=headers, json=payload)
-
-        if response.status_code == 200:
-            return jsonify({'success': True, 'message': 'Feedback enviado correctamente.'}), 200
-        else:
-            return jsonify({'error': f'Error al enviar feedback a través de EmailJS: {response.status_code}, {response.text}'}), 500
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
 
 ###########################################################################################
 ####################################### SAMPLE SIZE #######################################
@@ -1406,7 +1353,84 @@ def run_regression():
     except Exception as e:
         return jsonify({'error': str(e)}), 400
     
+# 3. T-Test
+@app.route('/run_ttest', methods=['POST'])
+def run_ttest():
+    global dataframe
+    try:
+        group_column = request.json.get('group_column')
+        value_column = request.json.get('value_column')
 
+        if group_column not in dataframe.columns or value_column not in dataframe.columns:
+            return jsonify({'error': 'Columnas no encontradas en los datos.'}), 400
+
+        groups = dataframe.groupby(group_column)[value_column].apply(list)
+        t_stat, p_value = stats.ttest_ind(groups.iloc[0], groups.iloc[1], equal_var=False)
+
+        result = {'t_statistic': t_stat, 'p_value': p_value}
+        return jsonify({'result': result})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+# 4. ANOVA
+@app.route('/run_anova', methods=['POST'])
+def run_anova():
+    global dataframe
+    try:
+        group_column = request.json.get('group_column')
+        value_column = request.json.get('value_column')
+
+        if group_column not in dataframe.columns or value_column not in dataframe.columns:
+            return jsonify({'error': 'Columnas no encontradas en los datos.'}), 400
+
+        groups = [group[value_column].values for _, group in dataframe.groupby(group_column)]
+        f_stat, p_value = f_oneway(*groups)
+
+        result = {'f_statistic': f_stat, 'p_value': p_value}
+        return jsonify({'result': result})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+# 5. Chi-Square
+@app.route('/run_chisquare', methods=['POST'])
+def run_chisquare():
+    global dataframe
+    try:
+        row_column = request.json.get('row_column')
+        col_column = request.json.get('col_column')
+
+        if row_column not in dataframe.columns or col_column not in dataframe.columns:
+            return jsonify({'error': 'Columnas no encontradas en los datos.'}), 400
+
+        contingency_table = pd.crosstab(dataframe[row_column], dataframe[col_column])
+        chi2, p_value, _, _ = chi2_contingency(contingency_table)
+
+        result = {'chi_square_statistic': chi2, 'p_value': p_value}
+        return jsonify({'result': result})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+# 6. Shapiro-Wilk
+@app.route('/run_shapiro', methods=['POST'])
+def run_shapiro():
+    global dataframe
+    try:
+        value_column = request.json.get('value_column')
+
+        if value_column not in dataframe.columns:
+            return jsonify({'error': 'Columna no encontrada en los datos.'}), 400
+
+        sample = dataframe[value_column].dropna()
+        w_stat, p_value = shapiro(sample)
+
+        result = {'w_statistic': w_stat, 'p_value': p_value}
+        return jsonify({'result': result})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 ##########################################################################################
 ####################################### STAT TESTS #######################################
