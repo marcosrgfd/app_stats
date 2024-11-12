@@ -1356,39 +1356,38 @@ def run_regression():
 # 3. T-Test
 @app.route('/run_ttest', methods=['POST'])
 def run_ttest():
+    global dataframe
     try:
-        # Cargar el archivo CSV
-        file = request.files['file']
-        df = pd.read_csv(file)
+        # Obtener los parámetros de la solicitud desde Flutter
+        data = request.get_json()
+        numeric_column = data.get('numeric_column')
+        categorical_column = data.get('categorical_column')
 
-        # Obtener los parámetros de la solicitud
-        numeric_column = request.json['numeric_column']
-        categorical_column = request.json['categorical_column']
+        # Validar que las columnas especificadas existen en el DataFrame
+        if numeric_column not in dataframe.columns or categorical_column not in dataframe.columns:
+            return jsonify({'error': 'Las columnas especificadas no se encontraron en los datos.'}), 400
 
-        # Verificar que la variable categórica tenga solo dos categorías
-        categories = df[categorical_column].unique()
-        if len(categories) != 2:
-            return jsonify({'error': 'La variable categórica debe tener exactamente 2 categorías.'}), 400
+        # Agrupar los datos por la columna categórica
+        groups = dataframe.groupby(categorical_column)[numeric_column].apply(list)
+        
+        # Verificar que haya al menos dos grupos para el T-Test
+        if len(groups) < 2:
+            return jsonify({'error': 'Datos insuficientes para realizar el T-Test. Se requieren al menos dos categorías.'}), 400
 
-        # Separar los grupos para el T-Test
-        group1 = df[df[categorical_column] == categories[0]][numeric_column].dropna()
-        group2 = df[df[categorical_column] == categories[1]][numeric_column].dropna()
-
-        # Realizar el T-Test
-        t_stat, p_value = ttest_ind(group1, group2)
+        # Realizar el T-Test para las dos categorías
+        t_stat, p_value = stats.ttest_ind(groups.iloc[0], groups.iloc[1], equal_var=False)
 
         # Devolver los resultados
         result = {
             't_statistic': t_stat,
-            'p_value': p_value,
-            'group1': categories[0],
-            'group2': categories[1]
+            'p_value': p_value
         }
 
         return jsonify({'result': result})
-    
+
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': str(e)}), 400
+
 
 
 # 4. ANOVA
