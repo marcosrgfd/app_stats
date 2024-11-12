@@ -1374,19 +1374,25 @@ def run_ttest():
         if len(groups) < 2:
             return jsonify({'error': 'Datos insuficientes para realizar el T-Test. Se requieren al menos dos categorías.'}), 400
 
+        # Obtener los nombres de las categorías
+        category_names = groups.index.tolist()
+
         # Realizar el T-Test para las dos categorías
         t_stat, p_value = stats.ttest_ind(groups.iloc[0], groups.iloc[1], equal_var=False)
 
-        # Devolver los resultados
+        # Devolver los resultados incluyendo los nombres de las categorías
         result = {
             't_statistic': t_stat,
-            'p_value': p_value
+            'p_value': p_value,
+            'category1': category_names[0],
+            'category2': category_names[1]
         }
 
         return jsonify({'result': result})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
 
 
 
