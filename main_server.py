@@ -1356,26 +1356,39 @@ def run_regression():
 # 3. T-Test
 @app.route('/run_ttest', methods=['POST'])
 def run_ttest():
-    global dataframe
     try:
-        # Seleccionar automáticamente la primera columna categórica y la primera numérica
-        group_column = dataframe.select_dtypes(exclude=['number']).columns[0]
-        value_column = dataframe.select_dtypes(include=['number']).columns[0]
+        # Cargar el archivo CSV
+        file = request.files['file']
+        df = pd.read_csv(file)
 
-        if group_column not in dataframe.columns or value_column not in dataframe.columns:
-            return jsonify({'error': 'No se encontraron columnas adecuadas para T-Test.'}), 400
+        # Obtener los parámetros de la solicitud
+        numeric_column = request.json['numeric_column']
+        categorical_column = request.json['categorical_column']
 
-        groups = dataframe.groupby(group_column)[value_column].apply(list)
-        if len(groups) < 2:
-            return jsonify({'error': 'Datos insuficientes para T-Test.'}), 400
+        # Verificar que la variable categórica tenga solo dos categorías
+        categories = df[categorical_column].unique()
+        if len(categories) != 2:
+            return jsonify({'error': 'La variable categórica debe tener exactamente 2 categorías.'}), 400
 
-        t_stat, p_value = stats.ttest_ind(groups.iloc[0], groups.iloc[1], equal_var=False)
-        result = {'t_statistic': t_stat, 'p_value': p_value}
+        # Separar los grupos para el T-Test
+        group1 = df[df[categorical_column] == categories[0]][numeric_column].dropna()
+        group2 = df[df[categorical_column] == categories[1]][numeric_column].dropna()
+
+        # Realizar el T-Test
+        t_stat, p_value = ttest_ind(group1, group2)
+
+        # Devolver los resultados
+        result = {
+            't_statistic': t_stat,
+            'p_value': p_value,
+            'group1': categories[0],
+            'group2': categories[1]
+        }
 
         return jsonify({'result': result})
-
+    
     except Exception as e:
-        return jsonify({'error': str(e)}), 400
+        return jsonify({'error': str(e)}), 500
 
 
 # 4. ANOVA
