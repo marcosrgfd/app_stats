@@ -1358,51 +1358,62 @@ def run_regression():
 def run_ttest():
     global dataframe
     try:
-        group_column = request.json.get('group_column')
-        value_column = request.json.get('value_column')
+        # Seleccionar automáticamente la primera columna categórica y la primera numérica
+        group_column = dataframe.select_dtypes(exclude=['number']).columns[0]
+        value_column = dataframe.select_dtypes(include=['number']).columns[0]
 
         if group_column not in dataframe.columns or value_column not in dataframe.columns:
-            return jsonify({'error': 'Columnas no encontradas en los datos.'}), 400
+            return jsonify({'error': 'No se encontraron columnas adecuadas para T-Test.'}), 400
 
         groups = dataframe.groupby(group_column)[value_column].apply(list)
-        t_stat, p_value = stats.ttest_ind(groups.iloc[0], groups.iloc[1], equal_var=False)
+        if len(groups) < 2:
+            return jsonify({'error': 'Datos insuficientes para T-Test.'}), 400
 
+        t_stat, p_value = stats.ttest_ind(groups.iloc[0], groups.iloc[1], equal_var=False)
         result = {'t_statistic': t_stat, 'p_value': p_value}
+
         return jsonify({'result': result})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
 
 # 4. ANOVA
 @app.route('/run_anova', methods=['POST'])
 def run_anova():
     global dataframe
     try:
-        group_column = request.json.get('group_column')
-        value_column = request.json.get('value_column')
+        # Seleccionar automáticamente la primera columna categórica y la primera numérica
+        group_column = dataframe.select_dtypes(exclude=['number']).columns[0]
+        value_column = dataframe.select_dtypes(include=['number']).columns[0]
 
         if group_column not in dataframe.columns or value_column not in dataframe.columns:
-            return jsonify({'error': 'Columnas no encontradas en los datos.'}), 400
+            return jsonify({'error': 'No se encontraron columnas adecuadas para ANOVA.'}), 400
 
         groups = [group[value_column].values for _, group in dataframe.groupby(group_column)]
-        f_stat, p_value = f_oneway(*groups)
+        if len(groups) < 2:
+            return jsonify({'error': 'Datos insuficientes para ANOVA.'}), 400
 
+        f_stat, p_value = f_oneway(*groups)
         result = {'f_statistic': f_stat, 'p_value': p_value}
+
         return jsonify({'result': result})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
 
 # 5. Chi-Square
 @app.route('/run_chisquare', methods=['POST'])
 def run_chisquare():
     global dataframe
     try:
-        row_column = request.json.get('row_column')
-        col_column = request.json.get('col_column')
+        # Seleccionar automáticamente dos columnas categóricas
+        row_column = dataframe.select_dtypes(exclude=['number']).columns[0]
+        col_column = dataframe.select_dtypes(exclude=['number']).columns[1]
 
         if row_column not in dataframe.columns or col_column not in dataframe.columns:
-            return jsonify({'error': 'Columnas no encontradas en los datos.'}), 400
+            return jsonify({'error': 'No se encontraron columnas adecuadas para Chi-Square.'}), 400
 
         contingency_table = pd.crosstab(dataframe[row_column], dataframe[col_column])
         chi2, p_value, _, _ = chi2_contingency(contingency_table)
@@ -1413,15 +1424,17 @@ def run_chisquare():
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
+
 # 6. Shapiro-Wilk
 @app.route('/run_shapiro', methods=['POST'])
 def run_shapiro():
     global dataframe
     try:
-        value_column = request.json.get('value_column')
+        # Seleccionar automáticamente la primera columna numérica
+        value_column = dataframe.select_dtypes(include=['number']).columns[0]
 
         if value_column not in dataframe.columns:
-            return jsonify({'error': 'Columna no encontrada en los datos.'}), 400
+            return jsonify({'error': 'No se encontró una columna numérica adecuada para Shapiro-Wilk.'}), 400
 
         sample = dataframe[value_column].dropna()
         w_stat, p_value = shapiro(sample)
