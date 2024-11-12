@@ -1265,10 +1265,16 @@ def upload_file_stat():
             numeric_columns = dataframe.select_dtypes(include=['number']).columns.tolist()
             categorical_columns = dataframe.select_dtypes(exclude=['number']).columns.tolist()
 
+            # Filtrar solo las columnas categóricas con exactamente dos categorías
+            binary_categorical_columns = [
+                col for col in categorical_columns if dataframe[col].nunique() == 2
+            ]
+
             return jsonify({
                 'message': 'Archivo cargado exitosamente',
                 'numeric_columns': numeric_columns,
-                'categorical_columns': categorical_columns
+                'categorical_columns': categorical_columns,
+                'binary_categorical_columns': binary_categorical_columns
             })
 
         except Exception as e:
@@ -1277,6 +1283,7 @@ def upload_file_stat():
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
+# 2. REGRESIÓN SIMPLE
 @app.route('/run_regression', methods=['POST'])
 def run_regression():
     global dataframe
