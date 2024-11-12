@@ -1450,7 +1450,7 @@ def run_chisquare():
         return jsonify({'error': str(e)}), 400
 
 
-# 6. Shapiro-Wilk
+# 6. Shapiro-Wilk 
 @app.route('/run_shapiro', methods=['POST'])
 def run_shapiro():
     global dataframe
@@ -1476,7 +1476,7 @@ def run_shapiro():
                     w_stat, p_value = shapiro(values)
                     shapiro_results[group] = {'w_statistic': w_stat, 'p_value': p_value}
 
-            return jsonify({'result': shapiro_results})
+            return jsonify({'type': 'grouped', 'result': shapiro_results})
 
         # Si no se especifica grupo, hacer Shapiro-Wilk global
         values = dataframe[numeric_column].dropna()
@@ -1486,10 +1486,11 @@ def run_shapiro():
         w_stat, p_value = shapiro(values)
         result = {'w_statistic': w_stat, 'p_value': p_value}
 
-        return jsonify({'result': result})
+        return jsonify({'type': 'global', 'result': result})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
 
 ##########################################################################################
 ####################################### STAT TESTS #######################################
