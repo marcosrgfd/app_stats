@@ -1455,16 +1455,37 @@ def run_chisquare():
 def run_shapiro():
     global dataframe
     try:
-        # Seleccionar automáticamente la primera columna numérica
-        value_column = dataframe.select_dtypes(include=['number']).columns[0]
+        # Obtener los parámetros de la solicitud
+        data = request.get_json()
+        numeric_column = data.get('sample')
+        group_column = data.get('group_column', None)
 
-        if value_column not in dataframe.columns:
-            return jsonify({'error': 'No se encontró una columna numérica adecuada para Shapiro-Wilk.'}), 400
+        # Validar que la columna numérica exista
+        if numeric_column not in dataframe.columns:
+            return jsonify({'error': 'La columna numérica especificada no se encontró en los datos.'}), 400
 
-        sample = dataframe[value_column].dropna()
-        w_stat, p_value = shapiro(sample)
+        # Si se especifica una columna de grupo, hacer Shapiro-Wilk por grupo
+        if group_column and group_column in dataframe.columns:
+            groups = dataframe.groupby(group_column)[numeric_column].apply(list)
+            shapiro_results = {}
 
+            for group, values in groups.items():
+                if len(values) < 3:
+                    shapiro_results[group] = {'w_statistic': None, 'p_value': 'Datos insuficientes'}
+                else:
+                    w_stat, p_value = shapiro(values)
+                    shapiro_results[group] = {'w_statistic': w_stat, 'p_value': p_value}
+
+            return jsonify({'result': shapiro_results})
+
+        # Si no se especifica grupo, hacer Shapiro-Wilk global
+        values = dataframe[numeric_column].dropna()
+        if len(values) < 3:
+            return jsonify({'error': 'Datos insuficientes para realizar la prueba de Shapiro-Wilk.'}), 400
+
+        w_stat, p_value = shapiro(values)
         result = {'w_statistic': w_stat, 'p_value': p_value}
+
         return jsonify({'result': result})
 
     except Exception as e:
