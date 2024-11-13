@@ -1477,6 +1477,10 @@ def run_anova():
                 all_data = []
                 labels = []
                 for i, group in enumerate(groups):
+                    # Verificar que el grupo tenga al menos un valor
+                    if len(group) == 0:
+                        return jsonify({'error': f'El grupo {groups.index[i]} no contiene datos suficientes.'}), 400
+
                     all_data.extend(group)
                     labels.extend([groups.index[i]] * len(group))
 
@@ -1488,13 +1492,13 @@ def run_anova():
 
                 # Formatear los resultados de Tukey HSD
                 tukey_summary = []
-                for result in tukey.summary().data[1:]:
-                    comparison = f"{result[0]} vs {result[1]}"
-                    mean_diff = f"{result[2]:.2f}"
-                    p_adj = f"{result[3]:.3f}"
-                    ci_lower = f"{result[4]:.2f}"
-                    ci_upper = f"{result[5]:.2f}"
-                    reject_h0 = "Sí" if result[6] else "No"
+                for res in tukey.summary().data[1:]:  # Ignorar la cabecera
+                    comparison = f"{res[0]} vs {res[1]}"
+                    mean_diff = f"{res[2]:.2f}"
+                    p_adj = f"{res[3]:.3f}"
+                    ci_lower = f"{res[4]:.2f}"
+                    ci_upper = f"{res[5]:.2f}"
+                    reject_h0 = "Sí" if res[6] else "No"
 
                     tukey_summary.append({
                         'comparison': comparison,
@@ -1505,6 +1509,7 @@ def run_anova():
                         'reject_h0': reject_h0
                     })
 
+                # Agregar el resumen de Tukey al resultado
                 result['tukey'] = tukey_summary
 
             except Exception as e:
@@ -1514,6 +1519,7 @@ def run_anova():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
 
 
 # 5. Chi-Square
