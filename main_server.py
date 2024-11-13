@@ -1214,7 +1214,6 @@ def generate_charts():
 # Variable global para almacenar el DataFrame cargado
 dataframe = None
 
-# Ruta para cargar archivos CSV
 @app.route('/upload_csv_stat', methods=['POST'])
 def upload_file_stat():
     global dataframe
@@ -1228,44 +1227,73 @@ def upload_file_stat():
             return jsonify({'error': 'El archivo no tiene nombre.'}), 400
 
         filename = file.filename.lower()
+        print(f"Nombre del archivo: {filename}")
 
         try:
+            # Intentar leer el archivo con distintas configuraciones
             if filename.endswith('.csv'):
-                # Probar diferentes combinaciones de delimitador y codificación
-                try:
-                    dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("utf-8")), delimiter=';', decimal=',')
-                except Exception:
-                    try:
-                        dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("ISO-8859-1")), delimiter=';', decimal=',')
-                    except Exception:
-                        dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("utf-8")), delimiter=',', decimal='.')
+                for encoding in ["utf-8", "ISO-8859-1"]:
+                    for delimiter in [',', ';']:
+                        try:
+                            print(f"Intentando leer con encoding={encoding}, delimiter={delimiter}")
+                            dataframe = pd.read_csv(
+                                io.StringIO(file.stream.read().decode(encoding)),
+                                delimiter=delimiter,
+                                decimal=','
+                            )
+                            # Si se carga correctamente, salir del bucle
+                            if not dataframe.empty:
+                                print("Archivo leído exitosamente.")
+                                break
+                        except Exception as e:
+                            print(f"Error con encoding={encoding}, delimiter={delimiter}: {e}")
+                    else:
+                        continue
+                    break
+
+                # Si el DataFrame sigue vacío, devolver error
+                if dataframe.empty:
+                    return jsonify({'error': 'No se pudo leer el archivo con los métodos disponibles.'}), 400
 
             elif filename.endswith(('.xls', '.xlsx')):
-                file_stream = io.BytesIO(file.read())
-                dataframe = pd.read_excel(file_stream, engine='openpyxl')
+                try:
+                    file_stream = io.BytesIO(file.read())
+                    print("Intentando leer archivo Excel")
+                    dataframe = pd.read_excel(file_stream, engine='openpyxl')
+                except Exception as e:
+                    print(f"Error al leer archivo Excel: {e}")
+                    return jsonify({'error': 'Error al procesar archivo Excel.'}), 400
 
             elif filename.endswith('.txt'):
-                try:
-                    dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("utf-8")), delimiter=r'\s+')
-                except Exception:
-                    dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("ISO-8859-1")), delimiter=r'\s+')
+                for encoding in ["utf-8", "ISO-8859-1"]:
+                    try:
+                        print(f"Intentando leer archivo TXT con encoding={encoding}")
+                        dataframe = pd.read_csv(io.StringIO(file.stream.read().decode(encoding)), delimiter=r'\s+')
+                        if not dataframe.empty:
+                            break
+                    except Exception as e:
+                        print(f"Error al leer archivo TXT con encoding={encoding}: {e}")
+                if dataframe.empty:
+                    return jsonify({'error': 'No se pudo leer el archivo TXT con los métodos disponibles.'}), 400
 
             else:
-                return jsonify({'error': 'Formato de archivo no soportado. Proporcione un archivo CSV, XLSX, XLS o TXT.'}), 400
+                return jsonify({'error': "Formato de archivo no soportado. Proporcione un archivo CSV, XLSX, XLS o TXT."}), 400
 
-            if dataframe.empty:
-                return jsonify({'error': 'El archivo está vacío o no se pudo procesar correctamente.'}), 400
+            # Normalizar nombres de columnas
+            dataframe.columns = dataframe.columns.str.strip().str.replace('[^a-zA-Z0-9_ ]', '', regex=True)
+            print(f"Columnas después de normalización: {list(dataframe.columns)}")
 
-            # Limpiar encabezados
-            dataframe.columns = dataframe.columns.str.strip()
-
-            # Reemplazar valores nulos y eliminar filas vacías
+            # Reemplazar valores nulos y manejar separadores decimales
             dataframe.replace("N/A", np.nan, inplace=True)
             dataframe.dropna(how='all', inplace=True)
 
-            # Clasificar columnas
+            # Detectar columnas numéricas y categóricas
             numeric_columns = dataframe.select_dtypes(include=['number']).columns.tolist()
-            categorical_columns = dataframe.select_dtypes(exclude=['number']).columns.tolist()
+            categorical_columns = [col for col in dataframe.columns if col not in numeric_columns]
+
+            # Mostrar las columnas detectadas para depuración
+            print(f"Columnas numéricas: {numeric_columns}")
+            print(f"Columnas categóricas: {categorical_columns}")
 
             return jsonify({
                 'message': 'Archivo cargado exitosamente',
@@ -1274,9 +1302,11 @@ def upload_file_stat():
             })
 
         except Exception as e:
+            print(f"Excepción durante la carga del archivo: {e}")
             return jsonify({'error': f'Error al procesar el archivo: {str(e)}'}), 400
 
     except Exception as e:
+        print(f"Excepción general: {e}")
         return jsonify({'error': str(e)}), 400
 
 
