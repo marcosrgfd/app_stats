@@ -31,7 +31,7 @@ import seaborn as sns
 # from flask import Flask, request, jsonify  # Ya importado
 # import pandas as pd  # Ya importado
 # import numpy as np  # Ya importado
-import models.api as sm
+import statsmodels.api as sm
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 from scipy.stats import shapiro
