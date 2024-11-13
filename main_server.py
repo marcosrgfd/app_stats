@@ -1214,6 +1214,7 @@ def generate_charts():
 # Variable global para almacenar el DataFrame cargado
 dataframe = None
 
+# Ruta para cargar archivos CSV
 @app.route('/upload_csv_stat', methods=['POST'])
 def upload_file_stat():
     global dataframe
@@ -1229,15 +1230,15 @@ def upload_file_stat():
         filename = file.filename.lower()
 
         try:
-            # Intentar leer el archivo como CSV
             if filename.endswith('.csv'):
+                # Probar diferentes combinaciones de delimitador y codificación
                 try:
-                    # Intentar con diferentes delimitadores y separadores decimales
-                    dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("utf-8")), delimiter=',', decimal='.')
-                except UnicodeDecodeError:
-                    dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("ISO-8859-1")), delimiter=',', decimal='.')
-                except pd.errors.ParserError:
                     dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("utf-8")), delimiter=';', decimal=',')
+                except Exception:
+                    try:
+                        dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("ISO-8859-1")), delimiter=';', decimal=',')
+                    except Exception:
+                        dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("utf-8")), delimiter=',', decimal='.')
 
             elif filename.endswith(('.xls', '.xlsx')):
                 file_stream = io.BytesIO(file.read())
@@ -1246,19 +1247,21 @@ def upload_file_stat():
             elif filename.endswith('.txt'):
                 try:
                     dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("utf-8")), delimiter=r'\s+')
-                except UnicodeDecodeError:
+                except Exception:
                     dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("ISO-8859-1")), delimiter=r'\s+')
-            else:
-                return jsonify({'error': "Formato de archivo no soportado. Proporcione un archivo CSV, XLSX, XLS o TXT."}), 400
 
-            # Verificar si el DataFrame se cargó correctamente
+            else:
+                return jsonify({'error': 'Formato de archivo no soportado. Proporcione un archivo CSV, XLSX, XLS o TXT.'}), 400
+
             if dataframe.empty:
                 return jsonify({'error': 'El archivo está vacío o no se pudo procesar correctamente.'}), 400
 
-            # Normalizar encabezados y reemplazar valores nulos
+            # Limpiar encabezados
             dataframe.columns = dataframe.columns.str.strip()
-            dataframe = dataframe.replace("N/A", np.nan)
-            dataframe = dataframe.dropna()
+
+            # Reemplazar valores nulos y eliminar filas vacías
+            dataframe.replace("N/A", np.nan, inplace=True)
+            dataframe.dropna(how='all', inplace=True)
 
             # Clasificar columnas
             numeric_columns = dataframe.select_dtypes(include=['number']).columns.tolist()
@@ -1271,10 +1274,11 @@ def upload_file_stat():
             })
 
         except Exception as e:
-            return jsonify({'error': str(e)}), 400
+            return jsonify({'error': f'Error al procesar el archivo: {str(e)}'}), 400
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
 
 
         
