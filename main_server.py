@@ -1404,6 +1404,27 @@ def run_ttest():
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
+# DEVOLVER A LA APP EL NOMBRE DE LAS CATEGORÍAS
+@app.route('/get_category_names', methods=['POST'])
+def get_category_names():
+    global dataframe
+    try:
+        data = request.get_json()
+        categorical_column = data.get('categorical_column')
+
+        if categorical_column not in dataframe.columns:
+            return jsonify({'error': 'La columna categórica especificada no se encontró.'}), 400
+
+        # Obtener los nombres de las categorías
+        category_names = list(dataframe[categorical_column].dropna().unique())
+
+        if len(category_names) < 2:
+            return jsonify({'error': 'Datos insuficientes para obtener los nombres de las categorías.'}), 400
+
+        return jsonify({'category_names': category_names[:2]})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 
 
