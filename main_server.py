@@ -1283,7 +1283,16 @@ def upload_file_stat():
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
-
+# Función para gestionar NA
+def clean_results(result_dict):
+    """Reemplaza NaN e infinitos por None en un diccionario de resultados."""
+    for key, value in result_dict.items():
+        if isinstance(value, dict):
+            # Llamada recursiva para limpiar diccionarios anidados
+            clean_results(value)
+        elif isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
+            result_dict[key] = None
+    return result_dict
 
 # REGRESIÓN SIMPLE
 @app.route('/run_regression', methods=['POST'])
@@ -1354,6 +1363,9 @@ def run_regression():
         }
 
         # Devolver advertencias y resultados juntos
+        # Limpiar los resultados antes de enviarlos
+        regression_result = clean_results(regression_result)
+
         return jsonify({
             'regression_result': regression_result,
             'warnings': warnings
@@ -1405,6 +1417,9 @@ def run_ttest():
             'category2': category_names[1],
             'alternative': alternative
         }
+
+        # Limpiar los resultados antes de enviarlos
+        result = clean_results(result)
 
         return jsonify({'result': result})
 
@@ -1517,6 +1532,9 @@ def run_anova():
             except Exception as e:
                 return jsonify({'error': f'Error al ejecutar Tukey HSD: {str(e)}'}), 500
 
+        # Limpiar los resultados antes de enviarlos
+        result = clean_results(result)
+
         return jsonify({'result': result})
 
     except Exception as e:
@@ -1570,7 +1588,8 @@ def run_shapiro():
                     shapiro_results[group] = {'w_statistic': None, 'p_value': 'Datos insuficientes'}
                 else:
                     w_stat, p_value = shapiro(values)
-                    shapiro_results[group] = {'w_statistic': w_stat, 'p_value': p_value}
+                    # Resultado por grupos
+                    shapiro_results[group] = clean_results({'w_statistic': w_stat, 'p_value': p_value})
 
             return jsonify({'type': 'grouped', 'result': shapiro_results})
 
@@ -1580,8 +1599,9 @@ def run_shapiro():
             return jsonify({'error': 'Datos insuficientes para realizar la prueba de Shapiro-Wilk.'}), 400
 
         w_stat, p_value = shapiro(values)
+        # Resultado global
         result = {'w_statistic': w_stat, 'p_value': p_value}
-
+        result = clean_results(result)
         return jsonify({'type': 'global', 'result': result})
 
     except Exception as e:
@@ -1613,7 +1633,8 @@ def run_kolmogorov():
                 else:
                     # Realizar prueba de Kolmogorov-Smirnov asumiendo distribución normal
                     ks_stat, p_value = stats.kstest(values, 'norm', args=(np.mean(values), np.std(values)))
-                    ks_results[group] = {'ks_statistic': ks_stat, 'p_value': p_value}
+                    # Resultado por grupos
+                    ks_results[group] = clean_results({'ks_statistic': ks_stat, 'p_value': p_value})
 
             return jsonify({'type': 'grouped', 'result': ks_results})
 
@@ -1624,8 +1645,9 @@ def run_kolmogorov():
 
         # Realizar prueba de Kolmogorov-Smirnov asumiendo distribución normal
         ks_stat, p_value = stats.kstest(values, 'norm', args=(np.mean(values), np.std(values)))
+        # Resultado global
         result = {'ks_statistic': ks_stat, 'p_value': p_value}
-
+        result = clean_results(result)
         return jsonify({'type': 'global', 'result': result})
 
     except Exception as e:
@@ -1675,6 +1697,9 @@ def run_mannwhitney():
             'category2': category_names[1],
             'alternative': alternative
         }
+
+        # Limpiar los resultados antes de enviarlos
+        result = clean_results(result)
 
         return jsonify({'result': result})
 
