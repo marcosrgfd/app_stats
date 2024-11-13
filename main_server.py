@@ -1595,6 +1595,49 @@ def run_shapiro():
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
+# 7. Kolmogorov 
+@app.route('/run_kolmogorov', methods=['POST'])
+def run_kolmogorov():
+    global dataframe
+    try:
+        # Obtener los parámetros de la solicitud
+        data = request.get_json()
+        numeric_column = data.get('sample')
+        group_column = data.get('group_column', None)
+
+        # Validar que la columna numérica exista
+        if numeric_column not in dataframe.columns:
+            return jsonify({'error': 'La columna numérica especificada no se encontró en los datos.'}), 400
+
+        # Si se especifica una columna de grupo, hacer Kolmogorov-Smirnov por grupo
+        if group_column and group_column in dataframe.columns:
+            groups = dataframe.groupby(group_column)[numeric_column].apply(list)
+            ks_results = {}
+
+            for group, values in groups.items():
+                if len(values) < 3:
+                    ks_results[group] = {'ks_statistic': None, 'p_value': 'Datos insuficientes'}
+                else:
+                    # Realizar prueba de Kolmogorov-Smirnov asumiendo distribución normal
+                    ks_stat, p_value = stats.kstest(values, 'norm', args=(np.mean(values), np.std(values)))
+                    ks_results[group] = {'ks_statistic': ks_stat, 'p_value': p_value}
+
+            return jsonify({'type': 'grouped', 'result': ks_results})
+
+        # Si no se especifica grupo, hacer Kolmogorov-Smirnov global
+        values = dataframe[numeric_column].dropna()
+        if len(values) < 3:
+            return jsonify({'error': 'Datos insuficientes para realizar la prueba de Kolmogorov-Smirnov.'}), 400
+
+        # Realizar prueba de Kolmogorov-Smirnov asumiendo distribución normal
+        ks_stat, p_value = stats.kstest(values, 'norm', args=(np.mean(values), np.std(values)))
+        result = {'ks_statistic': ks_stat, 'p_value': p_value}
+
+        return jsonify({'type': 'global', 'result': result})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
 
 ##########################################################################################
 ####################################### STAT TESTS #######################################
