@@ -1404,23 +1404,34 @@ def run_ttest():
 
 
 # 4. ANOVA
+# Ruta para ANOVA
 @app.route('/run_anova', methods=['POST'])
 def run_anova():
     global dataframe
     try:
-        # Seleccionar automáticamente la primera columna categórica y la primera numérica
-        group_column = dataframe.select_dtypes(exclude=['number']).columns[0]
-        value_column = dataframe.select_dtypes(include=['number']).columns[0]
+        data = request.get_json()
+        numeric_column = data.get('numeric_column')
+        categorical_column = data.get('categorical_column')
 
-        if group_column not in dataframe.columns or value_column not in dataframe.columns:
-            return jsonify({'error': 'No se encontraron columnas adecuadas para ANOVA.'}), 400
+        # Verificar que las columnas existan
+        if numeric_column not in dataframe.columns or categorical_column not in dataframe.columns:
+            return jsonify({'error': 'Las columnas especificadas no se encontraron en los datos.'}), 400
 
-        groups = [group[value_column].values for _, group in dataframe.groupby(group_column)]
-        if len(groups) < 2:
-            return jsonify({'error': 'Datos insuficientes para ANOVA.'}), 400
+        # Agrupar los datos por la columna categórica
+        groups = dataframe.groupby(categorical_column)[numeric_column].apply(list)
 
-        f_stat, p_value = f_oneway(*groups)
-        result = {'f_statistic': f_stat, 'p_value': p_value}
+        # Verificar si hay suficientes datos para cada grupo
+        if any(len(values) < 2 for values in groups):
+            return jsonify({'error': 'Hay grupos con datos insuficientes para realizar ANOVA.'}), 400
+
+        # Realizar ANOVA
+        f_statistic, p_value = f_oneway(*groups)
+
+        # Crear respuesta
+        result = {
+            'f_statistic': f_statistic,
+            'p_value': p_value
+        }
 
         return jsonify({'result': result})
 
