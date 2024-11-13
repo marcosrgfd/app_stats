@@ -1278,6 +1278,7 @@ def upload_file_stat():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+        
 
 # 2. REGRESIÓN SIMPLE
 @app.route('/run_regression', methods=['POST'])
