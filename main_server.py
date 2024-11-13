@@ -1443,6 +1443,7 @@ def run_anova():
         data = request.get_json()
         numeric_column = data.get('numeric_column')
         categorical_column = data.get('categorical_column')
+        multiple_comparisons = data.get('multipleComparisons', False)
 
         # Verificar que las columnas existan
         if numeric_column not in dataframe.columns or categorical_column not in dataframe.columns:
@@ -1458,11 +1459,56 @@ def run_anova():
         # Realizar ANOVA
         f_statistic, p_value = f_oneway(*groups)
 
-        # Crear respuesta
+        # Crear respuesta inicial
         result = {
             'f_statistic': f_statistic,
-            'p_value': p_value
+            'p_value': p_value,
+            'num_groups': len(groups),
+            'total_observations': sum(len(group) for group in groups),
         }
+
+        # Si se habilitan las comparaciones múltiples, realizar Tukey HSD
+        if multiple_comparisons:
+            if len(groups) < 3:
+                return jsonify({'error': 'Se requieren al menos tres grupos para realizar comparaciones múltiples (Tukey HSD).'}), 400
+
+            try:
+                # Preparar los datos para Tukey HSD
+                all_data = []
+                labels = []
+                for i, group in enumerate(groups):
+                    all_data.extend(group)
+                    labels.extend([groups.index[i]] * len(group))
+
+                # Crear DataFrame para Tukey HSD
+                df = pd.DataFrame({'value': all_data, 'group': labels})
+
+                # Realizar Tukey HSD
+                tukey = mc.pairwise_tukeyhsd(df['value'], df['group'], alpha=0.05)
+
+                # Formatear los resultados de Tukey HSD
+                tukey_summary = []
+                for result in tukey.summary().data[1:]:
+                    comparison = f"{result[0]} vs {result[1]}"
+                    mean_diff = f"{result[2]:.2f}"
+                    p_adj = f"{result[3]:.3f}"
+                    ci_lower = f"{result[4]:.2f}"
+                    ci_upper = f"{result[5]:.2f}"
+                    reject_h0 = "Sí" if result[6] else "No"
+
+                    tukey_summary.append({
+                        'comparison': comparison,
+                        'mean_difference': mean_diff,
+                        'p_value_adjusted': p_adj,
+                        'ci_lower': ci_lower,
+                        'ci_upper': ci_upper,
+                        'reject_h0': reject_h0
+                    })
+
+                result['tukey'] = tukey_summary
+
+            except Exception as e:
+                return jsonify({'error': f'Error al ejecutar Tukey HSD: {str(e)}'}), 500
 
         return jsonify({'result': result})
 
