@@ -1374,18 +1374,22 @@ def run_ttest():
         if numeric_column not in dataframe.columns or categorical_column not in dataframe.columns:
             return jsonify({'error': 'Las columnas especificadas no se encontraron en los datos.'}), 400
 
+        # Agrupar los datos por la columna categórica
         groups = dataframe.groupby(categorical_column)[numeric_column].apply(list)
 
+        # Verificar que haya al menos dos grupos
         if len(groups) < 2:
             return jsonify({'error': 'Datos insuficientes para realizar el T-Test. Se requieren al menos dos categorías.'}), 400
 
         category_names = groups.index.tolist()
 
+        # Realizar la prueba T con el tipo de prueba especificado
         if paired:
             t_stat, p_value = stats.ttest_rel(groups.iloc[0], groups.iloc[1], alternative=alternative)
         else:
             t_stat, p_value = stats.ttest_ind(groups.iloc[0], groups.iloc[1], alternative=alternative, equal_var=False)
 
+        # Evaluar la significancia según el valor p
         significance = "significativo" if p_value < 0.05 else "no significativo"
         decision = "Rechazar la hipótesis nula" if p_value < 0.05 else "No rechazar la hipótesis nula"
 
@@ -1396,13 +1400,15 @@ def run_ttest():
             'significance': significance,
             'decision': decision,
             'category1': category_names[0],
-            'category2': category_names[1]
+            'category2': category_names[1],
+            'alternative': alternative
         }
 
         return jsonify({'result': result})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
 
 # DEVOLVER A LA APP EL NOMBRE DE LAS CATEGORÍAS
 @app.route('/get_category_names', methods=['POST'])
