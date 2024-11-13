@@ -1228,15 +1228,16 @@ def upload_file_stat():
 
         filename = file.filename.lower()
 
-        # Determinar el tipo de archivo y leerlo en un DataFrame de Pandas
         try:
+            # Intentar leer el archivo como CSV
             if filename.endswith('.csv'):
                 try:
-                    dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("utf-8")), delimiter=',')
+                    # Intentar con diferentes delimitadores y separadores decimales
+                    dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("utf-8")), delimiter=',', decimal='.')
                 except UnicodeDecodeError:
-                    dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("ISO-8859-1")), delimiter=',')
+                    dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("ISO-8859-1")), delimiter=',', decimal='.')
                 except pd.errors.ParserError:
-                    dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("utf-8")), delimiter=';')
+                    dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("utf-8")), delimiter=';', decimal=',')
 
             elif filename.endswith(('.xls', '.xlsx')):
                 file_stream = io.BytesIO(file.read())
@@ -1254,14 +1255,12 @@ def upload_file_stat():
             if dataframe.empty:
                 return jsonify({'error': 'El archivo está vacío o no se pudo procesar correctamente.'}), 400
 
-            # Normalizar encabezados quitando espacios adicionales y caracteres no deseados
+            # Normalizar encabezados y reemplazar valores nulos
             dataframe.columns = dataframe.columns.str.strip()
-
-            # Manejo de celdas vacías
             dataframe = dataframe.replace("N/A", np.nan)
-            dataframe = dataframe.dropna()  # Eliminamos las filas con valores nulos para evitar errores en la regresión
+            dataframe = dataframe.dropna()
 
-            # Clasificar las columnas entre numéricas y categóricas
+            # Clasificar columnas
             numeric_columns = dataframe.select_dtypes(include=['number']).columns.tolist()
             categorical_columns = dataframe.select_dtypes(exclude=['number']).columns.tolist()
 
@@ -1276,6 +1275,7 @@ def upload_file_stat():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
 
         
 
