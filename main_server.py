@@ -1257,9 +1257,28 @@ def upload_file_stat():
             # Normalizar encabezados quitando espacios adicionales y caracteres no deseados
             dataframe.columns = dataframe.columns.str.strip()
 
+            # Detectar encabezados duplicados y corregirlos
+            if dataframe.columns.duplicated().any():
+                duplicated_headers = dataframe.columns[dataframe.columns.duplicated()].tolist()
+                return jsonify({'error': f'Encabezados duplicados detectados: {duplicated_headers}. Corríjalos y vuelva a intentar.'}), 400
+
+            # Verificar tipos de datos y sugerir correcciones
+            incorrect_types = []
+            for col in dataframe.columns:
+                if dataframe[col].dtype == 'object':
+                    try:
+                        dataframe[col] = pd.to_numeric(dataframe[col], errors='coerce')
+                    except Exception:
+                        incorrect_types.append(col)
+
+            if incorrect_types:
+                return jsonify({'error': f'Columnas con tipos de datos inconsistentes: {incorrect_types}. Verifique los datos.'}), 400
+
             # Manejo de celdas vacías
             dataframe = dataframe.replace("N/A", np.nan)
-            dataframe = dataframe.dropna()  # Eliminamos las filas con valores nulos para evitar errores en la regresión
+            num_missing_values = dataframe.isnull().sum().sum()
+            if num_missing_values > 0:
+                return jsonify({'warning': f'Se encontraron {num_missing_values} valores faltantes. Considere revisar o limpiar estos datos.'})
 
             # Clasificar las columnas entre numéricas y categóricas
             numeric_columns = dataframe.select_dtypes(include=['number']).columns.tolist()
@@ -1278,10 +1297,11 @@ def upload_file_stat():
             })
 
         except Exception as e:
-            return jsonify({'error': str(e)}), 400
+            return jsonify({'error': f'Ocurrió un error al procesar el archivo: {str(e)}'}), 400
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
 
 
 
