@@ -31,7 +31,7 @@ import seaborn as sns
 # from flask import Flask, request, jsonify  # Ya importado
 # import pandas as pd  # Ya importado
 # import numpy as np  # Ya importado
-import statsmodels.api as sm
+import models.api as sm
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 from scipy.stats import shapiro
@@ -1231,12 +1231,14 @@ def upload_file_stat():
         # Determinar el tipo de archivo y leerlo en un DataFrame de Pandas
         try:
             if filename.endswith('.csv'):
+                # Intentar leer el archivo considerando diferentes delimitadores y codificaciones
                 try:
-                    dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("utf-8")), delimiter=',')
+                    dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("utf-8")), delimiter=';', decimal=',')
                 except UnicodeDecodeError:
-                    dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("ISO-8859-1")), delimiter=',')
+                    dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("ISO-8859-1")), delimiter=';', decimal=',')
                 except pd.errors.ParserError:
-                    dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("utf-8")), delimiter=';')
+                    # Si falla, intenta con delimitador de coma
+                    dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("utf-8")), delimiter=',', decimal='.')
 
             elif filename.endswith(('.xls', '.xlsx')):
                 file_stream = io.BytesIO(file.read())
@@ -1265,16 +1267,10 @@ def upload_file_stat():
             numeric_columns = dataframe.select_dtypes(include=['number']).columns.tolist()
             categorical_columns = dataframe.select_dtypes(exclude=['number']).columns.tolist()
 
-            # Filtrar solo las columnas categóricas con exactamente dos categorías
-            binary_categorical_columns = [
-                col for col in categorical_columns if dataframe[col].nunique() == 2
-            ]
-
             return jsonify({
                 'message': 'Archivo cargado exitosamente',
                 'numeric_columns': numeric_columns,
-                'categorical_columns': categorical_columns,
-                'binary_categorical_columns': binary_categorical_columns
+                'categorical_columns': categorical_columns
             })
 
         except Exception as e:
