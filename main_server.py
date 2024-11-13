@@ -1444,17 +1444,31 @@ def run_anova():
 def run_chisquare():
     global dataframe
     try:
-        # Seleccionar automáticamente dos columnas categóricas
-        row_column = dataframe.select_dtypes(exclude=['number']).columns[0]
-        col_column = dataframe.select_dtypes(exclude=['number']).columns[1]
+        # Obtener los parámetros de la solicitud
+        data = request.get_json()
+        col1 = data.get('categorical_column_1')
+        col2 = data.get('categorical_column_2')
 
-        if row_column not in dataframe.columns or col_column not in dataframe.columns:
-            return jsonify({'error': 'No se encontraron columnas adecuadas para Chi-Square.'}), 400
+        # Validar que las columnas existen
+        if col1 not in dataframe.columns or col2 not in dataframe.columns:
+            return jsonify({'error': 'Una o ambas columnas especificadas no se encontraron en los datos.'}), 400
 
-        contingency_table = pd.crosstab(dataframe[row_column], dataframe[col_column])
-        chi2, p_value, _, _ = chi2_contingency(contingency_table)
+        # Crear tabla de contingencia
+        contingency_table = pd.crosstab(dataframe[col1], dataframe[col2])
+        if contingency_table.empty:
+            return jsonify({'error': 'La tabla de contingencia está vacía.'}), 400
 
-        result = {'chi_square_statistic': chi2, 'p_value': p_value}
+        # Realizar prueba de Chi-Cuadrado
+        chi2_stat, p_value, dof, expected = chi2_contingency(contingency_table)
+
+        # Preparar el resultado
+        result = {
+            'chi_square_statistic': chi2_stat,
+            'p_value': p_value,
+            'degrees_of_freedom': dof,
+            'expected_frequencies': expected.tolist()
+        }
+
         return jsonify({'result': result})
 
     except Exception as e:
