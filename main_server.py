@@ -1369,6 +1369,8 @@ def run_ttest():
         data = request.get_json()
         numeric_column = data.get('numeric_column')
         categorical_column = data.get('categorical_column')
+        paired = data.get('paired', False)
+        alternative = data.get('alternative', 'two-sided')
 
         # Validar que las columnas especificadas existen en el DataFrame
         if numeric_column not in dataframe.columns or categorical_column not in dataframe.columns:
@@ -1376,7 +1378,7 @@ def run_ttest():
 
         # Agrupar los datos por la columna categórica
         groups = dataframe.groupby(categorical_column)[numeric_column].apply(list)
-        
+
         # Verificar que haya al menos dos grupos para el T-Test
         if len(groups) < 2:
             return jsonify({'error': 'Datos insuficientes para realizar el T-Test. Se requieren al menos dos categorías.'}), 400
@@ -1384,13 +1386,30 @@ def run_ttest():
         # Obtener los nombres de las categorías
         category_names = groups.index.tolist()
 
-        # Realizar el T-Test para las dos categorías
-        t_stat, p_value = stats.ttest_ind(groups.iloc[0], groups.iloc[1], equal_var=False)
+        # Realizar el T-Test según si es pareado o no
+        if paired:
+            t_stat, p_value = stats.ttest_rel(groups.iloc[0], groups.iloc[1], alternative=alternative)
+        else:
+            t_stat, p_value = stats.ttest_ind(groups.iloc[0], groups.iloc[1], alternative=alternative, equal_var=False)
+
+        # Evaluar la significancia del resultado
+        if p_value < 0.05:
+            significance = "significativo"
+            decision = "Rechazar la hipótesis nula"
+        elif p_value < 0.1:
+            significance = "marginalmente significativo"
+            decision = "Rechazo potencial de la hipótesis nula"
+        else:
+            significance = "no significativo"
+            decision = "No rechazar la hipótesis nula"
 
         # Devolver los resultados incluyendo los nombres de las categorías
         result = {
+            'test': 'T-Test' + (' pareado' if paired else ''),
             't_statistic': t_stat,
             'p_value': p_value,
+            'significance': significance,
+            'decision': decision,
             'category1': category_names[0],
             'category2': category_names[1]
         }
