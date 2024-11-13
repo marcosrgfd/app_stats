@@ -1257,28 +1257,9 @@ def upload_file_stat():
             # Normalizar encabezados quitando espacios adicionales y caracteres no deseados
             dataframe.columns = dataframe.columns.str.strip()
 
-            # Detectar encabezados duplicados y corregirlos
-            if dataframe.columns.duplicated().any():
-                duplicated_headers = dataframe.columns[dataframe.columns.duplicated()].tolist()
-                return jsonify({'error': f'Encabezados duplicados detectados: {duplicated_headers}. Corríjalos y vuelva a intentar.'}), 400
-
-            # Verificar tipos de datos y sugerir correcciones
-            incorrect_types = []
-            for col in dataframe.columns:
-                if dataframe[col].dtype == 'object':
-                    try:
-                        dataframe[col] = pd.to_numeric(dataframe[col], errors='coerce')
-                    except Exception:
-                        incorrect_types.append(col)
-
-            if incorrect_types:
-                return jsonify({'error': f'Columnas con tipos de datos inconsistentes: {incorrect_types}. Verifique los datos.'}), 400
-
             # Manejo de celdas vacías
             dataframe = dataframe.replace("N/A", np.nan)
-            num_missing_values = dataframe.isnull().sum().sum()
-            if num_missing_values > 0:
-                return jsonify({'warning': f'Se encontraron {num_missing_values} valores faltantes. Considere revisar o limpiar estos datos.'})
+            dataframe = dataframe.dropna()  # Eliminamos las filas con valores nulos para evitar errores en la regresión
 
             # Clasificar las columnas entre numéricas y categóricas
             numeric_columns = dataframe.select_dtypes(include=['number']).columns.tolist()
@@ -1297,18 +1278,14 @@ def upload_file_stat():
             })
 
         except Exception as e:
-            return jsonify({'error': f'Ocurrió un error al procesar el archivo: {str(e)}'}), 400
+            return jsonify({'error': str(e)}), 400
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
 
 
-
-
-        
-
-# 2. REGRESIÓN SIMPLE
+# REGRESIÓN SIMPLE
 @app.route('/run_regression', methods=['POST'])
 def run_regression():
     global dataframe
@@ -1552,31 +1529,17 @@ def run_anova():
 def run_chisquare():
     global dataframe
     try:
-        # Obtener los parámetros de la solicitud
-        data = request.get_json()
-        col1 = data.get('categorical_column_1')
-        col2 = data.get('categorical_column_2')
+        # Seleccionar automáticamente dos columnas categóricas
+        row_column = dataframe.select_dtypes(exclude=['number']).columns[0]
+        col_column = dataframe.select_dtypes(exclude=['number']).columns[1]
 
-        # Validar que las columnas existen
-        if col1 not in dataframe.columns or col2 not in dataframe.columns:
-            return jsonify({'error': 'Una o ambas columnas especificadas no se encontraron en los datos.'}), 400
+        if row_column not in dataframe.columns or col_column not in dataframe.columns:
+            return jsonify({'error': 'No se encontraron columnas adecuadas para Chi-Square.'}), 400
 
-        # Crear tabla de contingencia
-        contingency_table = pd.crosstab(dataframe[col1], dataframe[col2])
-        if contingency_table.empty:
-            return jsonify({'error': 'La tabla de contingencia está vacía.'}), 400
+        contingency_table = pd.crosstab(dataframe[row_column], dataframe[col_column])
+        chi2, p_value, _, _ = chi2_contingency(contingency_table)
 
-        # Realizar prueba de Chi-Cuadrado
-        chi2_stat, p_value, dof, expected = chi2_contingency(contingency_table)
-
-        # Preparar el resultado
-        result = {
-            'chi_square_statistic': chi2_stat,
-            'p_value': p_value,
-            'degrees_of_freedom': dof,
-            'expected_frequencies': expected.tolist()
-        }
-
+        result = {'chi_square_statistic': chi2, 'p_value': p_value}
         return jsonify({'result': result})
 
     except Exception as e:
@@ -1623,6 +1586,7 @@ def run_shapiro():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+    
 
 # 7. Kolmogorov 
 @app.route('/run_kolmogorov', methods=['POST'])
@@ -1663,6 +1627,56 @@ def run_kolmogorov():
         result = {'ks_statistic': ks_stat, 'p_value': p_value}
 
         return jsonify({'type': 'global', 'result': result})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+# 8. Mann-Whitney U Test
+@app.route('/run_mannwhitney', methods=['POST'])
+def run_mannwhitney():
+    global dataframe
+    try:
+        data = request.get_json()
+        numeric_column = data.get('numeric_column')
+        categorical_column = data.get('categorical_column')
+        paired = data.get('paired', False)  # Aunque Mann-Whitney no suele ser pareado, lo incluyo por consistencia
+        alternative = data.get('alternative', 'two-sided')
+
+        if numeric_column not in dataframe.columns or categorical_column not in dataframe.columns:
+            return jsonify({'error': 'Las columnas especificadas no se encontraron en los datos.'}), 400
+
+        # Agrupar los datos por la columna categórica
+        groups = dataframe.groupby(categorical_column)[numeric_column].apply(list)
+
+        # Verificar que haya al menos dos grupos
+        if len(groups) < 2:
+            return jsonify({'error': 'Datos insuficientes para realizar el Mann-Whitney U Test. Se requieren al menos dos categorías.'}), 400
+
+        category_names = groups.index.tolist()
+
+        # Realizar la prueba Mann-Whitney con el tipo de prueba especificado
+        if paired:
+            return jsonify({'error': 'El test Mann-Whitney no es adecuado para datos pareados.'}), 400
+
+        # Ejecutar el test Mann-Whitney U
+        u_stat, p_value = stats.mannwhitneyu(groups.iloc[0], groups.iloc[1], alternative=alternative)
+
+        # Evaluar la significancia según el valor p
+        significance = "significativo" if p_value < 0.05 else "no significativo"
+        decision = "Rechazar la hipótesis nula" if p_value < 0.05 else "No rechazar la hipótesis nula"
+
+        result = {
+            'test': 'Mann-Whitney U Test',
+            'u_statistic': u_stat,
+            'p_value': p_value,
+            'significance': significance,
+            'decision': decision,
+            'category1': category_names[0],
+            'category2': category_names[1],
+            'alternative': alternative
+        }
+
+        return jsonify({'result': result})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
