@@ -1228,29 +1228,15 @@ def upload_file_stat():
 
         filename = file.filename.lower()
 
-        # Intentar leer el archivo con diferentes configuraciones
+        # Determinar el tipo de archivo y leerlo en un DataFrame de Pandas
         try:
             if filename.endswith('.csv'):
-                # Intentar diferentes combinaciones de delimitadores y codificaciones
-                read_attempts = [
-                    {'delimiter': ';', 'decimal': ',', 'encoding': 'utf-8'},
-                    {'delimiter': ';', 'decimal': ',', 'encoding': 'ISO-8859-1'},
-                    {'delimiter': ',', 'decimal': '.', 'encoding': 'utf-8'},
-                    {'delimiter': ',', 'decimal': '.', 'encoding': 'ISO-8859-1'}
-                ]
-
-                for attempt in read_attempts:
-                    try:
-                        file_content = file.stream.read().decode(attempt['encoding'])
-                        dataframe = pd.read_csv(
-                            io.StringIO(file_content),
-                            delimiter=attempt['delimiter'],
-                            decimal=attempt['decimal']
-                        )
-                        if not dataframe.empty:
-                            break
-                    except Exception as e:
-                        continue  # Intentar con la siguiente configuración
+                try:
+                    dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("utf-8")), delimiter=',')
+                except UnicodeDecodeError:
+                    dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("ISO-8859-1")), delimiter=',')
+                except pd.errors.ParserError:
+                    dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("utf-8")), delimiter=';')
 
             elif filename.endswith(('.xls', '.xlsx')):
                 file_stream = io.BytesIO(file.read())
@@ -1265,23 +1251,19 @@ def upload_file_stat():
                 return jsonify({'error': "Formato de archivo no soportado. Proporcione un archivo CSV, XLSX, XLS o TXT."}), 400
 
             # Verificar si el DataFrame se cargó correctamente
-            if dataframe is None or dataframe.empty:
+            if dataframe.empty:
                 return jsonify({'error': 'El archivo está vacío o no se pudo procesar correctamente.'}), 400
 
-            # Normalizar encabezados quitando espacios adicionales
+            # Normalizar encabezados quitando espacios adicionales y caracteres no deseados
             dataframe.columns = dataframe.columns.str.strip()
 
-            # Reemplazar "N/A" y eliminar filas con valores nulos
-            dataframe.replace("N/A", np.nan, inplace=True)
-            dataframe.dropna(inplace=True)
+            # Manejo de celdas vacías
+            dataframe = dataframe.replace("N/A", np.nan)
+            dataframe = dataframe.dropna()  # Eliminamos las filas con valores nulos para evitar errores en la regresión
 
             # Clasificar las columnas entre numéricas y categóricas
             numeric_columns = dataframe.select_dtypes(include=['number']).columns.tolist()
             categorical_columns = dataframe.select_dtypes(exclude=['number']).columns.tolist()
-
-            # Validar si se encontraron columnas
-            if not numeric_columns and not categorical_columns:
-                return jsonify({'error': 'No se pudieron identificar columnas numéricas o categóricas.'}), 400
 
             return jsonify({
                 'message': 'Archivo cargado exitosamente',
@@ -1290,10 +1272,10 @@ def upload_file_stat():
             })
 
         except Exception as e:
-            return jsonify({'error': f'Error al procesar el archivo: {str(e)}'}), 400
+            return jsonify({'error': str(e)}), 400
 
     except Exception as e:
-        return jsonify({'error': f'Error interno: {str(e)}'}), 400
+        return jsonify({'error': str(e)}), 400
         
 
 # 2. REGRESIÓN SIMPLE
