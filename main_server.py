@@ -1342,6 +1342,33 @@ def clean_results(result_dict):
     return result_dict
 
 # REGRESIÓN SIMPLE
+@app.route('/upload_csv_stat', methods=['POST'])
+def upload_csv_stat():
+    global dataframe
+    file = request.files['file']
+    if file:
+        try:
+            # Leer el archivo CSV o Excel en un DataFrame
+            if file.filename.endswith('.csv'):
+                dataframe = pd.read_csv(file)
+            elif file.filename.endswith(('.xlsx', '.xls')):
+                dataframe = pd.read_excel(file)
+            else:
+                return jsonify({'error': 'Formato de archivo no soportado.'}), 400
+
+            # Separar columnas numéricas y categóricas
+            numeric_columns = dataframe.select_dtypes(include=[np.number]).columns.tolist()
+            categorical_columns = dataframe.select_dtypes(include=['object', 'category']).columns.tolist()
+
+            return jsonify({
+                'numeric_columns': numeric_columns,
+                'categorical_columns': categorical_columns
+            }), 200
+        except Exception as e:
+            return jsonify({'error': str(e)}), 400
+    else:
+        return jsonify({'error': 'No se ha proporcionado un archivo.'}), 400
+
 @app.route('/run_regression', methods=['POST'])
 def run_regression():
     global dataframe
@@ -1370,69 +1397,62 @@ def run_regression():
         X = dataframe[covariates].copy()
         y = dataframe[response_variable]
 
-        # Verificar valores únicos y tipos de datos de las covariables
-        print("Valores únicos por columna antes de transformar:")
-        for col in X.columns:
-            print(f"{col}: {X[col].unique()}")
+        # Limpiar datos: eliminar espacios y convertir valores especiales a NaN
+        X = X.apply(lambda col: col.str.strip() if col.dtype == "object" else col)
+        X.replace(["", "N/A", "NaN", "null"], np.nan, inplace=True)
 
-        # Identificar y transformar variables categóricas a dummy variables
+        # Transformar variables categóricas a dummy variables
         categorical_covariates = X.select_dtypes(include=['object', 'category']).columns.tolist()
         if categorical_covariates:
             X = pd.get_dummies(X, columns=categorical_covariates, drop_first=True)
 
-        # Reemplazar valores infinitos y manejar NaNs
-        X = X.apply(pd.to_numeric, errors='coerce')  # Convertir a numérico y manejar errores
-        X.replace([np.inf, -np.inf], np.nan, inplace=True)  # Reemplazar infinitos por NaN
-        X.fillna(0, inplace=True)  # Reemplazar NaN por 0
+        # Convertir todas las columnas a numérico, manejar NaN e infinitos
+        for col in X.columns:
+            X[col] = pd.to_numeric(X[col], errors='coerce')
 
-        y = pd.to_numeric(y, errors='coerce').fillna(0)  # Convertir y manejar NaN en y
+        # Reemplazar valores infinitos y manejar NaNs
+        X.replace([np.inf, -np.inf], np.nan, inplace=True)
+        X.fillna(0, inplace=True)
+
+        # Convertir y manejar NaNs en la variable de respuesta
+        y = pd.to_numeric(y, errors='coerce').fillna(0)
+
+        # Verificar que todas las columnas sean numéricas
+        if not all(np.issubdtype(dtype, np.number) for dtype in X.dtypes):
+            return jsonify({'error': 'Existen columnas con datos no numéricos después de la conversión.'}), 400
 
         # Asegurarse de que no haya datos infinitos o NaN
         if not np.isfinite(X.to_numpy()).all() or not np.isfinite(y.to_numpy()).all():
-            return jsonify({'error': 'Los datos contienen valores no numéricos o infinitos después de la conversión.'}), 400
-
-        # Verificación de multicolinealidad utilizando el VIF
-        X_with_const = sm.add_constant(X)
-        vif_data = pd.DataFrame()
-        vif_data["Feature"] = X_with_const.columns
-        vif_data["VIF"] = [variance_inflation_factor(X_with_const.values, i) for i in range(X_with_const.shape[1])]
-
-        # Agregar advertencia si hay covariables con VIF alto
-        high_vif_features = vif_data[vif_data['VIF'] > 10]
-        if not high_vif_features.empty:
-            warnings.append('Existen variables con alta colinealidad. Considere eliminarlas: ' +
-                            ', '.join(high_vif_features['Feature'].tolist()))
+            return jsonify({'error': 'Los datos contienen valores no numéricos o infinitos.'}), 400
 
         # División de los datos en entrenamiento y prueba
         X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.8, random_state=1234, shuffle=True)
 
-        # Añadir una columna de 1s para el intercepto del modelo
-        X_train = sm.add_constant(X_train)
-        X_test = sm.add_constant(X_test)
+        # Crear el modelo de regresión lineal usando scikit-learn
+        model = LinearRegression()
+        model.fit(X_train, y_train)
 
-        # Crear el modelo de regresión lineal
-        model = sm.OLS(endog=y_train, exog=X_train).fit()
-
-        # Verificación de normalidad de los residuos
-        shapiro_test = shapiro(model.resid)
-        if shapiro_test.pvalue < 0.05:
-            warnings.append('Los residuos no parecen estar distribuidos de manera normal. Considere transformar las variables.')
-
-        # Predicciones para el conjunto de prueba y cálculo del error RMSE
+        # Realizar predicciones y calcular el error RMSE
         predictions = model.predict(X_test)
         rmse = np.sqrt(mean_squared_error(y_test, predictions))
 
-        # Resumen del modelo y resultados en formato JSON
-        regression_result = {
-            "coefficients": model.params.to_dict(),
-            "p_values": model.pvalues.to_dict(),
-            "r_squared": model.rsquared,
-            "adj_r_squared": model.rsquared_adj,
-            "rmse": rmse
-        }
+        # Extraer coeficientes e intercepto
+        coefficients = dict(zip(X.columns, model.coef_))
+        intercept = model.intercept_
 
-        # Limpiar los resultados antes de enviarlos
-        regression_result = clean_results(regression_result)
+        # Cálculo de los p-valores usando statsmodels
+        X_train_with_const = sm.add_constant(X_train)
+        ols_model = sm.OLS(y_train, X_train_with_const).fit()
+        p_values = ols_model.pvalues.to_dict()
+
+        # Resumen del modelo y resultados
+        regression_result = {
+            "coefficients": coefficients,
+            "intercept": intercept,
+            "r_squared": model.score(X_test, y_test),
+            "rmse": rmse,
+            "p_values": p_values
+        }
 
         return jsonify({
             'regression_result': regression_result,
@@ -1441,8 +1461,6 @@ def run_regression():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
-
-
 
 
     
