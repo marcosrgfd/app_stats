@@ -1203,6 +1203,7 @@ def generate_charts():
 
                     for i, category in enumerate(df_clean[categorical_column].unique()):
                         cat_data = df_clean[df_clean[categorical_column] == category][x_column]
+                        
                         # Crear boxplot
                         bp = ax.boxplot([cat_data], positions=[i + 1], patch_artist=True, vert=False, widths=0.2)
                         bp['boxes'][0].set_facecolor(palette[i])
@@ -1240,6 +1241,7 @@ def generate_charts():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
 
 
 
