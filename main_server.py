@@ -1309,7 +1309,7 @@ def run_regression():
         if not response_variable or not covariates:
             return jsonify({'error': 'Variables insuficientes para la regresión.'}), 400
 
-        # Verificar que la variable de respuesta y las covariables existen en el DataFrame
+        # Verificar que las columnas existen en el DataFrame
         if response_variable not in dataframe.columns:
             return jsonify({'error': f'La variable de respuesta {response_variable} no existe en los datos.'}), 400
 
@@ -1319,8 +1319,8 @@ def run_regression():
 
         warnings = []
 
-        # Preparar X e y para la regresión
-        X = dataframe[covariates]
+        # Crear el DataFrame con las covariables y transformar categóricas a dummy variables
+        X = pd.get_dummies(dataframe[covariates], drop_first=True)
         y = dataframe[response_variable]
 
         # Verificación de multicolinealidad utilizando el VIF
@@ -1337,7 +1337,7 @@ def run_regression():
         # División de los datos en entrenamiento y prueba
         X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.8, random_state=1234, shuffle=True)
 
-        # A la matriz de predictores se le añade una columna de 1s para el intercept del modelo
+        # Añadir una columna de 1s para el intercepto del modelo
         X_train = sm.add_constant(X_train)
         X_test = sm.add_constant(X_test)
 
@@ -1362,7 +1362,6 @@ def run_regression():
             "rmse": rmse
         }
 
-        # Devolver advertencias y resultados juntos
         # Limpiar los resultados antes de enviarlos
         regression_result = clean_results(regression_result)
 
@@ -1373,6 +1372,7 @@ def run_regression():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
     
 # 3. T-Test
 @app.route('/run_ttest', methods=['POST'])
