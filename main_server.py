@@ -1370,61 +1370,40 @@ def run_regression():
         X = dataframe[covariates].copy()
         y = dataframe[response_variable]
 
-        # Limpieza de datos: eliminar espacios y convertir valores especiales a NaN
-        X = X.apply(lambda col: col.str.strip() if col.dtype == "object" else col)
-        X.replace(["", "N/A", "NaN", "null"], np.nan, inplace=True)
-
-        # Identificar y transformar variables categóricas a dummy variables
+        # Identificar variables categóricas y aplicar get_dummies con drop_first=True
         categorical_covariates = X.select_dtypes(include=['object', 'category']).columns.tolist()
         if categorical_covariates:
-            # Reemplazar valores NaN en categóricas antes de crear dummies
-            for col in categorical_covariates:
-                X[col].fillna("Missing", inplace=True)
             X = pd.get_dummies(X, columns=categorical_covariates, drop_first=True)
 
-        # Convertir todas las columnas a numérico y manejar NaNs e infinitos
-        for col in X.columns:
-            X[col] = pd.to_numeric(X[col], errors='coerce')
-
-        # Reemplazar valores infinitos y manejar NaNs
-        X.replace([np.inf, -np.inf], np.nan, inplace=True)
-        X.fillna(0, inplace=True)
-
-        # Convertir y manejar NaNs en la variable de respuesta
+        # Convertir todas las columnas a numérico, manejar NaN e infinitos
+        X = X.apply(pd.to_numeric, errors='coerce').replace([np.inf, -np.inf], np.nan).fillna(0)
         y = pd.to_numeric(y, errors='coerce').fillna(0)
 
-        # Verificar que todas las columnas sean numéricas después de la conversión
-        non_numeric_columns = [col for col in X.columns if not np.issubdtype(X[col].dtype, np.number)]
-        if non_numeric_columns:
-            return jsonify({'error': f'Existen columnas no numéricas: {non_numeric_columns}'}), 400
+        # Verificar que no existan datos no finitos
+        if not np.isfinite(X.to_numpy()).all() or not np.isfinite(y.to_numpy()).all():
+            return jsonify({'error': 'Los datos contienen valores no numéricos o infinitos después de la conversión.'}), 400
 
         # División de los datos en entrenamiento y prueba
-        X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.8, random_state=1234, shuffle=True)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=40, shuffle=True)
 
-        # Crear el modelo de regresión lineal usando scikit-learn
-        model = LinearRegression()
-        model.fit(X_train, y_train)
+        # Crear y entrenar el modelo de regresión lineal
+        regr = LinearRegression()  # No usamos fit_intercept=False porque eliminamos una columna con drop_first
+        regr.fit(X_train, y_train)
 
-        # Realizar predicciones y calcular el error RMSE
-        predictions = model.predict(X_test)
+        # Realizar predicciones y calcular el RMSE
+        predictions = regr.predict(X_test)
         rmse = np.sqrt(mean_squared_error(y_test, predictions))
 
-        # Extraer coeficientes e intercepto
-        coefficients = dict(zip(X.columns, model.coef_))
-        intercept = model.intercept_
+        # Extraer coeficientes y métricas del modelo
+        coefficients = dict(zip(X.columns, regr.coef_))
+        intercept = regr.intercept_
 
-        # Cálculo de los p-valores usando statsmodels
-        X_train_with_const = sm.add_constant(X_train)
-        ols_model = sm.OLS(y_train, X_train_with_const).fit()
-        p_values = ols_model.pvalues.to_dict()
-
-        # Resumen del modelo y resultados
+        # Resumen del modelo en formato JSON
         regression_result = {
             "coefficients": coefficients,
             "intercept": intercept,
-            "r_squared": model.score(X_test, y_test),
             "rmse": rmse,
-            "p_values": p_values
+            "r_squared": regr.score(X_test, y_test)
         }
 
         return jsonify({
