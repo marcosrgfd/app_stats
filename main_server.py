@@ -1701,6 +1701,57 @@ def run_mannwhitney():
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
+# 9. Wilcoxon
+@app.route('/run_wilcoxon', methods=['POST'])
+def run_wilcoxon():
+    global dataframe
+    try:
+        data = request.get_json()
+        numeric_column = data.get('numeric_column')
+        categorical_column = data.get('categorical_column')
+        alternative = data.get('alternative', 'two-sided')
+
+        if numeric_column not in dataframe.columns or categorical_column not in dataframe.columns:
+            return jsonify({'error': 'Las columnas especificadas no se encontraron en los datos.'}), 400
+
+        # Agrupar los datos por la columna categórica
+        groups = dataframe.groupby(categorical_column)[numeric_column].apply(list)
+
+        # Verificar que haya exactamente dos grupos
+        if len(groups) != 2:
+            return jsonify({'error': 'La variable categórica debe tener exactamente dos categorías.'}), 400
+
+        category_names = groups.index.tolist()
+
+        # Ajustar los tamaños de muestra si son diferentes
+        min_size = min(len(groups.iloc[0]), len(groups.iloc[1]))
+        group1 = groups.iloc[0][:min_size]
+        group2 = groups.iloc[1][:min_size]
+
+        # Ejecutar el test de Wilcoxon
+        w_stat, p_value = wilcoxon(group1, group2, alternative=alternative)
+
+        # Evaluar la significancia según el valor p
+        significance = "significativo" if p_value < 0.05 else "no significativo"
+        decision = "Rechazar la hipótesis nula" if p_value < 0.05 else "No rechazar la hipótesis nula"
+
+        # Crear el resultado con el mismo formato que Mann-Whitney U
+        result = {
+            'test': 'Wilcoxon Signed-Rank Test',
+            'w_statistic': w_stat,
+            'p_value': p_value,
+            'significance': significance,
+            'decision': decision,
+            'category1': category_names[0],
+            'category2': category_names[1],
+            'alternative': alternative
+        }
+
+        return jsonify({'result': result})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
 
 ##########################################################################################
 ####################################### STAT TESTS #######################################
