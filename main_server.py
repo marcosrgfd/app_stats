@@ -1824,7 +1824,7 @@ def run_kruskal_wallis():
                 # Formatear los resultados del test de Dunn
                 dunn_summary = []
                 for i, row in dunn.iterrows():
-                    for j, p_val in row.iteritems():
+                    for j, p_val in row.items():
                         if i != j:
                             comparison = f"{i} vs {j}"
                             p_adj = f"{p_val:.3f}"
@@ -1834,6 +1834,7 @@ def run_kruskal_wallis():
                                 'p_value_adjusted': p_adj,
                                 'reject_h0': reject_h0
                             })
+
 
                 # Agregar el resumen del test de Dunn al resultado
                 result['dunn'] = dunn_summary
