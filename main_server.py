@@ -1729,7 +1729,7 @@ def run_wilcoxon():
         group2 = groups.iloc[1][:min_size]
 
         # Ejecutar el test de Wilcoxon
-        w_stat, p_value = wilcoxon(group1, group2, alternative=alternative)
+        w_stat, p_value = stats.wilcoxon(group1, group2, alternative=alternative)
 
         # Evaluar la significancia según el valor p
         significance = "significativo" if p_value < 0.05 else "no significativo"
