@@ -1358,15 +1358,25 @@ def run_regression():
 
         warnings = []
 
-        # Crear el DataFrame con las covariables y transformar categóricas a dummy variables
-        X = pd.get_dummies(dataframe[covariates], drop_first=True)
+        # Preparar X e y para la regresión
+        X = dataframe[covariates].copy()
         y = dataframe[response_variable]
 
-        # Manejar valores NaN que puedan surgir de las variables dummy
-        X = X.fillna(0)
+        # Identificar y transformar variables categóricas a dummy variables
+        categorical_covariates = X.select_dtypes(include=['object', 'category']).columns.tolist()
+        if categorical_covariates:
+            X = pd.get_dummies(X, columns=categorical_covariates, drop_first=True)
 
-        # Asegurarse de que todas las columnas de X sean numéricas
+        # Manejar valores faltantes (NaN)
+        X = X.fillna(0)
+        y = y.fillna(0)
+
+        # Verificar que todas las columnas sean numéricas
         X = X.apply(pd.to_numeric, errors='coerce').fillna(0)
+
+        # Asegurarse de que no haya datos infinitos o NaN
+        if not np.isfinite(X).all().all() or not np.isfinite(y).all():
+            return jsonify({'error': 'Los datos contienen valores no numéricos, infinitos o NaN.'}), 400
 
         # Verificación de multicolinealidad utilizando el VIF
         X_with_const = sm.add_constant(X)
@@ -1377,7 +1387,8 @@ def run_regression():
         # Agregar advertencia si hay covariables con VIF alto
         high_vif_features = vif_data[vif_data['VIF'] > 10]
         if not high_vif_features.empty:
-            warnings.append('Existen variables con alta colinealidad. Considere eliminarlas.')
+            warnings.append('Existen variables con alta colinealidad. Considere eliminarlas: ' +
+                            ', '.join(high_vif_features['Feature'].tolist()))
 
         # División de los datos en entrenamiento y prueba
         X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.8, random_state=1234, shuffle=True)
@@ -1417,6 +1428,7 @@ def run_regression():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
 
 
     
