@@ -1309,7 +1309,7 @@ def run_regression():
         if not response_variable or not covariates:
             return jsonify({'error': 'Variables insuficientes para la regresión.'}), 400
 
-        # Verificar que las columnas existen en el DataFrame
+        # Verificar que la variable de respuesta y las covariables existen en el DataFrame
         if response_variable not in dataframe.columns:
             return jsonify({'error': f'La variable de respuesta {response_variable} no existe en los datos.'}), 400
 
@@ -1322,6 +1322,12 @@ def run_regression():
         # Crear el DataFrame con las covariables y transformar categóricas a dummy variables
         X = pd.get_dummies(dataframe[covariates], drop_first=True)
         y = dataframe[response_variable]
+
+        # Manejar valores NaN que puedan surgir de las variables dummy
+        X = X.fillna(0)
+
+        # Asegurarse de que todas las columnas de X sean numéricas
+        X = X.apply(pd.to_numeric, errors='coerce').fillna(0)
 
         # Verificación de multicolinealidad utilizando el VIF
         X_with_const = sm.add_constant(X)
@@ -1372,6 +1378,7 @@ def run_regression():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
 
     
 # 3. T-Test
