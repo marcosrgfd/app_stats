@@ -1152,13 +1152,13 @@ def generate_charts():
 
         # Generar el gráfico
         img = io.BytesIO()
-        plt.figure(figsize=(8, 6))
+        plt.figure(figsize=(10, 8))
 
         if chart_type == 'Scatterplot':
             # Scatterplot necesita dos columnas numéricas
             if not y_column:
                 return jsonify({'error': 'Para un scatterplot, debe seleccionar dos variables numéricas.'}), 400
-            
+
             if pd.api.types.is_numeric_dtype(dataframe[x_column]) and pd.api.types.is_numeric_dtype(dataframe[y_column]):
                 sns.scatterplot(x=df_clean[x_column], y=df_clean[y_column], color='blue', alpha=0.6, edgecolor='w', s=80)
                 plt.xlabel(x_column)
@@ -1194,6 +1194,42 @@ def generate_charts():
             else:
                 return jsonify({'error': 'La columna seleccionada debe ser numérica para un boxplot.'}), 400
 
+        elif chart_type == 'Raincloud Plot':
+            # Raincloud Plot para una columna numérica diferenciada por una categórica
+            if pd.api.types.is_numeric_dtype(dataframe[x_column]) and categorical_column in dataframe.columns:
+                if pd.api.types.is_categorical_dtype(dataframe[categorical_column]) or dataframe[categorical_column].dtype == 'object':
+                    palette = sns.color_palette("Set2", len(df_clean[categorical_column].unique()))
+                    fig, ax = plt.subplots(figsize=(10, 8))
+
+                    for i, category in enumerate(df_clean[categorical_column].unique()):
+                        cat_data = df_clean[df_clean[categorical_column] == category][x_column]
+                        # Crear boxplot
+                        bp = ax.boxplot([cat_data], positions=[i + 1], patch_artist=True, vert=False, widths=0.2)
+                        bp['boxes'][0].set_facecolor(palette[i])
+                        bp['boxes'][0].set_alpha(0.4)
+
+                        # Crear violin plot
+                        vp = ax.violinplot([cat_data], positions=[i + 1], points=500, showmeans=False,
+                                            showextrema=False, showmedians=False, vert=False)
+                        for b in vp['bodies']:
+                            b.get_paths()[0].vertices[:, 1] = np.clip(b.get_paths()[0].vertices[:, 1], i + 1, i + 1.5)
+                            b.set_color(palette[i])
+
+                        # Añadir puntos con jitter
+                        y_jitter = np.full(len(cat_data), i + 1) + np.random.uniform(-0.05, 0.05, size=len(cat_data))
+                        ax.scatter(cat_data, y_jitter, s=10, color=palette[i], alpha=0.6)
+
+                    ax.set_yticks(np.arange(1, len(df_clean[categorical_column].unique()) + 1))
+                    ax.set_yticklabels(df_clean[categorical_column].unique())
+                    ax.set_xlabel(x_column)
+                    ax.set_title(f'Raincloud Plot de {x_column} según {categorical_column}')
+                    plt.grid(True)
+
+                else:
+                    return jsonify({'error': 'La columna categórica seleccionada no es válida.'}), 400
+            else:
+                return jsonify({'error': 'La columna seleccionada debe ser numérica y la categórica válida para un Raincloud Plot.'}), 400
+
         plt.tight_layout()
         plt.savefig(img, format='png')
         img.seek(0)
@@ -1204,6 +1240,7 @@ def generate_charts():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
 
 
 
