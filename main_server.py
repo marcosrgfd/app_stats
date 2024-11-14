@@ -59,6 +59,10 @@ from sklearn.metrics import r2_score, accuracy_score, confusion_matrix
 from sklearn.model_selection import cross_val_score
 from lifelines import CoxPHFitter
 
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error
+
 # Cambiar el backend de matplotlib para evitar problemas de hilos en entornos de servidor
 plt.switch_backend('Agg')
 
@@ -1366,69 +1370,41 @@ def run_regression():
         X = dataframe[covariates].copy()
         y = dataframe[response_variable]
 
-        # Verificar valores únicos y tipos de datos de las covariables
-        print("Valores únicos por columna antes de transformar:")
-        for col in X.columns:
-            print(f"{col}: {X[col].unique()}")
-
-        # Identificar y transformar variables categóricas a dummy variables
+        # Identificar variables categóricas y aplicar get_dummies con drop_first=True
         categorical_covariates = X.select_dtypes(include=['object', 'category']).columns.tolist()
         if categorical_covariates:
             X = pd.get_dummies(X, columns=categorical_covariates, drop_first=True)
 
-        # Reemplazar valores infinitos y manejar NaNs
-        X = X.apply(pd.to_numeric, errors='coerce')  # Convertir a numérico y manejar errores
-        X.replace([np.inf, -np.inf], np.nan, inplace=True)  # Reemplazar infinitos por NaN
-        X.fillna(0, inplace=True)  # Reemplazar NaN por 0
+        # Convertir todas las columnas a numérico, manejar NaN e infinitos
+        X = X.apply(pd.to_numeric, errors='coerce').replace([np.inf, -np.inf], np.nan).fillna(0)
+        y = pd.to_numeric(y, errors='coerce').fillna(0)
 
-        y = pd.to_numeric(y, errors='coerce').fillna(0)  # Convertir y manejar NaN en y
-
-        # Asegurarse de que no haya datos infinitos o NaN
+        # Verificar que no existan datos no finitos
         if not np.isfinite(X.to_numpy()).all() or not np.isfinite(y.to_numpy()).all():
             return jsonify({'error': 'Los datos contienen valores no numéricos o infinitos después de la conversión.'}), 400
 
-        # Verificación de multicolinealidad utilizando el VIF
-        X_with_const = sm.add_constant(X)
-        vif_data = pd.DataFrame()
-        vif_data["Feature"] = X_with_const.columns
-        vif_data["VIF"] = [variance_inflation_factor(X_with_const.values, i) for i in range(X_with_const.shape[1])]
-
-        # Agregar advertencia si hay covariables con VIF alto
-        high_vif_features = vif_data[vif_data['VIF'] > 10]
-        if not high_vif_features.empty:
-            warnings.append('Existen variables con alta colinealidad. Considere eliminarlas: ' +
-                            ', '.join(high_vif_features['Feature'].tolist()))
-
         # División de los datos en entrenamiento y prueba
-        X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.8, random_state=1234, shuffle=True)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=40, shuffle=True)
 
-        # Añadir una columna de 1s para el intercepto del modelo
-        X_train = sm.add_constant(X_train)
-        X_test = sm.add_constant(X_test)
+        # Crear y entrenar el modelo de regresión lineal
+        regr = LinearRegression()  # No usamos fit_intercept=False porque eliminamos una columna con drop_first
+        regr.fit(X_train, y_train)
 
-        # Crear el modelo de regresión lineal
-        model = sm.OLS(endog=y_train, exog=X_train).fit()
-
-        # Verificación de normalidad de los residuos
-        shapiro_test = shapiro(model.resid)
-        if shapiro_test.pvalue < 0.05:
-            warnings.append('Los residuos no parecen estar distribuidos de manera normal. Considere transformar las variables.')
-
-        # Predicciones para el conjunto de prueba y cálculo del error RMSE
-        predictions = model.predict(X_test)
+        # Realizar predicciones y calcular el RMSE
+        predictions = regr.predict(X_test)
         rmse = np.sqrt(mean_squared_error(y_test, predictions))
 
-        # Resumen del modelo y resultados en formato JSON
-        regression_result = {
-            "coefficients": model.params.to_dict(),
-            "p_values": model.pvalues.to_dict(),
-            "r_squared": model.rsquared,
-            "adj_r_squared": model.rsquared_adj,
-            "rmse": rmse
-        }
+        # Extraer coeficientes y métricas del modelo
+        coefficients = dict(zip(X.columns, regr.coef_))
+        intercept = regr.intercept_
 
-        # Limpiar los resultados antes de enviarlos
-        regression_result = clean_results(regression_result)
+        # Resumen del modelo en formato JSON
+        regression_result = {
+            "coefficients": coefficients,
+            "intercept": intercept,
+            "rmse": rmse,
+            "r_squared": regr.score(X_test, y_test)
+        }
 
         return jsonify({
             'regression_result': regression_result,
