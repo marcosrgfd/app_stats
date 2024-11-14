@@ -1773,6 +1773,78 @@ def run_wilcoxon():
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
+# 10. Kruskal Wallis
+@app.route('/run_kruskal_wallis', methods=['POST'])
+def run_kruskal_wallis():
+    global dataframe
+    try:
+        data = request.get_json()
+        numeric_column = data.get('numeric_column')
+        categorical_column = data.get('categorical_column')
+        multiple_comparisons = data.get('multiple_comparisons', False)
+
+        # Verificar que las columnas existan
+        if numeric_column not in dataframe.columns or categorical_column not in dataframe.columns:
+            return jsonify({'error': 'Las columnas especificadas no se encontraron en los datos.'}), 400
+
+        # Agrupar los datos por la columna categórica
+        groups = dataframe.groupby(categorical_column)[numeric_column].apply(list)
+
+        # Verificar si hay suficientes datos para cada grupo
+        if any(len(values) < 2 for values in groups):
+            return jsonify({'error': 'Hay grupos con datos insuficientes para realizar Kruskal-Wallis.'}), 400
+
+        # Realizar el test de Kruskal-Wallis
+        h_statistic, p_value = stats.kruskal(*groups)
+
+        # Crear respuesta inicial
+        result = {
+            'h_statistic': h_statistic,
+            'p_value': p_value,
+            'num_groups': len(groups),
+            'total_observations': sum(len(group) for group in groups),
+        }
+
+        # Si se habilitan las comparaciones múltiples, realizar el test de Dunn
+        if multiple_comparisons:
+            try:
+                # Preparar los datos para el test de Dunn
+                all_data = []
+                labels = []
+                for i, group in enumerate(groups):
+                    all_data.extend(group)
+                    labels.extend([groups.index[i]] * len(group))
+
+                # Crear DataFrame para el test de Dunn
+                df = pd.DataFrame({'value': all_data, 'group': labels})
+
+                # Realizar el test de Dunn
+                dunn = sp.posthoc_dunn(df, val_col='value', group_col='group', p_adjust='bonferroni')
+
+                # Formatear los resultados del test de Dunn
+                dunn_summary = []
+                for i, row in dunn.iterrows():
+                    for j, p_val in row.iteritems():
+                        if i != j:
+                            comparison = f"{i} vs {j}"
+                            p_adj = f"{p_val:.3f}"
+                            reject_h0 = "Sí" if p_val < 0.05 else "No"
+                            dunn_summary.append({
+                                'comparison': comparison,
+                                'p_value_adjusted': p_adj,
+                                'reject_h0': reject_h0
+                            })
+
+                # Agregar el resumen del test de Dunn al resultado
+                result['dunn'] = dunn_summary
+
+            except Exception as e:
+                return jsonify({'error': f'Error al ejecutar el test de Dunn: {str(e)}'}), 500
+
+        return jsonify({'result': result})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 ##########################################################################################
 ####################################### STAT TESTS #######################################
