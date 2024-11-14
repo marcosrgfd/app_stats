@@ -1661,7 +1661,6 @@ def run_mannwhitney():
         data = request.get_json()
         numeric_column = data.get('numeric_column')
         categorical_column = data.get('categorical_column')
-        paired = data.get('paired', False)  # Aunque Mann-Whitney no suele ser pareado, lo incluyo por consistencia
         alternative = data.get('alternative', 'two-sided')
 
         if numeric_column not in dataframe.columns or categorical_column not in dataframe.columns:
@@ -1675,10 +1674,6 @@ def run_mannwhitney():
             return jsonify({'error': 'Datos insuficientes para realizar el Mann-Whitney U Test. Se requieren al menos dos categorías.'}), 400
 
         category_names = groups.index.tolist()
-
-        # Realizar la prueba Mann-Whitney con el tipo de prueba especificado
-        if paired:
-            return jsonify({'error': 'El test Mann-Whitney no es adecuado para datos pareados.'}), 400
 
         # Ejecutar el test Mann-Whitney U
         u_stat, p_value = stats.mannwhitneyu(groups.iloc[0], groups.iloc[1], alternative=alternative)
