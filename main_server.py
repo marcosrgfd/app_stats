@@ -1155,7 +1155,6 @@ def generate_charts():
         plt.figure(figsize=(10, 8))
 
         if chart_type == 'Scatterplot':
-            # Scatterplot necesita dos columnas numéricas
             if not y_column:
                 return jsonify({'error': 'Para un scatterplot, debe seleccionar dos variables numéricas.'}), 400
 
@@ -1169,7 +1168,6 @@ def generate_charts():
                 return jsonify({'error': 'Ambas columnas seleccionadas deben ser numéricas para un scatterplot.'}), 400
 
         elif chart_type == 'Histograma':
-            # Histograma para una columna numérica
             if pd.api.types.is_numeric_dtype(dataframe[x_column]):
                 sns.histplot(df_clean[x_column], bins=20, kde=True, color='skyblue')
                 plt.xlabel(x_column)
@@ -1179,7 +1177,6 @@ def generate_charts():
                 return jsonify({'error': 'La columna seleccionada debe ser numérica para un histograma.'}), 400
 
         elif chart_type == 'Boxplot':
-            # Boxplot para una columna numérica, opcionalmente diferenciada por una categórica
             if pd.api.types.is_numeric_dtype(dataframe[x_column]):
                 if categorical_column and categorical_column in dataframe.columns:
                     if pd.api.types.is_categorical_dtype(dataframe[categorical_column]) or dataframe[categorical_column].dtype == 'object':
@@ -1195,12 +1192,12 @@ def generate_charts():
                 return jsonify({'error': 'La columna seleccionada debe ser numérica para un boxplot.'}), 400
 
         elif chart_type == 'Raincloud Plot':
-            # Raincloud Plot para una columna numérica diferenciada por una categórica
-            if pd.api.types.is_numeric_dtype(dataframe[x_column]) and categorical_column in dataframe.columns:
-                if pd.api.types.is_categorical_dtype(dataframe[categorical_column]) or dataframe[categorical_column].dtype == 'object':
-                    palette = sns.color_palette("Set2", len(df_clean[categorical_column].unique()))
-                    fig, ax = plt.subplots(figsize=(10, 8))
+            if pd.api.types.is_numeric_dtype(dataframe[x_column]):
+                fig, ax = plt.subplots(figsize=(10, 8))
 
+                if categorical_column and categorical_column in dataframe.columns:
+                    # Raincloud Plot con categorización
+                    palette = sns.color_palette("Set2", len(df_clean[categorical_column].unique()))
                     for i, category in enumerate(df_clean[categorical_column].unique()):
                         cat_data = df_clean[df_clean[categorical_column] == category][x_column]
                         
@@ -1225,11 +1222,17 @@ def generate_charts():
                     ax.set_xlabel(x_column)
                     ax.set_title(f'Raincloud Plot de {x_column} según {categorical_column}')
                     plt.grid(True)
-
                 else:
-                    return jsonify({'error': 'La columna categórica seleccionada no es válida.'}), 400
+                    # Raincloud Plot sin categorización
+                    sns.violinplot(x=df_clean[x_column], inner=None, color='skyblue', alpha=0.5)
+                    sns.boxplot(x=df_clean[x_column], color='lightgreen', width=0.2)
+                    y_jitter = np.random.uniform(-0.05, 0.05, size=len(df_clean[x_column]))
+                    plt.scatter(df_clean[x_column], y_jitter, s=10, color='blue', alpha=0.6)
+                    plt.xlabel(x_column)
+                    plt.title(f'Raincloud Plot de {x_column}')
+
             else:
-                return jsonify({'error': 'La columna seleccionada debe ser numérica y la categórica válida para un Raincloud Plot.'}), 400
+                return jsonify({'error': 'La columna seleccionada debe ser numérica para un Raincloud Plot.'}), 400
 
         plt.tight_layout()
         plt.savefig(img, format='png')
@@ -1241,6 +1244,7 @@ def generate_charts():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
 
 
 
