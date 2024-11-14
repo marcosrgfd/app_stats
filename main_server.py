@@ -1547,17 +1547,38 @@ def run_anova():
 def run_chisquare():
     global dataframe
     try:
-        # Seleccionar automáticamente dos columnas categóricas
-        row_column = dataframe.select_dtypes(exclude=['number']).columns[0]
-        col_column = dataframe.select_dtypes(exclude=['number']).columns[1]
+        data = request.get_json()
+        categorical_column1 = data.get('categorical_column1')
+        categorical_column2 = data.get('categorical_column2')
+        show_contingency_table = data.get('show_contingency_table', False)
 
-        if row_column not in dataframe.columns or col_column not in dataframe.columns:
-            return jsonify({'error': 'No se encontraron columnas adecuadas para Chi-Square.'}), 400
+        if categorical_column1 not in dataframe.columns or categorical_column2 not in dataframe.columns:
+            return jsonify({'error': 'Las columnas especificadas no se encontraron en los datos.'}), 400
 
-        contingency_table = pd.crosstab(dataframe[row_column], dataframe[col_column])
-        chi2, p_value, _, _ = chi2_contingency(contingency_table)
+        # Crear la tabla de contingencia
+        contingency_table = pd.crosstab(dataframe[categorical_column1], dataframe[categorical_column2])
 
-        result = {'chi_square_statistic': chi2, 'p_value': p_value}
+        # Realizar el test de Chi-Cuadrado
+        chi2, p_value, dof, expected = chi2_contingency(contingency_table)
+
+        # Evaluar la significancia
+        significance = "significativo" if p_value < 0.05 else "no significativo"
+        decision = "Rechazar la hipótesis nula" if p_value < 0.05 else "No rechazar la hipótesis nula"
+
+        # Preparar el resultado
+        result = {
+            'test': 'Chi-Square Test',
+            'chi_square_statistic': chi2,
+            'p_value': p_value,
+            'degrees_of_freedom': dof,
+            'significance': significance,
+            'decision': decision
+        }
+
+        # Incluir la tabla de contingencia si se solicitó
+        if show_contingency_table:
+            result['contingency_table'] = contingency_table.to_dict()
+
         return jsonify({'result': result})
 
     except Exception as e:
