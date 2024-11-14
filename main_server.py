@@ -1366,21 +1366,26 @@ def run_regression():
         X = dataframe[covariates].copy()
         y = dataframe[response_variable]
 
+        # Verificar valores únicos y tipos de datos de las covariables
+        print("Valores únicos por columna antes de transformar:")
+        for col in X.columns:
+            print(f"{col}: {X[col].unique()}")
+
         # Identificar y transformar variables categóricas a dummy variables
         categorical_covariates = X.select_dtypes(include=['object', 'category']).columns.tolist()
         if categorical_covariates:
             X = pd.get_dummies(X, columns=categorical_covariates, drop_first=True)
 
-        # Manejar valores faltantes (NaN)
-        X = X.fillna(0)
-        y = y.fillna(0)
+        # Reemplazar valores infinitos y manejar NaNs
+        X = X.apply(pd.to_numeric, errors='coerce')  # Convertir a numérico y manejar errores
+        X.replace([np.inf, -np.inf], np.nan, inplace=True)  # Reemplazar infinitos por NaN
+        X.fillna(0, inplace=True)  # Reemplazar NaN por 0
 
-        # Verificar que todas las columnas sean numéricas
-        X = X.apply(pd.to_numeric, errors='coerce').fillna(0)
+        y = pd.to_numeric(y, errors='coerce').fillna(0)  # Convertir y manejar NaN en y
 
         # Asegurarse de que no haya datos infinitos o NaN
-        if not np.isfinite(X).all().all() or not np.isfinite(y).all():
-            return jsonify({'error': 'Los datos contienen valores no numéricos, infinitos o NaN.'}), 400
+        if not np.isfinite(X.to_numpy()).all() or not np.isfinite(y.to_numpy()).all():
+            return jsonify({'error': 'Los datos contienen valores no numéricos o infinitos después de la conversión.'}), 400
 
         # Verificación de multicolinealidad utilizando el VIF
         X_with_const = sm.add_constant(X)
@@ -1432,6 +1437,7 @@ def run_regression():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
 
 
 
