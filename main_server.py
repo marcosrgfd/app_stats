@@ -1370,16 +1370,19 @@ def run_regression():
         X = dataframe[covariates].copy()
         y = dataframe[response_variable]
 
-        # Limpiar datos: eliminar espacios y convertir valores especiales a NaN
+        # Limpieza de datos: eliminar espacios y convertir valores especiales a NaN
         X = X.apply(lambda col: col.str.strip() if col.dtype == "object" else col)
         X.replace(["", "N/A", "NaN", "null"], np.nan, inplace=True)
 
-        # Transformar variables categóricas a dummy variables
+        # Identificar y transformar variables categóricas a dummy variables
         categorical_covariates = X.select_dtypes(include=['object', 'category']).columns.tolist()
         if categorical_covariates:
+            # Reemplazar valores NaN en categóricas antes de crear dummies
+            for col in categorical_covariates:
+                X[col].fillna("Missing", inplace=True)
             X = pd.get_dummies(X, columns=categorical_covariates, drop_first=True)
 
-        # Convertir todas las columnas a numérico, manejar NaN e infinitos
+        # Convertir todas las columnas a numérico y manejar NaNs e infinitos
         for col in X.columns:
             X[col] = pd.to_numeric(X[col], errors='coerce')
 
@@ -1390,13 +1393,10 @@ def run_regression():
         # Convertir y manejar NaNs en la variable de respuesta
         y = pd.to_numeric(y, errors='coerce').fillna(0)
 
-        # Verificar que todas las columnas sean numéricas
-        if not all(np.issubdtype(dtype, np.number) for dtype in X.dtypes):
-            return jsonify({'error': 'Existen columnas con datos no numéricos después de la conversión.'}), 400
-
-        # Asegurarse de que no haya datos infinitos o NaN
-        if not np.isfinite(X.to_numpy()).all() or not np.isfinite(y.to_numpy()).all():
-            return jsonify({'error': 'Los datos contienen valores no numéricos o infinitos.'}), 400
+        # Verificar que todas las columnas sean numéricas después de la conversión
+        non_numeric_columns = [col for col in X.columns if not np.issubdtype(X[col].dtype, np.number)]
+        if non_numeric_columns:
+            return jsonify({'error': f'Existen columnas no numéricas: {non_numeric_columns}'}), 400
 
         # División de los datos en entrenamiento y prueba
         X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.8, random_state=1234, shuffle=True)
@@ -1434,6 +1434,7 @@ def run_regression():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
 
 
 
