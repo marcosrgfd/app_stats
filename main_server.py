@@ -1342,7 +1342,6 @@ def clean_results(result_dict):
     return result_dict
 
 # REGRESIÓN SIMPLE
-# REGRESIÓN SIMPLE
 @app.route('/run_regression', methods=['POST'])
 def run_regression():
     global dataframe
@@ -1398,13 +1397,23 @@ def run_regression():
         # Extraer coeficientes y métricas del modelo
         coefficients = dict(zip(dataframe[covariates].columns, regr.coef_))
         intercept = regr.intercept_
+        r_squared = regr.score(X_test, y_test)
+
+        # Calcular los p-valores usando statsmodels
+        X_with_const = sm.add_constant(X_train)  # Añadir constante para el intercepto
+        model = sm.OLS(y_train, X_with_const).fit()
+        p_values = model.pvalues[1:]  # Omitir el p-valor del intercepto
+
+        # Crear un diccionario de p-valores
+        p_values_dict = dict(zip(dataframe[covariates].columns, p_values))
 
         # Resumen del modelo en formato JSON
         regression_result = {
             "coefficients": coefficients,
             "intercept": intercept,
             "rmse": rmse,
-            "r_squared": regr.score(X_test, y_test)
+            "r_squared": r_squared,
+            "p_values": p_values_dict
         }
 
         return jsonify({
