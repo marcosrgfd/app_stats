@@ -1364,72 +1364,52 @@ def run_regression():
             if covariate not in dataframe.columns:
                 return jsonify({'error': f'La covariable {covariate} no existe en los datos.'}), 400
 
-        warnings = []
-
-        # Preparar X e y para la regresión
-        X = dataframe[covariates].copy()
-        y = dataframe[response_variable]
-
-        # Identificar variables categóricas y aplicar get_dummies con drop_first=True
-        categorical_covariates = X.select_dtypes(include=['object', 'category']).columns.tolist()
-        has_categorical = bool(categorical_covariates)
-        if has_categorical:
-            X = pd.get_dummies(X, columns=categorical_covariates, drop_first=True)
-
-        # Convertir X e y a arrays de tipo float
-        X = np.array(X, dtype=float)
-        y = np.array(y, dtype=float)
+        # Preparar el DataFrame para el modelo
+        df = dataframe[covariates + [response_variable]].copy()
 
         # Reemplazar NaN e infinitos por 0
-        X = np.nan_to_num(X, nan=0.0, posinf=0.0, neginf=0.0)
-        y = np.nan_to_num(y, nan=0.0, posinf=0.0, neginf=0.0)
+        df.replace([np.inf, -np.inf], np.nan, inplace=True)
+        df.dropna(inplace=True)
 
-        # División de los datos en entrenamiento y prueba
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=40, shuffle=True)
+        # Definir la fórmula para el modelo completo
+        formula = f"{response_variable} ~ " + " + ".join(covariates)
 
-        # Crear y entrenar el modelo de regresión lineal con sklearn
-        regr = LinearRegression()
-        regr.fit(X_train, y_train)
+        # Ajustar el modelo completo usando statsmodels
+        model_full = smf.ols(formula=formula, data=df).fit()
 
-        # Realizar predicciones y calcular el RMSE
-        predictions = regr.predict(X_test)
-        rmse = np.sqrt(mean_squared_error(y_test, predictions))
+        # Calcular el RMSE
+        predictions = model_full.predict(df)
+        rmse = np.sqrt(mean_squared_error(df[response_variable], predictions))
 
-        # Extraer coeficientes del modelo
-        feature_names = list(pd.get_dummies(dataframe[covariates], drop_first=True).columns)
-        coefficients = dict(zip(feature_names, regr.coef_))
-        intercept = regr.intercept_
+        # Extraer los coeficientes e intercepto
+        coefficients = model_full.params.to_dict()
+        intercept = coefficients.pop('Intercept', None)
 
-        # Calcular p-valores con statsmodels usando matrices NumPy
-        X_with_const = sm.add_constant(X_train)
-        model = sm.OLS(y_train, X_with_const).fit()
-        p_values = model.pvalues[1:]  # Omitir el p-valor del intercepto
+        # Calcular R-cuadrado
+        r_squared = model_full.rsquared
 
-        # Crear diccionario de p-valores
-        p_values_dict = dict(zip(feature_names, p_values))
+        # Realizar ANOVA para obtener p-valores generales
+        anova_results = sm.stats.anova_lm(model_full, typ=2)
+        p_values_general = anova_results["PR(>F)"].to_dict()
 
-        # Verificar si hay variables categóricas para calcular p-valores específicos
-        p_values_specific = {}
-        p_values_general = {}
-        if has_categorical:
-            for covariate in categorical_covariates:
-                dummies = [col for col in feature_names if col.startswith(covariate)]
-                for dummy in dummies:
-                    p_values_specific[dummy] = p_values_dict.get(dummy, None)
+        # Extraer p-valores específicos para cada nivel de las variables categóricas
+        p_values_specific = model_full.pvalues.to_dict()
+        # Eliminar el p-valor del intercepto
+        p_values_specific.pop('Intercept', None)
 
-        # Resumen del modelo en formato JSON
+        # Preparar el resumen del modelo
         regression_result = {
             "coefficients": coefficients,
             "intercept": intercept,
             "rmse": rmse,
-            "r_squared": regr.score(X_test, y_test),
-            "p_values": p_values_dict,
-            "p_values_specific": p_values_specific if has_categorical else None
+            "r_squared": r_squared,
+            "p_values_general": p_values_general,
+            "p_values_specific": p_values_specific
         }
 
         return jsonify({
             'regression_result': regression_result,
-            'warnings': warnings
+            'warnings': []
         })
 
     except Exception as e:
