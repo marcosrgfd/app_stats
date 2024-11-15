@@ -1396,7 +1396,9 @@ def run_regression():
 
         # Realizar ANOVA para obtener p-valores generales
         anova_results = sm.stats.anova_lm(model_full, typ=2)
-        p_values_general = anova_results["PR(>F)"].to_dict()
+        # Excluir el valor de 'Residual' al crear el diccionario de p-valores generales
+        p_values_general = {k: v for k, v in anova_results["PR(>F)"].to_dict().items() if k != "Residual"}
+
 
         # Extraer p-valores específicos para cada nivel de las variables categóricas
         p_values_specific = model_full.pvalues.to_dict()
