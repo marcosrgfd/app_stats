@@ -1372,10 +1372,11 @@ def run_regression():
 
         # Identificar variables categóricas y aplicar get_dummies con drop_first=True
         categorical_covariates = X.select_dtypes(include=['object', 'category']).columns.tolist()
-        if categorical_covariates:
+        has_categorical = bool(categorical_covariates)
+        if has_categorical:
             X = pd.get_dummies(X, columns=categorical_covariates, drop_first=True)
 
-        # Convertir X e y explícitamente a arrays de tipo float para evitar problemas
+        # Convertir X e y a arrays de tipo float
         X = np.array(X, dtype=float)
         y = np.array(y, dtype=float)
 
@@ -1399,20 +1400,22 @@ def run_regression():
         coefficients = dict(zip(feature_names, regr.coef_))
         intercept = regr.intercept_
 
-        # Calcular p-valores con statsmodels
+        # Calcular p-valores con statsmodels usando matrices NumPy
         X_with_const = sm.add_constant(X_train)
         model = sm.OLS(y_train, X_with_const).fit()
+        p_values = model.pvalues[1:]  # Omitir el p-valor del intercepto
 
-        # p-valores específicos para cada nivel (dummy)
-        p_values_dict = dict(zip(feature_names, model.pvalues[1:]))
+        # Crear diccionario de p-valores
+        p_values_dict = dict(zip(feature_names, p_values))
 
-        # Obtener p-valores generales para las variables categóricas
+        # Verificar si hay variables categóricas para calcular p-valores específicos
+        p_values_specific = {}
         p_values_general = {}
-        for covariate in categorical_covariates:
-            dummies = [col for col in feature_names if col.startswith(covariate)]
-            p_values = model.pvalues[[feature_names.index(dummy) + 1 for dummy in dummies]]
-            p_value_combined = sm.stats.anova_lm(model, typ=2)['PR(>F)'].get(covariate, None)
-            p_values_general[covariate] = p_value_combined
+        if has_categorical:
+            for covariate in categorical_covariates:
+                dummies = [col for col in feature_names if col.startswith(covariate)]
+                for dummy in dummies:
+                    p_values_specific[dummy] = p_values_dict.get(dummy, None)
 
         # Resumen del modelo en formato JSON
         regression_result = {
@@ -1420,8 +1423,8 @@ def run_regression():
             "intercept": intercept,
             "rmse": rmse,
             "r_squared": regr.score(X_test, y_test),
-            "p_values_specific": p_values_dict,
-            "p_values_general": p_values_general
+            "p_values": p_values_dict,
+            "p_values_specific": p_values_specific if has_categorical else None
         }
 
         return jsonify({
