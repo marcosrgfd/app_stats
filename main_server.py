@@ -1343,6 +1343,12 @@ def clean_results(result_dict):
             result_dict[key] = None
     return result_dict
 
+# Función para reemplazar NaN e infinitos por None
+def replace_invalid_values(data):
+    if isinstance(data, dict):
+        return {k: (None if pd.isna(v) or v in [np.inf, -np.inf] else v) for k, v in data.items()}
+    return data
+
 # REGRESIÓN SIMPLE
 @app.route('/run_regression', methods=['POST'])
 def run_regression():
@@ -1368,8 +1374,6 @@ def run_regression():
 
         # Preparar el DataFrame para el modelo
         df = dataframe[covariates + [response_variable]].copy()
-
-        # Reemplazar NaN e infinitos por 0
         df.replace([np.inf, -np.inf], np.nan, inplace=True)
         df.dropna(inplace=True)
 
@@ -1396,8 +1400,12 @@ def run_regression():
 
         # Extraer p-valores específicos para cada nivel de las variables categóricas
         p_values_specific = model_full.pvalues.to_dict()
-        # Eliminar el p-valor del intercepto
         p_values_specific.pop('Intercept', None)
+
+        # Reemplazar NaN e infinitos por None
+        coefficients = replace_invalid_values(coefficients)
+        p_values_general = replace_invalid_values(p_values_general)
+        p_values_specific = replace_invalid_values(p_values_specific)
 
         # Preparar el resumen del modelo
         regression_result = {
