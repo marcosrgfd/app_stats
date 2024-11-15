@@ -1342,6 +1342,7 @@ def clean_results(result_dict):
     return result_dict
 
 # REGRESIÓN SIMPLE
+# REGRESIÓN SIMPLE
 @app.route('/run_regression', methods=['POST'])
 def run_regression():
     global dataframe
@@ -1375,19 +1376,19 @@ def run_regression():
         if categorical_covariates:
             X = pd.get_dummies(X, columns=categorical_covariates, drop_first=True)
 
-        # Convertir todas las columnas a numérico, manejar NaN e infinitos
-        X = X.apply(pd.to_numeric, errors='coerce').replace([np.inf, -np.inf], np.nan).fillna(0)
-        y = pd.to_numeric(y, errors='coerce').fillna(0)
+        # Convertir X e y explícitamente a arrays de tipo float para evitar problemas
+        X = np.array(X, dtype=float)
+        y = np.array(y, dtype=float)
 
-        # Verificar que no existan datos no finitos
-        if not np.isfinite(X.to_numpy()).all() or not np.isfinite(y.to_numpy()).all():
-            return jsonify({'error': 'Los datos contienen valores no numéricos o infinitos después de la conversión.'}), 400
+        # Reemplazar NaN e infinitos por 0
+        X = np.nan_to_num(X, nan=0.0, posinf=0.0, neginf=0.0)
+        y = np.nan_to_num(y, nan=0.0, posinf=0.0, neginf=0.0)
 
         # División de los datos en entrenamiento y prueba
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=40, shuffle=True)
 
         # Crear y entrenar el modelo de regresión lineal
-        regr = LinearRegression()  # No usamos fit_intercept=False porque eliminamos una columna con drop_first
+        regr = LinearRegression()
         regr.fit(X_train, y_train)
 
         # Realizar predicciones y calcular el RMSE
@@ -1395,7 +1396,7 @@ def run_regression():
         rmse = np.sqrt(mean_squared_error(y_test, predictions))
 
         # Extraer coeficientes y métricas del modelo
-        coefficients = dict(zip(X.columns, regr.coef_))
+        coefficients = dict(zip(dataframe[covariates].columns, regr.coef_))
         intercept = regr.intercept_
 
         # Resumen del modelo en formato JSON
@@ -1413,6 +1414,7 @@ def run_regression():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
 
     
 # 3. T-Test
