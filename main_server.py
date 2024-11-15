@@ -1386,7 +1386,7 @@ def run_regression():
         # División de los datos en entrenamiento y prueba
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=40, shuffle=True)
 
-        # Crear y entrenar el modelo de regresión lineal
+        # Crear y entrenar el modelo de regresión lineal con sklearn
         regr = LinearRegression()
         regr.fit(X_train, y_train)
 
@@ -1394,26 +1394,34 @@ def run_regression():
         predictions = regr.predict(X_test)
         rmse = np.sqrt(mean_squared_error(y_test, predictions))
 
-        # Extraer coeficientes y métricas del modelo
-        coefficients = dict(zip(dataframe[covariates].columns, regr.coef_))
+        # Extraer coeficientes del modelo
+        feature_names = list(pd.get_dummies(dataframe[covariates], drop_first=True).columns)
+        coefficients = dict(zip(feature_names, regr.coef_))
         intercept = regr.intercept_
-        r_squared = regr.score(X_test, y_test)
 
-        # Calcular los p-valores usando statsmodels
-        X_with_const = sm.add_constant(X_train)  # Añadir constante para el intercepto
+        # Calcular p-valores con statsmodels
+        X_with_const = sm.add_constant(X_train)
         model = sm.OLS(y_train, X_with_const).fit()
-        p_values = model.pvalues[1:]  # Omitir el p-valor del intercepto
 
-        # Crear un diccionario de p-valores
-        p_values_dict = dict(zip(dataframe[covariates].columns, p_values))
+        # p-valores específicos para cada nivel (dummy)
+        p_values_dict = dict(zip(feature_names, model.pvalues[1:]))
+
+        # Obtener p-valores generales para las variables categóricas
+        p_values_general = {}
+        for covariate in categorical_covariates:
+            dummies = [col for col in feature_names if col.startswith(covariate)]
+            p_values = model.pvalues[[feature_names.index(dummy) + 1 for dummy in dummies]]
+            p_value_combined = sm.stats.anova_lm(model, typ=2)['PR(>F)'].get(covariate, None)
+            p_values_general[covariate] = p_value_combined
 
         # Resumen del modelo en formato JSON
         regression_result = {
             "coefficients": coefficients,
             "intercept": intercept,
             "rmse": rmse,
-            "r_squared": r_squared,
-            "p_values": p_values_dict
+            "r_squared": regr.score(X_test, y_test),
+            "p_values_specific": p_values_dict,
+            "p_values_general": p_values_general
         }
 
         return jsonify({
