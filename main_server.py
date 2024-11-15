@@ -2760,21 +2760,34 @@ def welch_t_test():
     data = request.get_json()
     sample1 = data.get('sample1', [])
     sample2 = data.get('sample2', [])
+    alternative = data.get('alternative', 'two-sided')  # Configuración de unilateral/bilateral
 
     # Validar que ambas muestras tengan datos
     if not sample1 or not sample2:
         return jsonify({'error': 'Ambas muestras deben contener datos.'}), 400
 
-    # Realizar la prueba t de Welch
-    stat, p_value = stats.ttest_ind(sample1, sample2, equal_var=False)
+    # Realizar la prueba t de Welch con opción de prueba unilateral/bilateral
+    stat, p_value = stats.ttest_ind(sample1, sample2, equal_var=False, alternative=alternative)
+
+    # Determinar significancia según el valor p
+    if p_value < 0.05:
+        significance = "significant"
+        decision = "Reject the null hypothesis"
+    elif p_value < 0.1:
+        significance = "marginally significant"
+        decision = "Potential rejection of the null hypothesis"
+    else:
+        significance = "not significant"
+        decision = "Do not reject the null hypothesis"
 
     return jsonify({
         'test': 'Welch T-Test',
         'statistic': stat,
         'pValue': p_value,
-        'significance': 'significant' if p_value < 0.05 else 'not significant',
-        'decision': 'Reject the null hypothesis' if p_value < 0.05 else 'Do not reject the null hypothesis'
+        'significance': significance,
+        'decision': decision
     })
+
 
 
 # Ruta para la prueba t de una media
