@@ -684,6 +684,30 @@ def calculate_descriptive_statistics(request_body):
                 density_img.seek(0)
                 stats['density_plot'] = base64.b64encode(density_img.getvalue()).decode()
                 plt.close()
+            if show_violinplot:
+                plt.figure(figsize=(6, 4))
+                sns.violinplot(data=data_series.dropna(), color='lightcoral')
+                plt.title(f'Gráfico de Violín {title_suffix}')
+                plt.xlabel('Valor')
+                plt.tight_layout()
+                violin_img = io.BytesIO()
+                plt.savefig(violin_img, format='png')
+                violin_img.seek(0)
+                stats['violin_plot'] = base64.b64encode(violin_img.getvalue()).decode()
+                plt.close()
+
+            if show_raincloudplot:
+                fig, ax = plt.subplots(figsize=(8, 6))
+                sns.violinplot(data=data_series.dropna(), ax=ax, inner=None, color='lightblue', alpha=0.5)
+                sns.stripplot(data=data_series.dropna(), ax=ax, color='darkblue', size=4, jitter=True, alpha=0.6)
+                ax.set_title(f'Raincloud Plot {title_suffix}')
+                ax.set_xlabel('Valor')
+                plt.tight_layout()
+                raincloud_img = io.BytesIO()
+                plt.savefig(raincloud_img, format='png')
+                raincloud_img.seek(0)
+                stats['raincloud_plot'] = base64.b64encode(raincloud_img.getvalue()).decode()
+                plt.close()
             return stats
 
         # Si solo hay una muestra, devolver las estadísticas para una muestra
@@ -774,7 +798,9 @@ def calculate_basic_analysis():
                 'data1': data_series1,
                 'showBoxplot': show_boxplot,
                 'showHistogram': show_histogram,
-                'showDensity': show_density
+                'showDensity': show_density,
+                'showViolinPlot': show_violinplot,
+                'showRaincloudPlot': show_raincloudplot
             })
 
         return jsonify(result)
