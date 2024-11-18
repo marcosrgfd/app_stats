@@ -2382,6 +2382,7 @@ def kruskal_wallis():
         group9 = data.get('group9', [])
         group10 = data.get('group10', [])
         multiple_comparisons = data.get('multipleComparisons', False)
+        p_value_adjustment = data.get('pValueAdjustmentMethod', 'bonferroni').lower()  # Método de ajuste por defecto: Bonferroni
 
         # Convertir los datos de cada grupo a float
         groups = [[float(x) for x in group] for group in [group1, group2, group3, group4, group5, group6, group7, group8, group9, group10] if group]
@@ -2433,10 +2434,13 @@ def kruskal_wallis():
                 df = pd.DataFrame({'value': all_data, 'group': labels})
 
                 # Realizar la prueba de Dunn
-                dunn = sp.posthoc_dunn(df, val_col='value', group_col='group', p_adjust='bonferroni')
+                if p_value_adjustment not in ['bonferroni', 'holm']:
+                    return jsonify({'error': 'Método de ajuste no válido. Use "bonferroni" o "holm".'}), 400
+                
+                dunn = sp.posthoc_dunn(df, val_col='value', group_col='group', p_adjust=p_value_adjustment)
 
                 # Procesar los resultados de Dunn
-                dunn_summary = "Comparaciones múltiples (Dunn con corrección de Bonferroni):\n"
+                dunn_summary = f"Comparaciones múltiples (Dunn con corrección {p_value_adjustment.capitalize()}):\n"
                 for i in range(len(dunn)):
                     for j in range(i+1, len(dunn)):
                         dunn_summary += (
