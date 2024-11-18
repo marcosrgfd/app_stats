@@ -1189,6 +1189,8 @@ def generate_charts():
         if chart_type == 'Scatterplot':
             if not y_column:
                 return jsonify({'error': 'Para un scatterplot, debe seleccionar dos variables numéricas.'}), 400
+            
+            add_trendline = data.get('add_trendline', False)
 
             if pd.api.types.is_numeric_dtype(dataframe[x_column]) and pd.api.types.is_numeric_dtype(dataframe[y_column]):
                 sns.scatterplot(x=df_clean[x_column], y=df_clean[y_column], color='blue', alpha=0.6, edgecolor='w', s=80)
@@ -1196,6 +1198,13 @@ def generate_charts():
                 plt.ylabel(y_column)
                 plt.title(f'Scatterplot de {x_column} vs {y_column}')
                 plt.grid(True)
+
+                # Añadir línea de tendencia si se solicita
+                if add_trendline:
+                    m, b = np.polyfit(df_clean[x_column], df_clean[y_column], 1)
+                    plt.plot(df_clean[x_column], m * df_clean[x_column] + b, color='red', linestyle='--', linewidth=2)
+                    plt.legend(['Línea de tendencia', 'Datos'])
+                    
             else:
                 return jsonify({'error': 'Ambas columnas seleccionadas deben ser numéricas para un scatterplot.'}), 400
 
@@ -1214,6 +1223,8 @@ def generate_charts():
                     if pd.api.types.is_categorical_dtype(dataframe[categorical_column]) or dataframe[categorical_column].dtype == 'object':
                         sns.boxplot(x=categorical_column, y=x_column, data=df_clean, palette='Set3')
                         plt.title(f'Boxplot de {x_column} según {categorical_column}')
+                        plt.xlabel(categorical_column)  # Cambia el nombre del eje X
+                        plt.ylabel(x_column)  # Usa el nombre de la variable numérica para el eje Y
                     else:
                         return jsonify({'error': 'La columna categórica seleccionada no es válida.'}), 400
                 else:
