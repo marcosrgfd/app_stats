@@ -1220,17 +1220,29 @@ def generate_charts():
         elif chart_type == 'Boxplot':
             if pd.api.types.is_numeric_dtype(dataframe[x_column]):
                 if categorical_column and categorical_column in dataframe.columns:
-                    if pd.api.types.is_categorical_dtype(dataframe[categorical_column]) or dataframe[categorical_column].dtype == 'object':
-                        sns.boxplot(x=categorical_column, y=x_column, data=df_clean, palette='Set3')
+                    # Asegurar que la columna categórica sea tratada como categoría
+                    df_clean[categorical_column] = df_clean[categorical_column].astype('category')
+
+                    # Verificar si la columna categórica es válida
+                    if pd.api.types.is_categorical_dtype(df_clean[categorical_column]) or df_clean[categorical_column].dtype == 'object':
+                        sns.boxplot(
+                            x=categorical_column, 
+                            y=x_column, 
+                            data=df_clean, 
+                            palette='Set3', 
+                            width=0.4  # Ajustar el ancho de las barras para hacerlas más finas
+                        )
                         plt.title(f'Boxplot de {x_column} según {categorical_column}')
-                        plt.xlabel(categorical_column)  # Cambia el nombre del eje X
-                        plt.ylabel(x_column)  # Usa el nombre de la variable numérica para el eje Y
+                        plt.xlabel(categorical_column)  # Etiqueta correcta para el eje X
+                        plt.ylabel(x_column)  # Etiqueta correcta para el eje Y
                     else:
                         return jsonify({'error': 'La columna categórica seleccionada no es válida.'}), 400
                 else:
-                    sns.boxplot(x=df_clean[x_column], color='lightgreen')
+                    # Boxplot sin categorización
+                    sns.boxplot(x=df_clean[x_column], color='lightgreen', width=0.4)
                     plt.title(f'Boxplot de {x_column}')
-                plt.xlabel(x_column)
+                    plt.xlabel(x_column)
+                    plt.ylabel('Frecuencia')  # Etiqueta adecuada para el eje Y cuando no hay categorización
             else:
                 return jsonify({'error': 'La columna seleccionada debe ser numérica para un boxplot.'}), 400
 
