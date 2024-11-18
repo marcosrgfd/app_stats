@@ -2194,7 +2194,6 @@ def anova_one_way():
         group9 = data.get('group9', [])
         group10 = data.get('group10', [])
         multiple_comparisons = data.get('multipleComparisons', False)
-        p_adjust_method = data.get('pAdjustMethod', 'tukey').lower()  # Método de corrección (por defecto: Tukey)
 
         # Convertir los datos de cada grupo a float
         group1 = [float(x) for x in group1]
@@ -2234,7 +2233,7 @@ def anova_one_way():
                 return jsonify({'error': 'Se requieren al menos tres grupos para realizar comparaciones múltiples (Tukey HSD).'}), 400
             
             try:
-                # Preparar los datos para comparaciones múltiples
+                # Preparar los datos para Tukey HSD
                 all_data = []
                 labels = []
                 for i, group in enumerate(groups):
@@ -2248,47 +2247,31 @@ def anova_one_way():
                 # Convertir los datos a un DataFrame
                 df = pd.DataFrame({'value': all_data, 'group': labels})
                 
-                # Aplicar el método de corrección seleccionado
-                if p_adjust_method == 'tukey':
-                    # Realizar Tukey HSD
-                    tukey = mc.pairwise_tukeyhsd(df['value'], df['group'], alpha=0.05)
-                    comparison_results = tukey.summary().data[1:]  # Ignorar la cabecera
-                    method_name = 'Tukey HSD'
+                # Realizar Tukey HSD
+                tukey = mc.pairwise_tukeyhsd(df['value'], df['group'], alpha=0.05)
 
-                else:
-                    # Realizar comparaciones múltiples utilizando otros métodos
-                    from statsmodels.stats.multicomp import pairwise_ttests
-                    t_test_results, _, _ = pairwise_ttests(df['value'], df['group'], method=p_adjust_method)
-                    comparison_results = t_test_results.values
-                    method_name = 'Bonferroni' if p_adjust_method == 'bonferroni' else 'Holm'
-
-                # Procesar los resultados y generar texto formateado
-                comparison_summary = f"Comparaciones múltiples ({method_name}):\n"
-                for result in comparison_results:
-                    group1, group2 = result[0], result[1]
-                    mean_diff = result[2]
-                    p_value_adj = result[3]
-                    ci_lower, ci_upper = result[4], result[5]
-                    reject_h0 = 'Sí' if result[6] else 'No'
-
-                    comparison_summary += (
-                        f"----------------------------\n"
-                        f"Comparación: {group1} vs {group2}\n"
-                        f"  • Diferencia de Medias: {mean_diff:.2f}\n"
-                        f"  • p-Value ajustado: {p_value_adj:.3f}\n"
-                        f"  • IC Inferior: {ci_lower:.2f}, IC Superior: {ci_upper:.2f}\n"
-                        f"  • Rechazo H0: {reject_h0}\n"
+                # Procesar los resultados de Tukey HSD y generar texto formateado
+                tukey_summary = "Comparaciones múltiples (Tukey HSD):\n"
+                for result in tukey.summary().data[1:]:  # Ignorar la cabecera
+                    tukey_summary += (
+                        f"----------------------------\n"  # Separador para mayor claridad
+                        f"Comparación: {result[0]} vs {result[1]}\n"
+                        f"  • Diferencia de Medias: {result[2]:.2f}\n"
+                        f"  • p-Value ajustado: {result[3]:.3f}\n"
+                        f"  • IC Inferior: {result[4]:.2f}, IC Superior: {result[5]:.2f}\n"
+                        f"  • Rechazo H0: {'Sí' if result[6] else 'No'}\n"
                     )
 
-                # Agregar el resumen al resultado
-                anova_results['comparisons'] = comparison_summary
+                # Agregar el resumen de Tukey al resultado
+                anova_results['tukey'] = tukey_summary
 
             except Exception as e:
-                return jsonify({'error': f'Error al realizar comparaciones múltiples: {str(e)}'}), 500
+                return jsonify({'error': f'Error al ejecutar Tukey HSD: {str(e)}'}), 500
 
         return jsonify(anova_results)
-
+    
     except Exception as e:
+        # Registrar el error en el servidor para depuración
         print(f'Error al ejecutar ANOVA: {str(e)}')
         return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
 
