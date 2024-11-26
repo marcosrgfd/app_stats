@@ -65,10 +65,14 @@ from sklearn.metrics import mean_squared_error
 
 import statsmodels.formula.api as smf
 
+from flask_cors import CORS
+
 # Cambiar el backend de matplotlib para evitar problemas de hilos en entornos de servidor
 plt.switch_backend('Agg')
 
 app = Flask(__name__)
+
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 ###########################################################################################
 ####################################### SAMPLE SIZE #######################################
