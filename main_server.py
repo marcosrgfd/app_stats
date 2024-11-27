@@ -63,6 +63,8 @@ from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 
+import csv
+
 import statsmodels.formula.api as smf
 
 from flask_cors import CORS
@@ -1115,11 +1117,21 @@ def upload_file_charts():
 
         if filename.endswith('.csv'):
             try:
-                dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("utf-8")), delimiter=',')
+                # Detectar delimitador automáticamente usando `csv.Sniffer`
+                content = file.stream.read().decode("utf-8")
+                dialect = csv.Sniffer().sniff(content[:1024])  # Analizar una muestra del archivo
+                delimiter = dialect.delimiter
+
+                # Leer el archivo con el delimitador detectado
+                dataframe = pd.read_csv(io.StringIO(content), delimiter=delimiter)
             except UnicodeDecodeError:
-                dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("ISO-8859-1")), delimiter=',')
-            except pd.errors.ParserError:
-                dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("utf-8")), delimiter=';')
+                # Intentar con una codificación alternativa
+                content = file.stream.read().decode("ISO-8859-1")
+                dialect = csv.Sniffer().sniff(content[:1024])
+                delimiter = dialect.delimiter
+                dataframe = pd.read_csv(io.StringIO(content), delimiter=delimiter)
+            except pd.errors.ParserError as e:
+                return jsonify({'error': f'Error al analizar el archivo CSV: {str(e)}'}), 400
 
         elif filename.endswith(('.xls', '.xlsx')):
             try:
@@ -1133,9 +1145,11 @@ def upload_file_charts():
 
         elif filename.endswith('.txt'):
             try:
-                dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("utf-8")), delimiter=r'\s+')
+                content = file.stream.read().decode("utf-8")
+                dataframe = pd.read_csv(io.StringIO(content), delimiter=r'\s+')
             except UnicodeDecodeError:
-                dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("ISO-8859-1")), delimiter=r'\s+')
+                content = file.stream.read().decode("ISO-8859-1")
+                dataframe = pd.read_csv(io.StringIO(content), delimiter=r'\s+')
         else:
             return jsonify({'error': "Formato de archivo no soportado. Proporcione un archivo CSV, XLSX, XLS o TXT."}), 400
 
