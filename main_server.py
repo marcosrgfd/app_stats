@@ -820,7 +820,7 @@ def calculate_basic_analysis():
 
 # Función para reemplazar NaN en los resultados
 def replace_nan_with_none(values):
-    return [None if np.isnan(x) else x for x in values]
+    return [None if pd.isna(x) else x for x in values]
 
 # Variable global para almacenar el DataFrame cargado
 dataframe = None
@@ -842,31 +842,60 @@ def upload_file_descriptive():
 
         if filename.endswith('.csv'):
             try:
-                dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("utf-8")), delimiter=',')
+                # Leer contenido del archivo para detectar delimitador
+                content = file.stream.read().decode("utf-8")
+                # Detectar delimitador dinámicamente
+                dialect = csv.Sniffer().sniff(content[:1024], delimiters=";,")
+                delimiter = dialect.delimiter
+                dataframe = pd.read_csv(io.StringIO(content), delimiter=delimiter)
             except UnicodeDecodeError:
-                dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("ISO-8859-1")), delimiter=',')
-            except pd.errors.ParserError:
-                dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("utf-8")), delimiter=';')
+                # Si UTF-8 falla, intentar con ISO-8859-1
+                content = file.stream.read().decode("ISO-8859-1")
+                dialect = csv.Sniffer().sniff(content[:1024], delimiters=";,")
+                delimiter = dialect.delimiter
+                dataframe = pd.read_csv(io.StringIO(content), delimiter=delimiter)
+            except pd.errors.ParserError as e:
+                return jsonify({'error': f'Error al analizar el archivo CSV: {str(e)}'}), 400
+
         elif filename.endswith(('.xls', '.xlsx')):
             try:
+                # Leer archivos Excel
                 file_stream = io.BytesIO(file.read())
                 dataframe = pd.read_excel(file_stream, engine='openpyxl')
             except ValueError as e:
                 return jsonify({'error': f'Error al leer el archivo Excel: {str(e)}'}), 400
+            except Exception as e:
+                return jsonify({'error': f'Error desconocido al leer el archivo Excel: {str(e)}'}), 400
+
         elif filename.endswith('.txt'):
             try:
-                dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("utf-8")), delimiter=r'\s+')
+                content = file.stream.read().decode("utf-8")
+                dataframe = pd.read_csv(io.StringIO(content), delimiter=r'\s+')
             except UnicodeDecodeError:
-                dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("ISO-8859-1")), delimiter=r'\s+')
+                content = file.stream.read().decode("ISO-8859-1")
+                dataframe = pd.read_csv(io.StringIO(content), delimiter=r'\s+')
         else:
             return jsonify({'error': 'Formato de archivo no soportado. Proporcione un archivo CSV, XLSX, XLS o TXT.'}), 400
 
+        # Verificar si el DataFrame se cargó correctamente
         if dataframe.empty:
             return jsonify({'error': 'El archivo está vacío o no se pudo procesar correctamente.'}), 400
 
+        # Normalizar encabezados quitando espacios adicionales
         dataframe.columns = dataframe.columns.str.strip()
-        dataframe = dataframe.fillna("N/A")
 
+        # Manejo de celdas vacías
+        dataframe = dataframe.fillna("N/A")  # Rellenar celdas vacías con "N/A"
+
+        # Intentar convertir columnas numéricas que puedan haber sido interpretadas como texto
+        for column in dataframe.columns:
+            try:
+                dataframe[column] = pd.to_numeric(dataframe[column].str.replace(',', '.'), errors='ignore')
+            except AttributeError:
+                # Si no es un string, continuar sin cambios
+                continue
+
+        # Clasificar las columnas entre numéricas y categóricas
         numeric_columns = dataframe.select_dtypes(include=['number']).columns.tolist()
         categorical_columns = dataframe.select_dtypes(exclude=['number']).columns.tolist()
 
@@ -875,6 +904,11 @@ def upload_file_descriptive():
             'numeric_columns': numeric_columns,
             'categorical_columns': categorical_columns
         })
+
+    except UnicodeDecodeError:
+        return jsonify({'error': 'Error de codificación. Asegúrese de que el archivo esté en formato UTF-8 o ISO-8859-1.'}), 400
+    except pd.errors.ParserError:
+        return jsonify({'error': 'Error al analizar el archivo. Verifique el delimitador y el formato del archivo.'}), 400
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
@@ -1355,21 +1389,37 @@ def upload_file_stat():
         try:
             if filename.endswith('.csv'):
                 try:
-                    dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("utf-8")), delimiter=',')
+                    # Leer contenido del archivo para detectar delimitador
+                    content = file.stream.read().decode("utf-8")
+                    dialect = csv.Sniffer().sniff(content[:1024], delimiters=";,")
+                    delimiter = dialect.delimiter
+                    dataframe = pd.read_csv(io.StringIO(content), delimiter=delimiter)
                 except UnicodeDecodeError:
-                    dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("ISO-8859-1")), delimiter=',')
-                except pd.errors.ParserError:
-                    dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("utf-8")), delimiter=';')
+                    # Intentar con ISO-8859-1 si UTF-8 falla
+                    content = file.stream.read().decode("ISO-8859-1")
+                    dialect = csv.Sniffer().sniff(content[:1024], delimiters=";,")
+                    delimiter = dialect.delimiter
+                    dataframe = pd.read_csv(io.StringIO(content), delimiter=delimiter)
+                except pd.errors.ParserError as e:
+                    return jsonify({'error': f'Error al analizar el archivo CSV: {str(e)}'}), 400
 
             elif filename.endswith(('.xls', '.xlsx')):
-                file_stream = io.BytesIO(file.read())
-                dataframe = pd.read_excel(file_stream, engine='openpyxl')
+                try:
+                    # Leer archivo Excel (.xls o .xlsx)
+                    file_stream = io.BytesIO(file.read())
+                    dataframe = pd.read_excel(file_stream, engine='openpyxl')
+                except ValueError as e:
+                    return jsonify({'error': f'Error al leer el archivo Excel: {str(e)}'}), 400
+                except Exception as e:
+                    return jsonify({'error': f'Error desconocido al leer el archivo Excel: {str(e)}'}), 400
 
             elif filename.endswith('.txt'):
                 try:
-                    dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("utf-8")), delimiter=r'\s+')
+                    content = file.stream.read().decode("utf-8")
+                    dataframe = pd.read_csv(io.StringIO(content), delimiter=r'\s+')
                 except UnicodeDecodeError:
-                    dataframe = pd.read_csv(io.StringIO(file.stream.read().decode("ISO-8859-1")), delimiter=r'\s+')
+                    content = file.stream.read().decode("ISO-8859-1")
+                    dataframe = pd.read_csv(io.StringIO(content), delimiter=r'\s+')
             else:
                 return jsonify({'error': "Formato de archivo no soportado. Proporcione un archivo CSV, XLSX, XLS o TXT."}), 400
 
@@ -1377,12 +1427,20 @@ def upload_file_stat():
             if dataframe.empty:
                 return jsonify({'error': 'El archivo está vacío o no se pudo procesar correctamente.'}), 400
 
-            # Normalizar encabezados quitando espacios adicionales y caracteres no deseados
+            # Normalizar encabezados quitando espacios adicionales
             dataframe.columns = dataframe.columns.str.strip()
 
             # Manejo de celdas vacías
             dataframe = dataframe.replace("N/A", np.nan)
-            dataframe = dataframe.dropna()  # Eliminamos las filas con valores nulos para evitar errores en la regresión
+            dataframe = dataframe.dropna()  # Eliminar filas con valores nulos
+
+            # Intentar convertir columnas numéricas interpretadas como texto
+            for column in dataframe.columns:
+                try:
+                    dataframe[column] = pd.to_numeric(dataframe[column].str.replace(',', '.'), errors='ignore')
+                except AttributeError:
+                    # Si no es un string, continuar sin cambios
+                    continue
 
             # Clasificar las columnas entre numéricas y categóricas
             numeric_columns = dataframe.select_dtypes(include=['number']).columns.tolist()
@@ -1400,11 +1458,16 @@ def upload_file_stat():
                 'binary_categorical_columns': binary_categorical_columns
             })
 
+        except UnicodeDecodeError:
+            return jsonify({'error': 'Error de codificación. Asegúrese de que el archivo esté en formato UTF-8 o ISO-8859-1.'}), 400
+        except pd.errors.ParserError:
+            return jsonify({'error': 'Error al analizar el archivo. Verifique el delimitador y el formato del archivo.'}), 400
         except Exception as e:
             return jsonify({'error': str(e)}), 400
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
 
 # Función para gestionar NA
 def clean_results(result_dict):
