@@ -1117,17 +1117,16 @@ def upload_file_charts():
 
         if filename.endswith('.csv'):
             try:
-                # Detectar delimitador automáticamente usando `csv.Sniffer`
+                # Leer contenido del archivo para detectar delimitador
                 content = file.stream.read().decode("utf-8")
-                dialect = csv.Sniffer().sniff(content[:1024])  # Analizar una muestra del archivo
+                # Intentar detectar delimitador automáticamente
+                dialect = csv.Sniffer().sniff(content[:1024], delimiters=";,")
                 delimiter = dialect.delimiter
-
-                # Leer el archivo con el delimitador detectado
                 dataframe = pd.read_csv(io.StringIO(content), delimiter=delimiter)
             except UnicodeDecodeError:
-                # Intentar con una codificación alternativa
+                # Si falla la codificación UTF-8, intentar ISO-8859-1
                 content = file.stream.read().decode("ISO-8859-1")
-                dialect = csv.Sniffer().sniff(content[:1024])
+                dialect = csv.Sniffer().sniff(content[:1024], delimiters=";,")
                 delimiter = dialect.delimiter
                 dataframe = pd.read_csv(io.StringIO(content), delimiter=delimiter)
             except pd.errors.ParserError as e:
@@ -1135,7 +1134,7 @@ def upload_file_charts():
 
         elif filename.endswith(('.xls', '.xlsx')):
             try:
-                # Intentar leer el archivo Excel (.xls o .xlsx) usando un flujo de bytes
+                # Leer archivos Excel
                 file_stream = io.BytesIO(file.read())
                 dataframe = pd.read_excel(file_stream, engine='openpyxl')
             except ValueError as e:
@@ -1161,7 +1160,15 @@ def upload_file_charts():
         dataframe.columns = dataframe.columns.str.strip()
 
         # Manejo de celdas vacías
-        dataframe = dataframe.fillna("N/A")  # Rellenar celdas vacías con "N/A" o el valor que sea más apropiado
+        dataframe = dataframe.fillna("N/A")  # Rellenar celdas vacías con "N/A"
+
+        # Intentar convertir columnas numéricas que puedan haber sido interpretadas como texto
+        for column in dataframe.columns:
+            try:
+                dataframe[column] = pd.to_numeric(dataframe[column].str.replace(',', '.'), errors='ignore')
+            except AttributeError:
+                # Si no es un string, continuar sin cambios
+                continue
 
         # Clasificar las columnas entre numéricas y categóricas
         numeric_columns = dataframe.select_dtypes(include=['number']).columns.tolist()
