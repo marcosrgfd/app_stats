@@ -49,7 +49,7 @@ from scipy.stats import f_oneway
 import statsmodels.stats.multicomp as mc
 from scipy.stats import friedmanchisquare
 from scipy.stats import fisher_exact
-from statsmodels.stats.contingency_tables import cochrans_q
+from statsmodels.stats.contingency_tables import s_q
 from statsmodels.stats.contingency_tables import mcnemar
 import scikit_posthocs as sp  # Importar la librería correcta
 
@@ -2700,16 +2700,37 @@ def mcnemar_test():
 @app.route('/api/cochran', methods=['POST'])
 def cochran_test():
     try:
+        # Obtener datos de la solicitud
         data = request.get_json()
+        if 'observed' not in data or not isinstance(data['observed'], list):
+            return jsonify({'error': 'The "observed" field is required and must be a list.'}), 400
+        
         observed = data['observed']
 
+        # Validar que la tabla no esté vacía
+        if not observed or not all(isinstance(row, list) and row for row in observed):
+            return jsonify({'error': 'The "observed" data must be a non-empty list of lists.'}), 400
+
+        # Validar que la tabla tiene al menos 3 tratamientos/condiciones
         if len(observed[0]) < 3:
             return jsonify({'error': 'Cochran’s Q test requires at least 3 treatments/conditions.'}), 400
+
+        # Validar que la tabla solo contiene valores binarios (0 y 1)
+        if any(
+            not isinstance(value, (int, float)) or value not in [0, 1]
+            for row in observed
+            for value in row
+        ):
+            return jsonify({'error': 'The "observed" data must only contain binary values (0 and 1).'}), 400
 
         # Ejecutar la prueba de Cochran
         result = cochrans_q(observed)
 
-        # Determine significance of the p-value
+        # Validar que el resultado no esté vacío
+        if result is None:
+            return jsonify({'error': 'The test did not return any result. Please check your input.'}), 500
+
+        # Determinar la significancia del p-valor
         if result.pvalue < 0.05:
             significance = "significant"
             reject_null = "Reject the null hypothesis"
@@ -2720,6 +2741,7 @@ def cochran_test():
             significance = "not significant"
             reject_null = "Do not reject the null hypothesis"
 
+        # Devolver la respuesta con los resultados
         return jsonify({
             'test': 'Cochran\'s Q',
             'statistic': result.statistic,
@@ -2728,8 +2750,12 @@ def cochran_test():
             'decision': reject_null
         })
 
+    except KeyError as e:
+        return jsonify({'error': f'Missing required key: {str(e)}'}), 400
+
     except Exception as e:
         return jsonify({'error': f'Internal server error: {str(e)}'}), 500
+
 
 # Wilcoxon Signed-Rank Test con opción unilateral/bilateral
 @app.route('/api/wilcoxon', methods=['POST'])
