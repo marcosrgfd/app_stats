@@ -2631,12 +2631,29 @@ def fisher_test():
         data = request.get_json()
         observed = data['observed']
 
+        # Validar que sea una tabla 2x2
         if len(observed) != 2 or len(observed[0]) != 2:
             return jsonify({'error': 'Fisher’s exact test requires a 2x2 contingency table.'}), 400
 
-        oddsratio, p_value = stats.fisher_exact(observed)
+        # Convertir la tabla a un array de Numpy para facilitar el manejo
+        table = np.array(observed)
 
-        # Determine significance of the p-value
+        # Verificar si hay ceros
+        if np.any(table == 0):
+            # Aplicar suavizado aditivo sumando 1 a cada celda
+            table += 1
+            used_smoothing = True
+        else:
+            used_smoothing = False
+
+        # Calcular oddsratio y p-value
+        oddsratio, p_value = stats.fisher_exact(table)
+
+        # Manejar valores infinitos en oddsratio
+        if np.isinf(oddsratio):
+            oddsratio = "Infinity"
+
+        # Determinar significancia del p-valor
         if p_value < 0.05:
             significance = "significant"
             reject_null = "Reject the null hypothesis"
@@ -2652,11 +2669,13 @@ def fisher_test():
             'oddsratio': oddsratio,
             'pValue': p_value,
             'significance': significance,
-            'decision': reject_null
+            'decision': reject_null,
+            'usedSmoothing': used_smoothing
         })
 
     except Exception as e:
         return jsonify({'error': f'Internal server error: {str(e)}'}), 500
+
 
 
 
