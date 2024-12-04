@@ -2664,18 +2664,23 @@ def fisher_test():
             significance = "not significant"
             reject_null = "Do not reject the null hypothesis"
 
+        if used_smoothing:
+            contiene_cero = "Se aplicó un suavizado aditivo para manejar los 0. Esto agregará 1 a todas las celdas de la tabla y permitirá realizar la prueba."
+        else: 
+            contiene_cero = ""
+         
+
         return jsonify({
             'test': 'Fisher',
             'oddsratio': oddsratio,
             'pValue': p_value,
             'significance': significance,
             'decision': reject_null,
-            'usedSmoothing': used_smoothing
+            'contiene0': contiene_cero,
         })
 
     except Exception as e:
         return jsonify({'error': f'Internal server error: {str(e)}'}), 500
-
 
 
 
