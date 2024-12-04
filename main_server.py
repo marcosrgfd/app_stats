@@ -2636,7 +2636,11 @@ def fisher_test():
             return jsonify({'error': 'Fisher’s exact test requires a 2x2 contingency table.'}), 400
 
         # Convertir la tabla a un array de Numpy para facilitar el manejo
-        table = np.array(observed)
+        try:
+            table = np.array(observed, dtype=float)  # Convertir a flotantes
+        except ValueError:
+            return jsonify({'error': 'All elements in "observed" must be numeric.'}), 400
+
 
         # Verificar si hay ceros
         if np.any(table == 0):
@@ -2670,14 +2674,19 @@ def fisher_test():
             contiene_cero = ""
          
 
-        return jsonify({
+        response = {
             'test': 'Fisher',
             'oddsratio': oddsratio,
             'pValue': p_value,
             'significance': significance,
             'decision': reject_null,
-            'contiene0': contiene_cero,
-        })
+        }
+
+        if used_smoothing:
+            response['contiene0'] = "Se aplicó un suavizado aditivo para manejar los 0. Esto agregará 1 a todas las celdas de la tabla y permitirá realizar la prueba."
+
+        return jsonify(response)
+
 
     except Exception as e:
         return jsonify({'error': f'Internal server error: {str(e)}'}), 500
