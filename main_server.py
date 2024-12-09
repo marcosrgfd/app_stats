@@ -1528,7 +1528,7 @@ def run_regression():
         covariates_clean = [re.sub(r'[^a-zA-Z0-9_]', '_', cov).lower() for cov in covariates]
 
         # Verificar que la variable de respuesta y las covariables existen en el DataFrame
-        if response_variable not in dataframe.columns:
+        if response_variable_clean not in dataframe.columns:
             return jsonify({'error': f'La variable de respuesta {response_variable} no existe en los datos.'}), 400
 
         for cov_clean, cov_original in zip(covariates_clean, covariates):
