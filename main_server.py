@@ -567,7 +567,7 @@ def calculate_descriptive_statistics(request_body):
             grouped = data_series1.groupby(category_series)
             stats_by_category = {
                 category: {
-                    'count': float(group.length()), 
+                    'count': float(group.size), 
                     'mean': float(group.mean()),
                     'median': float(group.median()),
                     'std': float(group.std()),
