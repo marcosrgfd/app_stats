@@ -634,6 +634,7 @@ def calculate_descriptive_statistics(request_body):
         # Análisis para una sola muestra sin categorías
         def analyze_single_series(data_series, title_suffix):
             stats = {
+                'count': float(data_series.size),
                 'mean': float(data_series.mean()),
                 'median': float(data_series.median()),
                 'mode': data_series.mode().tolist(),
