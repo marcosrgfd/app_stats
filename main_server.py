@@ -69,6 +69,8 @@ import statsmodels.formula.api as smf
 
 from flask_cors import CORS
 
+import re  # Para limpiar los nombres de columnas
+
 # Cambiar el backend de matplotlib para evitar problemas de hilos en entornos de servidor
 plt.switch_backend('Agg')
 
@@ -1491,6 +1493,18 @@ def replace_invalid_values(data):
         return {k: (None if pd.isna(v) or v in [np.inf, -np.inf] else v) for k, v in data.items()}
     return data
 
+# Modificar los nombres de las columnas para que sean válidos
+def clean_column_names(df):
+    """Limpia los nombres de las columnas en un DataFrame para que sean válidos"""
+    original_names = df.columns
+    clean_names = [
+        re.sub(r'[^a-zA-Z0-9_]', '_', col).lower()  # Reemplaza caracteres inválidos con '_'
+        for col in original_names
+    ]
+    df.columns = clean_names
+    name_mapping = dict(zip(clean_names, original_names))  # Mapeo entre nombres limpios y originales
+    return name_mapping
+
 # REGRESIÓN SIMPLE
 @app.route('/run_regression', methods=['POST'])
 def run_regression():
@@ -1499,35 +1513,42 @@ def run_regression():
         if dataframe is None:
             return jsonify({'error': 'No se ha cargado ningún archivo para analizar.'}), 400
 
+        # Limpia los nombres de las columnas antes de procesar
+        name_mapping = clean_column_names(dataframe)
+
         data = request.get_json()
         response_variable = data.get('response_variable')
         covariates = data.get('covariates')
 
         if not response_variable or not covariates:
             return jsonify({'error': 'Variables insuficientes para la regresión.'}), 400
+        
+        # Normaliza los nombres de las variables
+        response_variable_clean = re.sub(r'[^a-zA-Z0-9_]', '_', response_variable).lower()
+        covariates_clean = [re.sub(r'[^a-zA-Z0-9_]', '_', cov).lower() for cov in covariates]
 
         # Verificar que la variable de respuesta y las covariables existen en el DataFrame
         if response_variable not in dataframe.columns:
             return jsonify({'error': f'La variable de respuesta {response_variable} no existe en los datos.'}), 400
 
-        for covariate in covariates:
-            if covariate not in dataframe.columns:
-                return jsonify({'error': f'La covariable {covariate} no existe en los datos.'}), 400
+        for cov_clean, cov_original in zip(covariates_clean, covariates):
+            if cov_clean not in dataframe.columns:
+                return jsonify({'error': f'La covariable {cov_original} no existe en los datos.'}), 400
 
         # Preparar el DataFrame para el modelo
-        df = dataframe[covariates + [response_variable]].copy()
+        df = dataframe[covariates_clean + [response_variable_clean]].copy()
         df.replace([np.inf, -np.inf], np.nan, inplace=True)
         df.dropna(inplace=True)
 
         # Definir la fórmula para el modelo completo
-        formula = f"{response_variable} ~ " + " + ".join(covariates)
+        formula = f"{response_variable_clean} ~ " + " + ".join(covariates_clean)
 
         # Ajustar el modelo completo usando statsmodels
         model_full = smf.ols(formula=formula, data=df).fit()
 
         # Calcular el RMSE
         predictions = model_full.predict(df)
-        rmse = np.sqrt(mean_squared_error(df[response_variable], predictions))
+        rmse = np.sqrt(mean_squared_error(df[response_variable_clean], predictions))
 
         # Extraer los coeficientes e intercepto
         coefficients = model_full.params.to_dict()
@@ -1551,14 +1572,19 @@ def run_regression():
         p_values_general = replace_invalid_values(p_values_general)
         p_values_specific = replace_invalid_values(p_values_specific)
 
+        # Reconstruir los nombres originales para los resultados
+        coefficients_original = {name_mapping.get(k, k): v for k, v in coefficients.items()}
+        p_values_specific_original = {name_mapping.get(k, k): v for k, v in p_values_specific.items()}
+        p_values_general_original = {name_mapping.get(k, k): v for k, v in p_values_general.items()}
+
         # Preparar el resumen del modelo
         regression_result = {
-            "coefficients": coefficients,
+            "coefficients": coefficients_original,
             "intercept": intercept,
             "rmse": rmse,
             "r_squared": r_squared,
-            "p_values_general": p_values_general,
-            "p_values_specific": p_values_specific
+            "p_values_general": p_values_general_original,
+            "p_values_specific": p_values_specific_original
         }
 
         return jsonify({
@@ -1567,7 +1593,14 @@ def run_regression():
         })
 
     except Exception as e:
-        return jsonify({'error': str(e)}), 400
+        if "invalid syntax" in str(e).lower():
+            error_message = (
+                "Error en los nombres de las variables. Revisa que no incluyan caracteres especiales "
+                "(tildes, espacios, símbolos)."
+            )
+        else:
+            error_message = str(e)
+        return jsonify({'error': error_message}), 400
 
 
     
