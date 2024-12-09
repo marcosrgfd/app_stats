@@ -1090,7 +1090,7 @@ def analyze_selected_columns():
 def calculate_descriptive_statistics_from_data(data_series):
     try:
         # Ignorar NaN en lugar de reemplazarlos con 0
-        count = float(data_series.size(skipna=True))
+        count = float(data_series.dropna().size)
         mean = float(data_series.mean(skipna=True))
         median = float(data_series.median(skipna=True))
         mode = replace_nan_with_none(data_series.mode(dropna=True).tolist())  # Usar dropna=True para la moda
