@@ -1015,6 +1015,7 @@ def analyze_selected_columns():
             grouped = data_series.groupby(category_series)
             stats_by_category = {
                 str(category): {
+                    'count': float(group.size),
                     'mean': float(group.mean()) if not np.isnan(group.mean()) else None,
                     'median': float(group.median()) if not np.isnan(group.median()) else None,
                     'std': float(group.std()) if not np.isnan(group.std()) else None,
@@ -1089,6 +1090,7 @@ def analyze_selected_columns():
 def calculate_descriptive_statistics_from_data(data_series):
     try:
         # Ignorar NaN en lugar de reemplazarlos con 0
+        count = float(data_series.size(skipna=True))
         mean = float(data_series.mean(skipna=True))
         median = float(data_series.median(skipna=True))
         mode = replace_nan_with_none(data_series.mode(dropna=True).tolist())  # Usar dropna=True para la moda
@@ -1109,6 +1111,7 @@ def calculate_descriptive_statistics_from_data(data_series):
         p90 = float(data_series.quantile(0.90, interpolation='linear'))
 
         return {
+            'count': count,
             'mean': mean,
             'median': median,
             'mode': mode,
