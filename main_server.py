@@ -1596,14 +1596,54 @@ def run_regression():
             "p_values_specific": p_values_specific_original
         }
 
-        # Calcular residuos si el usuario lo solicita
+        # Calcular análisis adicional de residuos si el usuario lo solicita
         residuals_data = None
         if analyze_residuals:
             residuals = model_full.resid.tolist()
             fitted_values = model_full.fittedvalues.tolist()
+
+            # Histograma de residuos
+            hist_data, bin_edges = np.histogram(model_full.resid, bins=10, density=True)
+            hist_data = hist_data.tolist()
+            bin_edges = bin_edges.tolist()
+
+            # Q-Q Plot (datos para comparación cuantil-cuantil)
+            sorted_residuals = np.sort(model_full.resid)
+            theoretical_quantiles = np.random.normal(
+                loc=np.mean(model_full.resid), scale=np.std(model_full.resid), size=len(sorted_residuals)
+            )
+            theoretical_quantiles.sort()
+
+            # Prueba de Shapiro-Wilk
+            shapiro_stat, shapiro_p_value = stats.shapiro(model_full.resid)
+
+            # Prueba de Breusch-Pagan (heterocedasticidad)
+            bp_stat, bp_p_value, _, _ = sm.stats.diagnostic.het_breuschpagan(model_full.resid, model_full.model.exog)
+
+            # Prueba de Durbin-Watson (autocorrelación)
+            durbin_watson_stat = sm.stats.stattools.durbin_watson(model_full.resid)
+
+            # Preparar los datos para el análisis de residuos
             residuals_data = {
                 "residuals": residuals,
-                "fitted": fitted_values
+                "fitted": fitted_values,
+                "histogram": {
+                    "bin_edges": bin_edges,
+                    "counts": hist_data
+                },
+                "qq_plot": {
+                    "sorted_residuals": sorted_residuals.tolist(),
+                    "theoretical_quantiles": theoretical_quantiles.tolist()
+                },
+                "shapiro_test": {
+                    "statistic": shapiro_stat,
+                    "p_value": shapiro_p_value
+                },
+                "breusch_pagan_test": {
+                    "statistic": bp_stat,
+                    "p_value": bp_p_value
+                },
+                "durbin_watson": durbin_watson_stat
             }
 
         return jsonify({
