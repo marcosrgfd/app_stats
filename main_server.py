@@ -1610,25 +1610,40 @@ def run_regression():
         residuals_data = None
         if analyze_residuals:
             residuals = model_full.resid
-            fitted_values = model_full.fittedvalues
+            residuals = residuals.replace([np.inf, -np.inf], np.nan).dropna()
+
+            # Verificar los valores de residuos
+            if residuals.empty:
+                return jsonify({'error': 'No se pudieron calcular residuos válidos.'}), 400
 
             # Histograma de residuos
-            fig_hist, ax_hist = plt.subplots()
-            ax_hist.hist(residuals, bins=10, density=True, alpha=0.7, color='blue')
+            fig_hist, ax_hist = plt.subplots(figsize=(8, 6))  # Ajustar el tamaño
+            sns.histplot(residuals, bins=10, kde=True, color='blue', ax=ax_hist)
             ax_hist.set_title("Histogram of Residuals")
             ax_hist.set_xlabel("Residuals")
             ax_hist.set_ylabel("Density")
-            hist_image = generate_base64_image(fig_hist)
 
             # Q-Q Plot
-            fig_qq = sm.qqplot(residuals, line='45', fit=True)
+            fig_qq = plt.figure(figsize=(8, 6))  # Ajustar el tamaño
+            sm.qqplot(residuals, line='45', fit=True, ax=fig_qq.add_subplot(111))
+
+            # Histograma de residuos
+            hist_image = generate_base64_image(fig_hist)
+            plt.close(fig_hist)
+
+            # Q-Q Plot
             qq_image = generate_base64_image(fig_qq)
+            plt.close(fig_qq)
+
 
             # Prueba de Shapiro-Wilk
             shapiro_stat, shapiro_p_value = stats.shapiro(residuals)
 
             # Prueba de Breusch-Pagan (heterocedasticidad)
-            bp_stat, bp_p_value, _, _ = sm.stats.diagnostic.het_breuschpagan(residuals, model_full.model.exog)
+            exog = model_full.model.exog
+            exog = exog[~np.isnan(residuals)]  # Mantén solo las filas válidas para residuos
+            bp_stat, bp_p_value, _, _ = sm.stats.diagnostic.het_breuschpagan(residuals, exog)
+
 
             # Prueba de Durbin-Watson (autocorrelación)
             durbin_watson_stat = sm.stats.stattools.durbin_watson(residuals)
