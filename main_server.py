@@ -52,6 +52,7 @@ from scipy.stats import fisher_exact
 from statsmodels.stats.contingency_tables import cochrans_q
 from statsmodels.stats.contingency_tables import mcnemar
 import scikit_posthocs as sp  # Importar la librería correcta
+from io import BytesIO
 
 # MODELS
 from sklearn.linear_model import LinearRegression, LogisticRegression
@@ -1513,6 +1514,15 @@ def clean_column_names(df):
     name_mapping = dict(zip(clean_names, original_names))  # Mapeo entre nombres limpios y originales
     return name_mapping
 
+# Función para generar imágenes base64
+def generate_base64_image(fig):
+    buf = BytesIO()
+    fig.savefig(buf, format='png', bbox_inches='tight')
+    buf.seek(0)
+    base64_image = base64.b64encode(buf.getvalue()).decode('utf-8')
+    plt.close(fig)  # Cerrar la figura para liberar memoria
+    return base64_image
+
 # REGRESIÓN SIMPLE
 @app.route('/run_regression', methods=['POST'])
 def run_regression():
@@ -1599,42 +1609,34 @@ def run_regression():
         # Calcular análisis adicional de residuos si el usuario lo solicita
         residuals_data = None
         if analyze_residuals:
-            residuals = model_full.resid.tolist()
-            fitted_values = model_full.fittedvalues.tolist()
+            residuals = model_full.resid
+            fitted_values = model_full.fittedvalues
 
             # Histograma de residuos
-            hist_data, bin_edges = np.histogram(model_full.resid, bins=10, density=True)
-            hist_data = hist_data.tolist()
-            bin_edges = bin_edges.tolist()
+            fig_hist, ax_hist = plt.subplots()
+            ax_hist.hist(residuals, bins=10, density=True, alpha=0.7, color='blue')
+            ax_hist.set_title("Histogram of Residuals")
+            ax_hist.set_xlabel("Residuals")
+            ax_hist.set_ylabel("Density")
+            hist_image = generate_base64_image(fig_hist)
 
-            # Q-Q Plot (datos para comparación cuantil-cuantil)
-            sorted_residuals = np.sort(model_full.resid)
-            theoretical_quantiles = np.random.normal(
-                loc=np.mean(model_full.resid), scale=np.std(model_full.resid), size=len(sorted_residuals)
-            )
-            theoretical_quantiles.sort()
+            # Q-Q Plot
+            fig_qq = sm.qqplot(residuals, line='45', fit=True)
+            qq_image = generate_base64_image(fig_qq)
 
             # Prueba de Shapiro-Wilk
-            shapiro_stat, shapiro_p_value = stats.shapiro(model_full.resid)
+            shapiro_stat, shapiro_p_value = stats.shapiro(residuals)
 
             # Prueba de Breusch-Pagan (heterocedasticidad)
-            bp_stat, bp_p_value, _, _ = sm.stats.diagnostic.het_breuschpagan(model_full.resid, model_full.model.exog)
+            bp_stat, bp_p_value, _, _ = sm.stats.diagnostic.het_breuschpagan(residuals, model_full.model.exog)
 
             # Prueba de Durbin-Watson (autocorrelación)
-            durbin_watson_stat = sm.stats.stattools.durbin_watson(model_full.resid)
+            durbin_watson_stat = sm.stats.stattools.durbin_watson(residuals)
 
             # Preparar los datos para el análisis de residuos
             residuals_data = {
-                "residuals": residuals,
-                "fitted": fitted_values,
-                "histogram": {
-                    "bin_edges": bin_edges,
-                    "counts": hist_data
-                },
-                "qq_plot": {
-                    "sorted_residuals": sorted_residuals.tolist(),
-                    "theoretical_quantiles": theoretical_quantiles.tolist()
-                },
+                "histogram": hist_image,
+                "qq_plot": qq_image,
                 "shapiro_test": {
                     "statistic": shapiro_stat,
                     "p_value": shapiro_p_value
