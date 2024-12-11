@@ -1636,14 +1636,21 @@ def run_regression():
             plt.close(fig_qq)
 
 
-            # Prueba de Shapiro-Wilk
-            shapiro_stat, shapiro_p_value = stats.shapiro(residuals)
+            # Determinar el test de normalidad a usar según el tamaño de muestra
+            n_residuals = len(residuals)
+            if n_residuals < 50:
+                # Usar Shapiro-Wilk
+                normality_stat, normality_p_value = stats.shapiro(residuals)
+                normality_test_name = "Shapiro-Wilk"
+            else:
+                # Usar Kolmogorov-Smirnov
+                normality_stat, normality_p_value = stats.kstest(residuals, 'norm')
+                normality_test_name = "Kolmogorov-Smirnov"
 
             # Prueba de Breusch-Pagan (heterocedasticidad)
             exog = model_full.model.exog
             exog = exog[~np.isnan(residuals)]  # Mantén solo las filas válidas para residuos
             bp_stat, bp_p_value, _, _ = sm.stats.diagnostic.het_breuschpagan(residuals, exog)
-
 
             # Prueba de Durbin-Watson (autocorrelación)
             durbin_watson_stat = sm.stats.stattools.durbin_watson(residuals)
@@ -1652,9 +1659,10 @@ def run_regression():
             residuals_data = {
                 "histogram": hist_image,
                 "qq_plot": qq_image,
-                "shapiro_test": {
-                    "statistic": shapiro_stat,
-                    "p_value": shapiro_p_value
+                "normality_test": {
+                    "test_name": normality_test_name,
+                    "statistic": normality_stat,
+                    "p_value": normality_p_value
                 },
                 "breusch_pagan_test": {
                     "statistic": bp_stat,
