@@ -1589,6 +1589,15 @@ def run_regression():
         df.replace([np.inf, -np.inf], np.nan, inplace=True)
         df.dropna(inplace=True)
 
+        # Verificar si el DataFrame resultante tiene suficientes datos
+        if df.empty or len(df) < 2:
+            return jsonify({'error': 'No hay suficientes datos válidos después del preprocesamiento.'}), 400
+
+        # Validar que las covariables tengan variación
+        for cov in covariates_clean:
+            if df[cov].nunique() < 2:
+                return jsonify({'error': f'La covariable {cov} no tiene suficiente variación.'}), 400
+
         # Definir la fórmula para el modelo completo
         formula = f"{response_variable_clean} ~ " + " + ".join(covariates_clean)
 
