@@ -572,7 +572,7 @@ def calculate_descriptive_statistics(request_body):
                     'count': float(group.size), 
                     'mean': float(group.mean()),
                     'median': float(group.median()),
-                    'std': float(group.std()),
+                    'std': float(group.std()) if not group.std().isna() else None,  # Manejar NaN devolviendo None
                     'min': float(group.min()),
                     'max': float(group.max())
                 }
