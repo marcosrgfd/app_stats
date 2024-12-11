@@ -1527,6 +1527,7 @@ def run_regression():
         data = request.get_json()
         response_variable = data.get('response_variable')
         covariates = data.get('covariates')
+        analyze_residuals = data.get('analyze_residuals', False)  # Nuevo parámetro
 
         if not response_variable or not covariates:
             return jsonify({'error': 'Variables insuficientes para la regresión.'}), 400
