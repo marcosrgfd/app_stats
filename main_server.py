@@ -567,18 +567,23 @@ def calculate_descriptive_statistics(request_body):
 
             # Calcular estadísticas descriptivas por categoría
             grouped = data_series1.groupby(category_series)
-            stats_by_category = {
-                category: {
-                    'count': float(group.size), 
-                    'mean': float(group.mean()),
-                    'median': float(group.median()),
-                    'std': float(group.std()) if not group.std().isna() else None,  # Manejar NaN devolviendo None
-                    'min': float(group.min()),
-                    'max': float(group.max())
+            stats_by_category = {}
+            for category, group in grouped:
+                stats_by_category[category] = {
+                    'count': float(group.size),
+                    'mean': float(group.mean()) if not group.mean().isna() else None,
+                    'median': float(group.median()) if not group.median().isna() else None,
+                    'std': float(group.std()) if not group.std().isna() else None,
+                    'min': float(group.min()) if not group.min().isna() else None,
+                    'max': float(group.max()) if not group.max().isna() else None,
                 }
-                for category, group in grouped
-            }
+            
+                # Asegurarse de que categorías con un solo valor sean manejadas correctamente
+                if group.size == 1:
+                    stats_by_category[category]['std'] = None  # Desviación estándar no aplicable
+            
             results['stats_by_category'] = stats_by_category
+
 
             # Generar gráficos específicos para el análisis con categorías
             if show_boxplot:
