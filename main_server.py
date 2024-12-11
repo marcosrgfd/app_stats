@@ -565,23 +565,26 @@ def calculate_descriptive_statistics(request_body):
         if category_series is not None:
             category_series = pd.Series(category_series)
 
+            # Verificar que data_series1 y category_series tengan la misma longitud
+            if len(data_series1) != len(category_series):
+                raise ValueError("El número de elementos en data1 no coincide con el número de categorías.")
+
             # Calcular estadísticas descriptivas por categoría
             grouped = data_series1.groupby(category_series)
             stats_by_category = {}
+
             for category, group in grouped:
-                stats_by_category[category] = {
+                # Calcular estadísticas básicas
+                stats = {
                     'count': float(group.size),
-                    'mean': float(group.mean()) if not group.mean().isna() else None,
-                    'median': float(group.median()) if not group.median().isna() else None,
-                    'std': float(group.std()) if not group.std().isna() else None,
-                    'min': float(group.min()) if not group.min().isna() else None,
-                    'max': float(group.max()) if not group.max().isna() else None,
+                    'mean': float(group.mean()) if group.size > 0 else None,
+                    'median': float(group.median()) if group.size > 0 else None,
+                    'std': float(group.std()) if group.size > 1 else None,  # std no es aplicable para grupos de tamaño 1
+                    'min': float(group.min()) if group.size > 0 else None,
+                    'max': float(group.max()) if group.size > 0 else None,
                 }
-            
-                # Asegurarse de que categorías con un solo valor sean manejadas correctamente
-                if group.size == 1:
-                    stats_by_category[category]['std'] = None  # Desviación estándar no aplicable
-            
+                stats_by_category[category] = stats
+
             results['stats_by_category'] = stats_by_category
 
 
