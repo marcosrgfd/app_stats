@@ -1404,26 +1404,29 @@ def upload_file_stat():
         # Determinar el tipo de archivo y leerlo en un DataFrame de Pandas
         try:
             if filename.endswith('.csv'):
+                # Intentar leer el archivo con detección automática de delimitador y codificación
                 try:
-                    # Leer contenido del archivo para detectar delimitador
                     content = file.stream.read().decode("utf-8")
-                    dialect = csv.Sniffer().sniff(content[:1024], delimiters=";,")
-                    delimiter = dialect.delimiter
-                    dataframe = pd.read_csv(io.StringIO(content), delimiter=delimiter)
                 except UnicodeDecodeError:
-                    # Intentar con ISO-8859-1 si UTF-8 falla
+                    # Si UTF-8 falla, intentar con ISO-8859-1
                     content = file.stream.read().decode("ISO-8859-1")
+
+                # Detectar el delimitador usando csv.Sniffer
+                try:
                     dialect = csv.Sniffer().sniff(content[:1024], delimiters=";,")
                     delimiter = dialect.delimiter
-                    dataframe = pd.read_csv(io.StringIO(content), delimiter=delimiter)
-                except pd.errors.ParserError as e:
-                    return jsonify({'error': f'Error al analizar el archivo CSV: {str(e)}'}), 400
+                except csv.Error:
+                    # Por defecto, usar coma si no se puede detectar
+                    delimiter = ','
+
+                # Cargar el archivo CSV con el delimitador detectado
+                dataframe = pd.read_csv(io.StringIO(content), delimiter=delimiter, na_values=["NA", "N/A", "null", "nan"])
 
             elif filename.endswith(('.xls', '.xlsx')):
                 try:
                     # Leer archivo Excel (.xls o .xlsx)
                     file_stream = io.BytesIO(file.read())
-                    dataframe = pd.read_excel(file_stream, engine='openpyxl')
+                    dataframe = pd.read_excel(file_stream, engine='openpyxl', na_values=["NA", "N/A", "null", "nan"])
                 except ValueError as e:
                     return jsonify({'error': f'Error al leer el archivo Excel: {str(e)}'}), 400
                 except Exception as e:
@@ -1432,10 +1435,10 @@ def upload_file_stat():
             elif filename.endswith('.txt'):
                 try:
                     content = file.stream.read().decode("utf-8")
-                    dataframe = pd.read_csv(io.StringIO(content), delimiter=r'\s+')
+                    dataframe = pd.read_csv(io.StringIO(content), delimiter=r'\s+', na_values=["NA", "N/A", "null", "nan"])
                 except UnicodeDecodeError:
                     content = file.stream.read().decode("ISO-8859-1")
-                    dataframe = pd.read_csv(io.StringIO(content), delimiter=r'\s+')
+                    dataframe = pd.read_csv(io.StringIO(content), delimiter=r'\s+', na_values=["NA", "N/A", "null", "nan"])
             else:
                 return jsonify({'error': "Formato de archivo no soportado. Proporcione un archivo CSV, XLSX, XLS o TXT."}), 400
 
@@ -1443,12 +1446,12 @@ def upload_file_stat():
             if dataframe.empty:
                 return jsonify({'error': 'El archivo está vacío o no se pudo procesar correctamente.'}), 400
 
-            # Normalizar encabezados quitando espacios adicionales
-            dataframe.columns = dataframe.columns.str.strip()
+            # Normalizar encabezados quitando espacios adicionales y caracteres especiales
+            dataframe.columns = dataframe.columns.str.strip().str.replace('[^a-zA-Z0-9_]', '_', regex=True)
 
             # Manejo de celdas vacías
-            dataframe = dataframe.replace("N/A", np.nan)
-            dataframe = dataframe.dropna()  # Eliminar filas con valores nulos
+            # dataframe = dataframe.replace("N/A", np.nan)
+            # dataframe = dataframe.dropna()  # Eliminar filas con valores nulos
 
             # Intentar convertir columnas numéricas interpretadas como texto
             for column in dataframe.columns:
