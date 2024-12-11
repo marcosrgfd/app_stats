@@ -1595,8 +1595,19 @@ def run_regression():
             "p_values_specific": p_values_specific_original
         }
 
+        # Calcular residuos si el usuario lo solicita
+        residuals_data = None
+        if analyze_residuals:
+            residuals = model_full.resid.tolist()
+            fitted_values = model_full.fittedvalues.tolist()
+            residuals_data = {
+                "residuals": residuals,
+                "fitted": fitted_values
+            }
+
         return jsonify({
             'regression_result': regression_result,
+            'residuals': residuals_data,
             'warnings': []
         })
 
