@@ -860,8 +860,8 @@ def leer_csv_automatico(content):
             continue
     raise ValueError("No se pudo determinar el delimitador del archivo.")
 
-@app.route('/upload_csv_stat', methods=['POST'])
-def upload_file_stat():
+@app.route('/upload_csv_descriptive', methods=['POST'])
+def upload_file_descriptive():
     global dataframe
     try:
         if 'file' not in request.files:
@@ -1201,8 +1201,8 @@ def leer_csv_automatico(content):
             continue
     raise ValueError("No se pudo determinar el delimitador del archivo.")
 
-@app.route('/upload_csv_stat', methods=['POST'])
-def upload_file_stat():
+@app.route('/upload_csv_charts', methods=['POST'])
+def upload_file_charts():
     global dataframe
     try:
         if 'file' not in request.files:
