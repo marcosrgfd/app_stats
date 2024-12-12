@@ -1440,7 +1440,7 @@ def upload_file_stat():
 
                 # Detectar el delimitador usando csv.Sniffer
                 try:
-                    dialect = csv.Sniffer().sniff(content[:1024], delimiters=";,")
+                    dialect = csv.Sniffer().sniff(content[:1024], delimiters=";,|\t")
                     delimiter = dialect.delimiter
                 except csv.Error:
                     # Por defecto, usar coma si no se puede detectar
@@ -1473,20 +1473,26 @@ def upload_file_stat():
             if dataframe.empty:
                 return jsonify({'error': 'El archivo está vacío o no se pudo procesar correctamente.'}), 400
 
-            # Normalizar encabezados quitando espacios adicionales y caracteres especiales
-            dataframe.columns = dataframe.columns.str.strip().str.replace('[^a-zA-Z0-9_]', '_', regex=True)
+            # Limpieza y normalización de encabezados
+            dataframe.columns = (
+                dataframe.columns.str.strip()
+                .str.replace('[^a-zA-Z0-9_]', '_', regex=True)
+                .str.lower()
+                .str.replace('__+', '_')
+            )
 
-            # Manejo de celdas vacías
-            # dataframe = dataframe.replace("N/A", np.nan)
-            # dataframe = dataframe.dropna()  # Eliminar filas con valores nulos
+            if not dataframe.columns.is_unique:
+                dataframe.columns = [
+                    f"{col}_{idx}" if list(dataframe.columns).count(col) > 1 else col
+                    for idx, col in enumerate(dataframe.columns)
+                ]
+
+            dataframe.dropna(how="all", inplace=True)  # Eliminar filas vacías
 
             # Intentar convertir columnas numéricas interpretadas como texto
             for column in dataframe.columns:
-                try:
-                    dataframe[column] = pd.to_numeric(dataframe[column].str.replace(',', '.'), errors='ignore')
-                except AttributeError:
-                    # Si no es un string, continuar sin cambios
-                    continue
+                if dataframe[column].dtype == 'object':
+                    dataframe[column] = dataframe[column].str.replace(',', '.').apply(pd.to_numeric, errors='coerce')
 
             # Clasificar las columnas entre numéricas y categóricas
             numeric_columns = dataframe.select_dtypes(include=['number']).columns.tolist()
@@ -1501,7 +1507,10 @@ def upload_file_stat():
                 'message': 'Archivo cargado exitosamente',
                 'numeric_columns': numeric_columns,
                 'categorical_columns': categorical_columns,
-                'binary_categorical_columns': binary_categorical_columns
+                'binary_categorical_columns': binary_categorical_columns,
+                'total_rows': len(dataframe),
+                'total_columns': len(dataframe.columns),
+                'sample_data': dataframe.head(5).to_dict(orient='records')
             })
 
         except UnicodeDecodeError:
