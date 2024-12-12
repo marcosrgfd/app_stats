@@ -1442,7 +1442,7 @@ def upload_file_stat():
                     content = file.stream.read().decode("ISO-8859-1")
                     dialect = csv.Sniffer().sniff(content[:1024], delimiters=";,")
                     delimiter = dialect.delimiter
-                    dataframe = pd.read_csv(io.StringIO(content), delimiter=delimiter)
+                    dataframe = pd.read_csv(io.StringIO(content), sep=delimiter)
                 except pd.errors.ParserError as e:
                     return jsonify({'error': f'Error al analizar el archivo CSV: {str(e)}'}), 400
 
