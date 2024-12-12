@@ -1984,6 +1984,61 @@ def run_chisquare():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+        
+# 5. Fisher's Exact Test
+@app.route('/run_fisher', methods=['POST'])
+def run_fisher():
+    global dataframe
+    try:
+        data = request.get_json()
+        categorical_column1 = data.get('categorical_column1')
+        categorical_column2 = data.get('categorical_column2')
+        show_contingency_table = data.get('show_contingency_table', False)
+
+        # Validar que las columnas existan en el DataFrame
+        if categorical_column1 not in dataframe.columns or categorical_column2 not in dataframe.columns:
+            return jsonify({'error': 'Las columnas especificadas no se encontraron en los datos.'}), 400
+
+        # Validar que las columnas tengan exactamente dos categorías
+        unique_values1 = dataframe[categorical_column1].nunique()
+        unique_values2 = dataframe[categorical_column2].nunique()
+
+        if unique_values1 != 2 or unique_values2 != 2:
+            return jsonify({
+                'error': 'Ambas columnas deben tener exactamente dos categorías para realizar el Test de Fisher.'
+            }), 400
+
+        # Crear la tabla de contingencia
+        contingency_table = pd.crosstab(dataframe[categorical_column1], dataframe[categorical_column2])
+
+        # Realizar el Test de Fisher
+        try:
+            _, p_value = fisher_exact(contingency_table)
+        except ValueError as e:
+            return jsonify({
+                'error': f'Error al calcular el Test de Fisher: {str(e)}'
+            }), 400
+
+        # Evaluar la significancia
+        significance = "significativo" if p_value < 0.05 else "no significativo"
+        decision = "Rechazar la hipótesis nula" if p_value < 0.05 else "No rechazar la hipótesis nula"
+
+        # Preparar el resultado
+        result = {
+            'test': "Fisher's Exact Test",
+            'p_value': p_value,
+            'significance': significance,
+            'decision': decision
+        }
+
+        # Incluir la tabla de contingencia si se solicitó
+        if show_contingency_table:
+            result['contingency_table'] = contingency_table.to_dict()
+
+        return jsonify({'result': result})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 
 # 6. Shapiro-Wilk 
