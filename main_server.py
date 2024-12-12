@@ -1999,26 +1999,23 @@ def run_fisher():
         if categorical_column1 not in dataframe.columns or categorical_column2 not in dataframe.columns:
             return jsonify({'error': 'Las columnas especificadas no se encontraron en los datos.'}), 400
 
-        # Preparar lista de advertencias
-        warnings = []
-
-        # Validar que las columnas tengan exactamente dos categorías
-        unique_values1 = dataframe[categorical_column1].nunique()
-        unique_values2 = dataframe[categorical_column2].nunique()
-
-        if unique_values1 != 2 or unique_values2 != 2:
-            warnings.append("Las columnas seleccionadas no forman una tabla 2x2. El resultado puede no ser válido.")
-
         # Crear la tabla de contingencia
         contingency_table = pd.crosstab(dataframe[categorical_column1], dataframe[categorical_column2])
 
-        # Realizar el Test de Fisher
-        try:
-            _, p_value = fisher_exact(contingency_table)
-        except ValueError as e:
+        # Verificar si la tabla no es 2x2
+        if contingency_table.shape != (2, 2):
+            warning_message = 'La tabla de contingencia no es de forma 2x2. Se recomienda revisar las columnas seleccionadas.'
             return jsonify({
-                'error': f'Error al calcular el Test de Fisher: {str(e)}'
-            }), 400
+                'result': {
+                    'test': "Fisher's Exact Test",
+                    'contingency_table': contingency_table.to_dict(),
+                    'warning': warning_message
+                },
+                'show_warning': True
+            })
+
+        # Realizar el Test de Fisher
+        _, p_value = fisher_exact(contingency_table)
 
         # Evaluar la significancia
         significance = "significativo" if p_value < 0.05 else "no significativo"
@@ -2029,17 +2026,18 @@ def run_fisher():
             'test': "Fisher's Exact Test",
             'p_value': p_value,
             'significance': significance,
-            'decision': decision
+            'decision': decision,
         }
 
         # Incluir la tabla de contingencia si se solicitó
         if show_contingency_table:
             result['contingency_table'] = contingency_table.to_dict()
 
-        return jsonify({'result': result, 'warnings': warnings})
+        return jsonify({'result': result, 'show_warning': False})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
 
 
 # 6. Shapiro-Wilk 
