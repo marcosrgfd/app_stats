@@ -1999,14 +1999,15 @@ def run_fisher():
         if categorical_column1 not in dataframe.columns or categorical_column2 not in dataframe.columns:
             return jsonify({'error': 'Las columnas especificadas no se encontraron en los datos.'}), 400
 
+        # Preparar lista de advertencias
+        warnings = []
+
         # Validar que las columnas tengan exactamente dos categorías
         unique_values1 = dataframe[categorical_column1].nunique()
         unique_values2 = dataframe[categorical_column2].nunique()
 
         if unique_values1 != 2 or unique_values2 != 2:
-            return jsonify({
-                'error': 'Ambas columnas deben tener exactamente dos categorías para realizar el Test de Fisher.'
-            }), 400
+            warnings.append("Las columnas seleccionadas no forman una tabla 2x2. El resultado puede no ser válido.")
 
         # Crear la tabla de contingencia
         contingency_table = pd.crosstab(dataframe[categorical_column1], dataframe[categorical_column2])
@@ -2035,7 +2036,7 @@ def run_fisher():
         if show_contingency_table:
             result['contingency_table'] = contingency_table.to_dict()
 
-        return jsonify({'result': result})
+        return jsonify({'result': result, 'warnings': warnings})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
