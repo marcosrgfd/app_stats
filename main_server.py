@@ -1414,6 +1414,28 @@ def generate_charts():
 # Variable global para almacenar el DataFrame cargado
 dataframe = None
 
+def leer_csv_automatico(content):
+    """
+    Lee un archivo CSV desde un contenido de texto con delimitadores ',' o ';'.
+    
+    Args:
+        content (str): Contenido del archivo en formato de texto.
+        
+    Returns:
+        pd.DataFrame: DataFrame con los datos del archivo CSV.
+    """
+    from io import StringIO
+    delimitadores = [",", ";"]
+    for delimitador in delimitadores:
+        try:
+            df = pd.read_csv(StringIO(content), delimiter=delimitador)
+            # Validar si el DataFrame tiene más de una columna
+            if df.shape[1] > 1:
+                return df
+        except pd.errors.ParserError:
+            continue
+    raise ValueError("No se pudo determinar el delimitador del archivo.")
+
 @app.route('/upload_csv_stat', methods=['POST'])
 def upload_file_stat():
     global dataframe
@@ -1432,36 +1454,14 @@ def upload_file_stat():
         try:
             if filename.endswith('.csv'):
                 try:
-                    # Convertir el stream del archivo a un objeto de texto
+                    # Leer el contenido del archivo
                     content = file.stream.read().decode("utf-8")
-                    dialect = csv.Sniffer().sniff(content[:1024], delimiters=";,")
-                    
-                    # Determinar delimitador y cargar DataFrame
-                    if dialect.delimiter == ',':
-                        dataframe = pd.read_csv(io.StringIO(content))  # Coma como delimitador
-                    elif dialect.delimiter == ';':
-                        dataframe = pd.read_csv(io.StringIO(content), sep=';')  # Punto y coma como delimitador
-                    else:
-                        return jsonify({'error': 'Delimitador no reconocido en el archivo CSV.'}), 400
-
+                    dataframe = leer_csv_automatico(content)  # Usar la nueva función
                 except UnicodeDecodeError:
                     # Intentar con ISO-8859-1 si UTF-8 falla
                     file.stream.seek(0)  # Reiniciar el stream
                     content = file.stream.read().decode("ISO-8859-1")
-                    dialect = csv.Sniffer().sniff(content[:1024], delimiters=";,")
-                    
-                    # Determinar delimitador y cargar DataFrame
-                    if dialect.delimiter == ',':
-                        dataframe = pd.read_csv(io.StringIO(content))  # Coma como delimitador
-                    elif dialect.delimiter == ';':
-                        dataframe = pd.read_csv(io.StringIO(content), sep=';')  # Punto y coma como delimitador
-                    else:
-                        return jsonify({'error': 'Delimitador no reconocido en el archivo CSV.'}), 400
-
-                except csv.Error as e:
-                    return jsonify({'error': f'Error en el formato CSV: {str(e)}'}), 400
-                except pd.errors.ParserError as e:
-                    return jsonify({'error': f'Error al procesar el archivo CSV: {str(e)}'}), 400
+                    dataframe = leer_csv_automatico(content)  # Usar la nueva función
 
             elif filename.endswith(('.xls', '.xlsx')):
                 try:
