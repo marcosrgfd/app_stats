@@ -2002,20 +2002,22 @@ def run_fisher():
         # Crear la tabla de contingencia
         contingency_table = pd.crosstab(dataframe[categorical_column1], dataframe[categorical_column2])
 
-        # Verificar si la tabla no es 2x2
+        # Comprobar si la tabla es de forma 2x2
+        show_warning = False
+        warning_message = None
         if contingency_table.shape != (2, 2):
-            warning_message = 'La tabla de contingencia no es de forma 2x2. Se recomienda revisar las columnas seleccionadas.'
-            return jsonify({
-                'result': {
-                    'test': "Fisher's Exact Test",
-                    'contingency_table': contingency_table.to_dict(),
-                    'warning': warning_message
-                },
-                'show_warning': True
-            })
+            show_warning = True
+            warning_message = "La tabla de contingencia no es de forma 2x2. El resultado puede no ser válido."
 
-        # Realizar el Test de Fisher
-        _, p_value = fisher_exact(contingency_table)
+        # Intentar realizar el Test de Fisher
+        try:
+            _, p_value = fisher_exact(contingency_table)
+        except ValueError as e:
+            return jsonify({
+                'error': f'Error al calcular el Test de Fisher: {str(e)}',
+                'show_warning': show_warning,
+                'warning_message': warning_message
+            }), 400
 
         # Evaluar la significancia
         significance = "significativo" if p_value < 0.05 else "no significativo"
@@ -2027,16 +2029,19 @@ def run_fisher():
             'p_value': p_value,
             'significance': significance,
             'decision': decision,
+            'show_warning': show_warning,
+            'warning_message': warning_message
         }
 
         # Incluir la tabla de contingencia si se solicitó
         if show_contingency_table:
             result['contingency_table'] = contingency_table.to_dict()
 
-        return jsonify({'result': result, 'show_warning': False})
+        return jsonify({'result': result})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
 
 
 
