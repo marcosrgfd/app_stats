@@ -1434,15 +1434,15 @@ def upload_file_stat():
                 try:
                     # Leer contenido del archivo para detectar delimitador
                     content = file.stream.read().decode("utf-8")
-                    dialect = csv.Sniffer().sniff(content[:1024], delimiters=";,")
-                    delimiter = dialect.delimiter
-                    dataframe = pd.read_csv(io.StringIO(content), delimiter=delimiter)
+                    #dialect = csv.Sniffer().sniff(content[:1024], delimiters=";,")
+                    #delimiter = dialect.delimiter
+                    dataframe = pd.read_csv(io.StringIO(content))
                 except UnicodeDecodeError:
                     # Intentar con ISO-8859-1 si UTF-8 falla
                     content = file.stream.read().decode("ISO-8859-1")
-                    dialect = csv.Sniffer().sniff(content[:1024], delimiters=";,")
-                    delimiter = dialect.delimiter
-                    dataframe = pd.read_csv(io.StringIO(content), sep=delimiter)
+                    #dialect = csv.Sniffer().sniff(content[:1024], delimiters=";,")
+                    #delimiter = dialect.delimiter
+                    dataframe = pd.read_csv(io.StringIO(content))
                 except pd.errors.ParserError as e:
                     return jsonify({'error': f'Error al analizar el archivo CSV: {str(e)}'}), 400
 
