@@ -838,9 +838,30 @@ def replace_nan_with_none(values):
 # Variable global para almacenar el DataFrame cargado
 dataframe = None
 
-# Ruta para cargar un archivo y almacenar el DataFrame
-@app.route('/upload_csv_descriptive', methods=['POST'])
-def upload_file_descriptive():
+def leer_csv_automatico(content):
+    """
+    Lee un archivo CSV desde un contenido de texto con delimitadores ',' o ';'.
+    
+    Args:
+        content (str): Contenido del archivo en formato de texto.
+        
+    Returns:
+        pd.DataFrame: DataFrame con los datos del archivo CSV.
+    """
+    from io import StringIO
+    delimitadores = [",", ";"]
+    for delimitador in delimitadores:
+        try:
+            df = pd.read_csv(StringIO(content), delimiter=delimitador)
+            # Validar si el DataFrame tiene más de una columna
+            if df.shape[1] > 1:
+                return df
+        except pd.errors.ParserError:
+            continue
+    raise ValueError("No se pudo determinar el delimitador del archivo.")
+
+@app.route('/upload_csv_stat', methods=['POST'])
+def upload_file_stat():
     global dataframe
     try:
         if 'file' not in request.files:
@@ -856,29 +877,22 @@ def upload_file_descriptive():
         # Determinar el tipo de archivo y leerlo en un DataFrame de Pandas
         try:
             if filename.endswith('.csv'):
-                # Intentar leer el archivo con detección automática de delimitador y codificación
                 try:
+                    # Leer el contenido del archivo
                     content = file.stream.read().decode("utf-8")
+                    dataframe = leer_csv_automatico(content)  # Usar la nueva función
                 except UnicodeDecodeError:
-                    # Si UTF-8 falla, intentar con ISO-8859-1
+                    # Intentar con ISO-8859-1 si UTF-8 falla
+                    file.stream.seek(0)  # Reiniciar el stream
                     content = file.stream.read().decode("ISO-8859-1")
+                    dataframe = leer_csv_automatico(content)  # Usar la nueva función
 
-                # Detectar el delimitador usando csv.Sniffer
-                try:
-                    dialect = csv.Sniffer().sniff(content[:1024], delimiters=";,")
-                    delimiter = dialect.delimiter
-                except csv.Error:
-                    # Por defecto, usar coma si no se puede detectar
-                    delimiter = ','
-
-                # Cargar el archivo CSV con el delimitador detectado
-                dataframe = pd.read_csv(io.StringIO(content), delimiter=delimiter, na_values=["NA", "N/A", "null", "nan"])
 
             elif filename.endswith(('.xls', '.xlsx')):
                 try:
                     # Leer archivo Excel (.xls o .xlsx)
                     file_stream = io.BytesIO(file.read())
-                    dataframe = pd.read_excel(file_stream, engine='openpyxl', na_values=["NA", "N/A", "null", "nan"])
+                    dataframe = pd.read_excel(file_stream, engine='openpyxl')
                 except ValueError as e:
                     return jsonify({'error': f'Error al leer el archivo Excel: {str(e)}'}), 400
                 except Exception as e:
@@ -887,10 +901,10 @@ def upload_file_descriptive():
             elif filename.endswith('.txt'):
                 try:
                     content = file.stream.read().decode("utf-8")
-                    dataframe = pd.read_csv(io.StringIO(content), delimiter=r'\s+', na_values=["NA", "N/A", "null", "nan"])
+                    dataframe = pd.read_csv(io.StringIO(content), delimiter=r'\s+')
                 except UnicodeDecodeError:
                     content = file.stream.read().decode("ISO-8859-1")
-                    dataframe = pd.read_csv(io.StringIO(content), delimiter=r'\s+', na_values=["NA", "N/A", "null", "nan"])
+                    dataframe = pd.read_csv(io.StringIO(content), delimiter=r'\s+')
             else:
                 return jsonify({'error': "Formato de archivo no soportado. Proporcione un archivo CSV, XLSX, XLS o TXT."}), 400
 
@@ -898,12 +912,12 @@ def upload_file_descriptive():
             if dataframe.empty:
                 return jsonify({'error': 'El archivo está vacío o no se pudo procesar correctamente.'}), 400
 
-            # Normalizar encabezados quitando espacios adicionales y caracteres especiales
-            dataframe.columns = dataframe.columns.str.strip().str.replace('[^a-zA-Z0-9_]', '_', regex=True)
+            # Normalizar encabezados quitando espacios adicionales
+            dataframe.columns = dataframe.columns.str.strip()
 
             # Manejo de celdas vacías
-            # dataframe = dataframe.replace("N/A", np.nan)
-            # dataframe = dataframe.dropna()  # Eliminar filas con valores nulos
+            dataframe = dataframe.replace("N/A", np.nan)
+            dataframe = dataframe.dropna()  # Eliminar filas con valores nulos
 
             # Intentar convertir columnas numéricas interpretadas como texto
             for column in dataframe.columns:
@@ -938,6 +952,9 @@ def upload_file_descriptive():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+    
+
+
 # Ruta para el análisis descriptivo de columnas seleccionadas
 @app.route('/analyze_selected_columns', methods=['POST'])
 def analyze_selected_columns():
@@ -1162,9 +1179,30 @@ def calculate_descriptive_statistics_from_data(data_series):
 # Variable global para almacenar el DataFrame cargado
 dataframe = None
 
-# Ruta para cargar un archivo y almacenar el DataFrame
-@app.route('/upload_csv_charts', methods=['POST'])
-def upload_file_charts():
+def leer_csv_automatico(content):
+    """
+    Lee un archivo CSV desde un contenido de texto con delimitadores ',' o ';'.
+    
+    Args:
+        content (str): Contenido del archivo en formato de texto.
+        
+    Returns:
+        pd.DataFrame: DataFrame con los datos del archivo CSV.
+    """
+    from io import StringIO
+    delimitadores = [",", ";"]
+    for delimitador in delimitadores:
+        try:
+            df = pd.read_csv(StringIO(content), delimiter=delimitador)
+            # Validar si el DataFrame tiene más de una columna
+            if df.shape[1] > 1:
+                return df
+        except pd.errors.ParserError:
+            continue
+    raise ValueError("No se pudo determinar el delimitador del archivo.")
+
+@app.route('/upload_csv_stat', methods=['POST'])
+def upload_file_stat():
     global dataframe
     try:
         if 'file' not in request.files:
@@ -1180,29 +1218,22 @@ def upload_file_charts():
         # Determinar el tipo de archivo y leerlo en un DataFrame de Pandas
         try:
             if filename.endswith('.csv'):
-                # Intentar leer el archivo con detección automática de delimitador y codificación
                 try:
+                    # Leer el contenido del archivo
                     content = file.stream.read().decode("utf-8")
+                    dataframe = leer_csv_automatico(content)  # Usar la nueva función
                 except UnicodeDecodeError:
-                    # Si UTF-8 falla, intentar con ISO-8859-1
+                    # Intentar con ISO-8859-1 si UTF-8 falla
+                    file.stream.seek(0)  # Reiniciar el stream
                     content = file.stream.read().decode("ISO-8859-1")
+                    dataframe = leer_csv_automatico(content)  # Usar la nueva función
 
-                # Detectar el delimitador usando csv.Sniffer
-                try:
-                    dialect = csv.Sniffer().sniff(content[:1024], delimiters=";,")
-                    delimiter = dialect.delimiter
-                except csv.Error:
-                    # Por defecto, usar coma si no se puede detectar
-                    delimiter = ','
-
-                # Cargar el archivo CSV con el delimitador detectado
-                dataframe = pd.read_csv(io.StringIO(content), delimiter=delimiter, na_values=["NA", "N/A", "null", "nan"])
 
             elif filename.endswith(('.xls', '.xlsx')):
                 try:
                     # Leer archivo Excel (.xls o .xlsx)
                     file_stream = io.BytesIO(file.read())
-                    dataframe = pd.read_excel(file_stream, engine='openpyxl', na_values=["NA", "N/A", "null", "nan"])
+                    dataframe = pd.read_excel(file_stream, engine='openpyxl')
                 except ValueError as e:
                     return jsonify({'error': f'Error al leer el archivo Excel: {str(e)}'}), 400
                 except Exception as e:
@@ -1211,10 +1242,10 @@ def upload_file_charts():
             elif filename.endswith('.txt'):
                 try:
                     content = file.stream.read().decode("utf-8")
-                    dataframe = pd.read_csv(io.StringIO(content), delimiter=r'\s+', na_values=["NA", "N/A", "null", "nan"])
+                    dataframe = pd.read_csv(io.StringIO(content), delimiter=r'\s+')
                 except UnicodeDecodeError:
                     content = file.stream.read().decode("ISO-8859-1")
-                    dataframe = pd.read_csv(io.StringIO(content), delimiter=r'\s+', na_values=["NA", "N/A", "null", "nan"])
+                    dataframe = pd.read_csv(io.StringIO(content), delimiter=r'\s+')
             else:
                 return jsonify({'error': "Formato de archivo no soportado. Proporcione un archivo CSV, XLSX, XLS o TXT."}), 400
 
@@ -1222,12 +1253,12 @@ def upload_file_charts():
             if dataframe.empty:
                 return jsonify({'error': 'El archivo está vacío o no se pudo procesar correctamente.'}), 400
 
-            # Normalizar encabezados quitando espacios adicionales y caracteres especiales
-            dataframe.columns = dataframe.columns.str.strip().str.replace('[^a-zA-Z0-9_]', '_', regex=True)
+            # Normalizar encabezados quitando espacios adicionales
+            dataframe.columns = dataframe.columns.str.strip()
 
             # Manejo de celdas vacías
-            # dataframe = dataframe.replace("N/A", np.nan)
-            # dataframe = dataframe.dropna()  # Eliminar filas con valores nulos
+            dataframe = dataframe.replace("N/A", np.nan)
+            dataframe = dataframe.dropna()  # Eliminar filas con valores nulos
 
             # Intentar convertir columnas numéricas interpretadas como texto
             for column in dataframe.columns:
@@ -1262,6 +1293,7 @@ def upload_file_charts():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+    
 
 # Nueva ruta para la generación de gráficos a partir de las columnas seleccionadas
 @app.route('/generate_charts', methods=['POST'])
@@ -1462,6 +1494,7 @@ def upload_file_stat():
                     file.stream.seek(0)  # Reiniciar el stream
                     content = file.stream.read().decode("ISO-8859-1")
                     dataframe = leer_csv_automatico(content)  # Usar la nueva función
+
 
             elif filename.endswith(('.xls', '.xlsx')):
                 try:
