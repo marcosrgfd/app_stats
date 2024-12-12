@@ -1507,10 +1507,7 @@ def upload_file_stat():
                 'message': 'Archivo cargado exitosamente',
                 'numeric_columns': numeric_columns,
                 'categorical_columns': categorical_columns,
-                'binary_categorical_columns': binary_categorical_columns,
-                'total_rows': len(dataframe),
-                'total_columns': len(dataframe.columns),
-                'sample_data': dataframe.head(5).to_dict(orient='records')
+                'binary_categorical_columns': binary_categorical_columns
             })
 
         except UnicodeDecodeError:
