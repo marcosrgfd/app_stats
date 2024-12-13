@@ -1469,14 +1469,16 @@ def leer_csv_automatico(content):
             continue
     raise ValueError("No se pudo determinar el delimitador del archivo.")
 
-# Método para manejar celdas vacías usando KNN
-def imputar_valores_knn(dataframe, n_neighbors=5):
+# Método para manejar celdas vacías usando imputación básica
+def imputar_valores_basico(dataframe):
     """
-    Imputa valores faltantes en el DataFrame utilizando el método KNN.
+    Imputa valores faltantes en el DataFrame utilizando métodos básicos.
+
+    - Columnas numéricas: Media.
+    - Columnas categóricas: Moda.
 
     Args:
         dataframe (pd.DataFrame): DataFrame con valores faltantes.
-        n_neighbors (int): Número de vecinos a considerar para imputación.
 
     Returns:
         pd.DataFrame: DataFrame con valores imputados.
@@ -1485,15 +1487,14 @@ def imputar_valores_knn(dataframe, n_neighbors=5):
     numeric_columns = dataframe.select_dtypes(include=['number']).columns.tolist()
     categorical_columns = dataframe.select_dtypes(exclude=['number']).columns.tolist()
 
-    # Imputación para columnas numéricas usando KNN
-    if numeric_columns:
-        imputer = KNNImputer(n_neighbors=n_neighbors)
-        dataframe[numeric_columns] = imputer.fit_transform(dataframe[numeric_columns])
+    # Imputación para columnas numéricas: Rellenar con la media
+    for column in numeric_columns:
+        dataframe[column].fillna(dataframe[column].mean(), inplace=True)
 
-    # Imputación para columnas categóricas
+    # Imputación para columnas categóricas: Rellenar con la moda
     for column in categorical_columns:
-        # Rellenar con la moda (valor más frecuente)
-        dataframe[column].fillna(dataframe[column].mode()[0], inplace=True)
+        if not dataframe[column].mode().empty:  # Verificar si hay datos para calcular la moda
+            dataframe[column].fillna(dataframe[column].mode()[0], inplace=True)
 
     return dataframe
 
@@ -1554,7 +1555,7 @@ def upload_file_stat():
             dataframe.columns = dataframe.columns.str.strip()
 
             # Manejo de celdas vacías con KNN imputación
-            dataframe = imputar_valores_knn(dataframe)
+            dataframe = imputar_valores_basico(dataframe)
 
             # Intentar convertir columnas numéricas interpretadas como texto
             for column in dataframe.columns:
