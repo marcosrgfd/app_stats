@@ -60,7 +60,6 @@ from sklearn.metrics import r2_score, accuracy_score, confusion_matrix
 from sklearn.model_selection import cross_val_score
 from lifelines import CoxPHFitter
 
-from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 
@@ -1047,13 +1046,13 @@ def analyze_selected_columns():
         # Análisis de dos muestras (scatter plot y correlación)
         elif analysis_type == "Dos muestras":
             if len(selected_columns) != 2:
-                return jsonify({'error': "Seleccione exactamente dos columnas numéricas para este análisis."}), 400
+                return jsonify({'error': "Select exactly two numeric columns for this analysis."}), 400
 
             data_series1 = dataframe[selected_columns[0]].dropna()
             data_series2 = dataframe[selected_columns[1]].dropna()
 
             if len(data_series1) != len(data_series2):
-                return jsonify({'error': "Las columnas seleccionadas tienen diferentes cantidades de datos válidos."}), 400
+                return jsonify({'error': "The selected columns have different amounts of valid data."}), 400
 
             result['mean1'] = float(data_series1.mean())
             result['mean2'] = float(data_series2.mean())
@@ -1063,7 +1062,7 @@ def analyze_selected_columns():
             if show_scatter:
                 plt.figure(figsize=(8, 6))
                 sns.scatterplot(x=data_series1, y=data_series2, color='blue', alpha=0.6, s=80, edgecolor='w')
-                plt.title('Gráfico de Dispersión con Línea de Tendencia')
+                plt.title('Scatter plot with trend line')
                 plt.xlabel(selected_columns[0])
                 plt.ylabel(selected_columns[1])
                 m, b = np.polyfit(data_series1, data_series2, 1)
@@ -1077,7 +1076,7 @@ def analyze_selected_columns():
         # Análisis en función de una categórica
         elif analysis_type == "En función de una categórica":
             if len(selected_columns) != 1 or not category_column:
-                return jsonify({'error': "Seleccione una columna numérica y una categórica para este análisis."}), 400
+                return jsonify({'error': "Select a numeric column and a categorical column for this analysis."}), 400
             
             data_series = dataframe[selected_columns[0]].dropna()
             category_series = dataframe[category_column].dropna()
@@ -1150,7 +1149,7 @@ def analyze_selected_columns():
             result['stats_by_category'] = stats_by_category
 
         else:
-            return jsonify({'error': "Tipo de análisis no válido."}), 400
+            return jsonify({'error': "Invalid type of analysis."}), 400
 
         return jsonify(result)
 
@@ -1229,7 +1228,7 @@ def leer_csv_automatico(content):
                 return df
         except pd.errors.ParserError:
             continue
-    raise ValueError("No se pudo determinar el delimitador del archivo.")
+    raise ValueError("Could not determine the file delimiter.")
 
 # Método para manejar celdas vacías usando imputación básica
 def imputar_valores_basico(dataframe):
@@ -1267,12 +1266,12 @@ def upload_file_charts():
     global dataframe
     try:
         if 'file' not in request.files:
-            return jsonify({'error': 'No se encontró el archivo.'}), 400
+            return jsonify({'error': 'File not found.'}), 400
 
         file = request.files['file']
 
         if file.filename == '':
-            return jsonify({'error': 'El archivo no tiene nombre.'}), 400
+            return jsonify({'error': 'The file has no name.'}), 400
 
         filename = file.filename.lower()
 
@@ -1296,9 +1295,9 @@ def upload_file_charts():
                     file_stream = io.BytesIO(file.read())
                     dataframe = pd.read_excel(file_stream, engine='openpyxl')
                 except ValueError as e:
-                    return jsonify({'error': f'Error al leer el archivo Excel: {str(e)}'}), 400
+                    return jsonify({'error': f'Error reading the Excel file: {str(e)}'}), 400
                 except Exception as e:
-                    return jsonify({'error': f'Error desconocido al leer el archivo Excel: {str(e)}'}), 400
+                    return jsonify({'error': f'Unknown error reading the Excel file: {str(e)}'}), 400
 
             elif filename.endswith('.txt'):
                 try:
@@ -1308,11 +1307,11 @@ def upload_file_charts():
                     content = file.stream.read().decode("ISO-8859-1")
                     dataframe = pd.read_csv(io.StringIO(content), delimiter=r'\s+')
             else:
-                return jsonify({'error': "Formato de archivo no soportado. Proporcione un archivo CSV, XLSX, XLS o TXT."}), 400
+                return jsonify({'error': "Unsupported file format. Please provide a CSV, XLSX, XLS, or TXT file."}), 400
 
             # Verificar si el DataFrame se cargó correctamente
             if dataframe.empty:
-                return jsonify({'error': 'El archivo está vacío o no se pudo procesar correctamente.'}), 400
+                return jsonify({'error': 'The file is empty or could not be processed correctly.'}), 400
 
             # Normalizar encabezados quitando espacios adicionales
             dataframe.columns = dataframe.columns.str.strip()
@@ -1345,9 +1344,9 @@ def upload_file_charts():
             })
 
         except UnicodeDecodeError:
-            return jsonify({'error': 'Error de codificación. Asegúrese de que el archivo esté en formato UTF-8 o ISO-8859-1.'}), 400
+            return jsonify({'error': 'Encoding error. Ensure the file is in UTF-8 or ISO-8859-1 format.'}), 400
         except pd.errors.ParserError:
-            return jsonify({'error': 'Error al analizar el archivo. Verifique el delimitador y el formato del archivo.'}), 400
+            return jsonify({'error': 'Error parsing the file. Check the delimiter and file format.'}), 400
         except Exception as e:
             return jsonify({'error': str(e)}), 400
 
@@ -1361,7 +1360,7 @@ def generate_charts():
     global dataframe
     try:
         if dataframe is None:
-            return jsonify({'error': 'No se ha cargado ningún archivo para analizar.'}), 400
+            return jsonify({'error': 'No file has been uploaded for analysis.'}), 400
 
         data = request.get_json()
         x_column = data.get('x_column')
@@ -1370,7 +1369,7 @@ def generate_charts():
         categorical_column = data.get('categorical_column')
 
         if not x_column or not chart_type:
-            return jsonify({'error': 'Por favor, seleccione las columnas y el tipo de gráfico.'}), 400
+            return jsonify({'error': 'Please select the columns and the type of chart.'}), 400
 
         # Limpiar los datos eliminando valores nulos
         df_clean = dataframe.dropna(subset=[x_column, y_column] if y_column else [x_column])
@@ -1381,7 +1380,7 @@ def generate_charts():
 
         if chart_type == 'Scatterplot':
             if not y_column:
-                return jsonify({'error': 'Para un scatterplot, debe seleccionar dos variables numéricas.'}), 400
+                return jsonify({'error': 'For a scatterplot, you must select two numeric variables.'}), 400
             
             add_trendline = data.get('add_trendline', False)
 
@@ -1399,7 +1398,7 @@ def generate_charts():
                     plt.legend(['Línea de tendencia', 'Datos'])
                     
             else:
-                return jsonify({'error': 'Ambas columnas seleccionadas deben ser numéricas para un scatterplot.'}), 400
+                return jsonify({'error': 'Both selected columns must be numeric for a scatterplot.'}), 400
 
         elif chart_type == 'Histograma':
             if pd.api.types.is_numeric_dtype(dataframe[x_column]):
@@ -1408,7 +1407,7 @@ def generate_charts():
                 plt.ylabel('Frecuencia')
                 plt.title(f'Histograma de {x_column}')
             else:
-                return jsonify({'error': 'La columna seleccionada debe ser numérica para un histograma.'}), 400
+                return jsonify({'error': 'The selected column must be numeric for a histogram.'}), 400
 
         elif chart_type == 'Boxplot':
             if pd.api.types.is_numeric_dtype(dataframe[x_column]):
@@ -1429,7 +1428,7 @@ def generate_charts():
                         plt.xlabel(categorical_column)  # Etiqueta correcta para el eje X
                         plt.ylabel(x_column)  # Etiqueta correcta para el eje Y
                     else:
-                        return jsonify({'error': 'La columna categórica seleccionada no es válida.'}), 400
+                        return jsonify({'error': 'The selected categorical column is not valid.'}), 400
                 else:
                     # Boxplot sin categorización
                     sns.boxplot(x=df_clean[x_column], color='lightgreen', width=0.4)
@@ -1437,7 +1436,7 @@ def generate_charts():
                     plt.xlabel(x_column)
                     plt.ylabel('Frecuencia')  # Etiqueta adecuada para el eje Y cuando no hay categorización
             else:
-                return jsonify({'error': 'La columna seleccionada debe ser numérica para un boxplot.'}), 400
+                return jsonify({'error': 'The selected column must be numeric for a boxplot.'}), 400
 
 
         elif chart_type == 'Raincloud Plot':
@@ -1469,7 +1468,7 @@ def generate_charts():
                     ax.set_yticks(np.arange(1, len(df_clean[categorical_column].unique()) + 1))
                     ax.set_yticklabels(df_clean[categorical_column].unique())
                     ax.set_xlabel(x_column)
-                    ax.set_title(f'Raincloud Plot de {x_column} según {categorical_column}')
+                    ax.set_title(f'Raincloud Plot of {x_column} by {categorical_column}')
                     plt.grid(True)
                 else:
                     # Raincloud Plot sin categorización
@@ -1478,10 +1477,10 @@ def generate_charts():
                     y_jitter = np.random.uniform(-0.05, 0.05, size=len(df_clean[x_column]))
                     plt.scatter(df_clean[x_column], y_jitter, s=10, color='blue', alpha=0.6)
                     plt.xlabel(x_column)
-                    plt.title(f'Raincloud Plot de {x_column}')
+                    plt.title(f'Raincloud Plot of {x_column}')
 
             else:
-                return jsonify({'error': 'La columna seleccionada debe ser numérica para un Raincloud Plot.'}), 400
+                return jsonify({'error': 'The selected column must be numeric for a raincloud plot.'}), 400
 
         plt.tight_layout()
         plt.savefig(img, format='png')
@@ -1526,7 +1525,7 @@ def leer_csv_automatico(content):
                 return df
         except pd.errors.ParserError:
             continue
-    raise ValueError("No se pudo determinar el delimitador del archivo.")
+    raise ValueError("The file delimiter could not be determined.")
 
 # Método para manejar celdas vacías usando imputación básica
 def imputar_valores_basico(dataframe):
@@ -1564,12 +1563,12 @@ def upload_file_stat():
     global dataframe
     try:
         if 'file' not in request.files:
-            return jsonify({'error': 'No se encontró el archivo.'}), 400
+            return jsonify({'error': 'The file was not found.'}), 400
 
         file = request.files['file']
 
         if file.filename == '':
-            return jsonify({'error': 'El archivo no tiene nombre.'}), 400
+            return jsonify({'error': 'The file has no name.'}), 400
 
         filename = file.filename.lower()
 
@@ -1593,9 +1592,9 @@ def upload_file_stat():
                     file_stream = io.BytesIO(file.read())
                     dataframe = pd.read_excel(file_stream, engine='openpyxl')
                 except ValueError as e:
-                    return jsonify({'error': f'Error al leer el archivo Excel: {str(e)}'}), 400
+                    return jsonify({'error': f'Error reading the Excel file: {str(e)}'}), 400
                 except Exception as e:
-                    return jsonify({'error': f'Error desconocido al leer el archivo Excel: {str(e)}'}), 400
+                    return jsonify({'error': f'Unknown error reading the Excel file: {str(e)}'}), 400
 
             elif filename.endswith('.txt'):
                 try:
@@ -1605,11 +1604,11 @@ def upload_file_stat():
                     content = file.stream.read().decode("ISO-8859-1")
                     dataframe = pd.read_csv(io.StringIO(content), delimiter=r'\s+')
             else:
-                return jsonify({'error': "Formato de archivo no soportado. Proporcione un archivo CSV, XLSX, XLS o TXT."}), 400
+                return jsonify({'error': "Unsupported file format. Please provide a CSV, XLSX, XLS, or TXT file."}), 400
 
             # Verificar si el DataFrame se cargó correctamente
             if dataframe.empty:
-                return jsonify({'error': 'El archivo está vacío o no se pudo procesar correctamente.'}), 400
+                return jsonify({'error': 'The file is empty or could not be processed correctly.'}), 400
 
             # Normalizar encabezados quitando espacios adicionales
             dataframe.columns = dataframe.columns.str.strip()
@@ -1642,9 +1641,9 @@ def upload_file_stat():
             })
 
         except UnicodeDecodeError:
-            return jsonify({'error': 'Error de codificación. Asegúrese de que el archivo esté en formato UTF-8 o ISO-8859-1.'}), 400
+            return jsonify({'error': 'Encoding error. Ensure the file is in UTF-8 or ISO-8859-1 format.'}), 400
         except pd.errors.ParserError:
-            return jsonify({'error': 'Error al analizar el archivo. Verifique el delimitador y el formato del archivo.'}), 400
+            return jsonify({'error': 'Error parsing the file. Check the delimiter and file format.'}), 400
         except Exception as e:
             return jsonify({'error': str(e)}), 400
 
@@ -3618,7 +3617,6 @@ def ping():
 
 if __name__ == '__main__':
     app.run(debug=False, host='0.0.0.0', port=5000)
-
 
 
 
