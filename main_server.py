@@ -1939,16 +1939,17 @@ def get_category_names():
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
-# Ruta para realizar la prueba de Levene
+# 1. Prueba de Levene
 @app.route('/run_levene', methods=['POST'])
 def run_levene():
     global dataframe
     try:
+        # Recibir datos del cliente
         data = request.get_json()
         numeric_column = data.get('numeric_column')
         categorical_column = data.get('categorical_column')
-        center = data.get('center', 'mean')  # 'mean', 'median', o 'trimmed'
 
+        # Validar columnas
         if numeric_column not in dataframe.columns or categorical_column not in dataframe.columns:
             return jsonify({'error': 'Las columnas especificadas no se encontraron en los datos.'}), 400
 
@@ -1957,38 +1958,32 @@ def run_levene():
 
         # Verificar que haya al menos dos grupos
         if len(groups) < 2:
-            return jsonify({'error': 'Datos insuficientes para realizar la prueba de Levene. Se requieren al menos dos categorías.'}), 400
+            return jsonify({'error': 'Se necesitan al menos dos categorías para realizar la prueba de Levene.'}), 400
 
-        category_names = groups.index.tolist()
+        # Convertir los grupos a una lista de listas
+        group_values = [group for group in groups]
 
-        # Realizar la prueba de Levene con el centro especificado
-        try:
-            levene_stat, p_value = stats.levene(*groups, center=center)
-        except ValueError as ve:
-            return jsonify({'error': f'Error al ejecutar la prueba de Levene: {str(ve)}'}), 400
+        # Realizar la prueba de Levene
+        stat, p_value = stats.levene(*group_values)
 
         # Evaluar la significancia según el valor p
         significance = "significativo" if p_value < 0.05 else "no significativo"
-        decision = "Rechazar la hipótesis nula (varianzas desiguales)" if p_value < 0.05 else "No rechazar la hipótesis nula (varianzas iguales)"
+        decision = "Rechazar la hipótesis nula: las varianzas no son iguales" if p_value < 0.05 else "No rechazar la hipótesis nula: las varianzas son iguales"
 
+        # Preparar los resultados
         result = {
             'test': 'Prueba de Levene',
-            'levene_statistic': levene_stat,
+            'statistic': stat,
             'p_value': p_value,
             'significance': significance,
             'decision': decision,
-            'categories': category_names,
-            'center': center
+            'groups': groups.index.tolist()
         }
-
-        # Limpiar los resultados antes de enviarlos
-        result = clean_results(result)
 
         return jsonify({'result': result})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
-
 # 4. ANOVA
 # Ruta para ANOVA
 @app.route('/run_anova', methods=['POST'])
