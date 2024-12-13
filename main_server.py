@@ -2126,7 +2126,48 @@ def run_anova():
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
+# FRIEDMAN
+@app.route('/run_friedman', methods=['POST'])
+def run_friedman():
+    global dataframe
+    try:
+        # Obtener los datos de la solicitud
+        data = request.get_json()
+        numeric_column = data.get('numeric_column')
+        group_column = data.get('group_column')
+        subject_column = data.get('subject_column')
 
+        # Validar las columnas
+        if numeric_column not in dataframe.columns or group_column not in dataframe.columns or subject_column not in dataframe.columns:
+            return jsonify({'error': 'Las columnas especificadas no se encontraron en los datos.'}), 400
+
+        # Agrupar los datos por el sujeto y las categorías del grupo
+        grouped_data = dataframe.pivot(index=subject_column, columns=group_column, values=numeric_column)
+
+        # Verificar que cada sujeto tenga observaciones en todas las categorías del grupo
+        if grouped_data.isnull().any().any():
+            return jsonify({'error': 'Datos incompletos: cada sujeto debe tener observaciones en todas las categorías.'}), 400
+
+        # Realizar la prueba de Friedman
+        friedman_stat, p_value = friedmanchisquare(*[grouped_data[col].dropna() for col in grouped_data.columns])
+
+        # Crear la respuesta inicial
+        result = {
+            'test': 'Prueba de Friedman',
+            'friedman_statistic': friedman_stat,
+            'p_value': p_value,
+            'num_groups': grouped_data.shape[1],
+            'num_subjects': grouped_data.shape[0],
+        }
+
+        # Evaluar la significancia según el valor p
+        result['significance'] = "significativo" if p_value < 0.05 else "no significativo"
+        result['decision'] = "Rechazar la hipótesis nula" if p_value < 0.05 else "No rechazar la hipótesis nula"
+
+        return jsonify({'result': result})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 # 5. Chi-Square
 @app.route('/run_chisquare', methods=['POST'])
