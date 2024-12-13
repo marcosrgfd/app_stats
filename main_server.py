@@ -1162,24 +1162,24 @@ def calculate_descriptive_statistics_from_data(data_series):
     try:
         # Ignorar NaN en lugar de reemplazarlos con 0
         count = float(data_series.dropna().size)
-        mean = float(data_series.mean(skipna=True))
-        median = float(data_series.median(skipna=True))
+        mean = float(data_series.mean(skipna=True)) if not np.isnan(data_series.mean(skipna=True)) else None
+        median = float(data_series.median(skipna=True)) if not np.isnan(data_series.median(skipna=True)) else None
         mode = replace_nan_with_none(data_series.mode(dropna=True).tolist())  # Usar dropna=True para la moda
-        std = float(data_series.std(skipna=True))
-        variance = float(data_series.var(skipna=True))
-        min_value = float(data_series.min(skipna=True))
-        max_value = float(data_series.max(skipna=True))
-        range_value = max_value - min_value
-        coef_var = (std / mean * 100) if mean != 0 else None
+        std = float(data_series.std(skipna=True)) if not np.isnan(data_series.std(skipna=True)) else None
+        variance = float(data_series.var(skipna=True)) if not np.isnan(data_series.var(skipna=True)) else None
+        min_value = float(data_series.min(skipna=True)) if not np.isnan(data_series.min(skipna=True)) else None
+        max_value = float(data_series.max(skipna=True)) if not np.isnan(data_series.max(skipna=True)) else None
+        range_value = (max_value - min_value) if min_value is not None and max_value is not None else None
+        coef_var = (std / mean * 100) if mean and mean != 0 else None
 
         # Sanitizar skewness y kurtosis
         skewness = None if np.isnan(stats.skew(data_series.dropna())) else float(stats.skew(data_series.dropna()))
         kurtosis_value = None if np.isnan(stats.kurtosis(data_series.dropna())) else float(stats.kurtosis(data_series.dropna()))
 
-        q1 = float(data_series.quantile(0.25, interpolation='linear'))
-        q3 = float(data_series.quantile(0.75, interpolation='linear'))
-        p10 = float(data_series.quantile(0.10, interpolation='linear'))
-        p90 = float(data_series.quantile(0.90, interpolation='linear'))
+        q1 = float(data_series.quantile(0.25, interpolation='linear')) if not np.isnan(data_series.quantile(0.25, interpolation='linear')) else None
+        q3 = float(data_series.quantile(0.75, interpolation='linear')) if not np.isnan(data_series.quantile(0.75, interpolation='linear')) else None
+        p10 = float(data_series.quantile(0.10, interpolation='linear')) if not np.isnan(data_series.quantile(0.10, interpolation='linear')) else None
+        p90 = float(data_series.quantile(0.90, interpolation='linear')) if not np.isnan(data_series.quantile(0.90, interpolation='linear')) else None
 
         return {
             'count': count,
