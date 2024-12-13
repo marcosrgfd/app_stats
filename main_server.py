@@ -2136,6 +2136,7 @@ def run_friedman():
         numeric_column = data.get('numeric_column')
         group_column = data.get('group_column')
         subject_column = data.get('subject_column')
+        include_posthoc = data.get('multipleComparisons', False)
 
         # Validar las columnas
         if numeric_column not in dataframe.columns or group_column not in dataframe.columns or subject_column not in dataframe.columns:
@@ -2158,11 +2159,39 @@ def run_friedman():
             'p_value': p_value,
             'num_groups': grouped_data.shape[1],
             'num_subjects': grouped_data.shape[0],
+            'significance': "significativo" if p_value < 0.05 else "no significativo",
+            'decision': "Rechazar la hipótesis nula" if p_value < 0.05 else "No rechazar la hipótesis nula"
         }
 
-        # Evaluar la significancia según el valor p
-        result['significance'] = "significativo" if p_value < 0.05 else "no significativo"
-        result['decision'] = "Rechazar la hipótesis nula" if p_value < 0.05 else "No rechazar la hipótesis nula"
+        # Si se habilitan las comparaciones múltiples
+        if include_posthoc:
+            if grouped_data.shape[1] < 3:
+                return jsonify({'error': 'Se requieren al menos tres grupos para realizar comparaciones múltiples.'}), 400
+
+            try:
+                # Realizar comparaciones múltiples con el test de Nemenyi
+                posthoc_results = sp.posthoc_nemenyi_friedman(grouped_data.T)
+
+                # Formatear los resultados
+                posthoc_summary = []
+                for i, col1 in enumerate(posthoc_results.columns):
+                    for j, col2 in enumerate(posthoc_results.columns):
+                        if i < j:  # Evitar duplicados y la diagonal
+                            p_value_adj = posthoc_results.iloc[i, j]
+                            comparison = f"{col1} vs {col2}"
+                            reject_h0 = "Sí" if p_value_adj < 0.05 else "No"
+
+                            posthoc_summary.append({
+                                'comparison': comparison,
+                                'p_value_adjusted': f"{p_value_adj:.3f}",
+                                'reject_h0': reject_h0
+                            })
+
+                # Agregar resultados de comparaciones múltiples al resultado
+                result['posthoc_comparisons'] = posthoc_summary
+
+            except Exception as e:
+                return jsonify({'error': f'Error al realizar comparaciones múltiples: {str(e)}'}), 500
 
         return jsonify({'result': result})
 
