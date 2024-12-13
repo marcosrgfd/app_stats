@@ -37,7 +37,6 @@ from sklearn.metrics import mean_squared_error
 from scipy.stats import shapiro
 # import io  # Ya importado
 from statsmodels.stats.outliers_influence import variance_inflation_factor
-from sklearn.impute import KNNImputer
 
 # STAT TEST
 import scipy.stats as stats
@@ -861,6 +860,37 @@ def leer_csv_automatico(content):
             continue
     raise ValueError("No se pudo determinar el delimitador del archivo.")
 
+# Método para manejar celdas vacías usando imputación básica
+def imputar_valores_basico(dataframe):
+    """
+    Imputa valores faltantes en el DataFrame utilizando métodos básicos.
+
+    - Columnas numéricas: Media.
+    - Columnas categóricas: Moda.
+
+    Args:
+        dataframe (pd.DataFrame): DataFrame con valores faltantes.
+
+    Returns:
+        pd.DataFrame: DataFrame con valores imputados.
+    """
+    # Separar columnas numéricas y categóricas
+    numeric_columns = dataframe.select_dtypes(include=['number']).columns.tolist()
+    categorical_columns = dataframe.select_dtypes(exclude=['number']).columns.tolist()
+
+    # Imputación para columnas numéricas: Rellenar con la media
+    for column in numeric_columns:
+        dataframe[column].fillna(dataframe[column].mean(), inplace=True)
+
+    # Imputación para columnas categóricas: Rellenar con la moda
+    for column in categorical_columns:
+        if not dataframe[column].mode().empty:  # Verificar si hay datos para calcular la moda
+            dataframe[column].fillna(dataframe[column].mode()[0], inplace=True)
+
+    return dataframe
+
+
+
 @app.route('/upload_csv_descriptive', methods=['POST'])
 def upload_file_descriptive():
     global dataframe
@@ -916,9 +946,8 @@ def upload_file_descriptive():
             # Normalizar encabezados quitando espacios adicionales
             dataframe.columns = dataframe.columns.str.strip()
 
-            # Manejo de celdas vacías
-            dataframe = dataframe.replace("N/A", np.nan)
-            dataframe = dataframe.dropna()  # Eliminar filas con valores nulos
+            # Manejo de celdas vacías con KNN imputación
+            dataframe = imputar_valores_basico(dataframe)
 
             # Intentar convertir columnas numéricas interpretadas como texto
             for column in dataframe.columns:
@@ -1202,6 +1231,37 @@ def leer_csv_automatico(content):
             continue
     raise ValueError("No se pudo determinar el delimitador del archivo.")
 
+# Método para manejar celdas vacías usando imputación básica
+def imputar_valores_basico(dataframe):
+    """
+    Imputa valores faltantes en el DataFrame utilizando métodos básicos.
+
+    - Columnas numéricas: Media.
+    - Columnas categóricas: Moda.
+
+    Args:
+        dataframe (pd.DataFrame): DataFrame con valores faltantes.
+
+    Returns:
+        pd.DataFrame: DataFrame con valores imputados.
+    """
+    # Separar columnas numéricas y categóricas
+    numeric_columns = dataframe.select_dtypes(include=['number']).columns.tolist()
+    categorical_columns = dataframe.select_dtypes(exclude=['number']).columns.tolist()
+
+    # Imputación para columnas numéricas: Rellenar con la media
+    for column in numeric_columns:
+        dataframe[column].fillna(dataframe[column].mean(), inplace=True)
+
+    # Imputación para columnas categóricas: Rellenar con la moda
+    for column in categorical_columns:
+        if not dataframe[column].mode().empty:  # Verificar si hay datos para calcular la moda
+            dataframe[column].fillna(dataframe[column].mode()[0], inplace=True)
+
+    return dataframe
+
+
+
 @app.route('/upload_csv_charts', methods=['POST'])
 def upload_file_charts():
     global dataframe
@@ -1257,9 +1317,8 @@ def upload_file_charts():
             # Normalizar encabezados quitando espacios adicionales
             dataframe.columns = dataframe.columns.str.strip()
 
-            # Manejo de celdas vacías
-            dataframe = dataframe.replace("N/A", np.nan)
-            dataframe = dataframe.dropna()  # Eliminar filas con valores nulos
+            # Manejo de celdas vacías con KNN imputación
+            dataframe = imputar_valores_basico(dataframe)
 
             # Intentar convertir columnas numéricas interpretadas como texto
             for column in dataframe.columns:
@@ -1497,6 +1556,7 @@ def imputar_valores_basico(dataframe):
             dataframe[column].fillna(dataframe[column].mode()[0], inplace=True)
 
     return dataframe
+
 
 
 @app.route('/upload_csv_stat', methods=['POST'])
@@ -2014,7 +2074,8 @@ def run_chisquare():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
-        
+    
+    
 # 5. Fisher's Exact Test
 @app.route('/run_fisher', methods=['POST'])
 def run_fisher():
@@ -2073,8 +2134,6 @@ def run_fisher():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
-
-
 
 
 
