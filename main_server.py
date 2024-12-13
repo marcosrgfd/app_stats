@@ -37,6 +37,7 @@ from sklearn.metrics import mean_squared_error
 from scipy.stats import shapiro
 # import io  # Ya importado
 from statsmodels.stats.outliers_influence import variance_inflation_factor
+from sklearn.impute import KNNImputer
 
 # STAT TEST
 import scipy.stats as stats
@@ -1468,6 +1469,35 @@ def leer_csv_automatico(content):
             continue
     raise ValueError("No se pudo determinar el delimitador del archivo.")
 
+# Método para manejar celdas vacías usando KNN
+def imputar_valores_knn(dataframe, n_neighbors=5):
+    """
+    Imputa valores faltantes en el DataFrame utilizando el método KNN.
+
+    Args:
+        dataframe (pd.DataFrame): DataFrame con valores faltantes.
+        n_neighbors (int): Número de vecinos a considerar para imputación.
+
+    Returns:
+        pd.DataFrame: DataFrame con valores imputados.
+    """
+    # Separar columnas numéricas y categóricas
+    numeric_columns = dataframe.select_dtypes(include=['number']).columns.tolist()
+    categorical_columns = dataframe.select_dtypes(exclude=['number']).columns.tolist()
+
+    # Imputación para columnas numéricas usando KNN
+    if numeric_columns:
+        imputer = KNNImputer(n_neighbors=n_neighbors)
+        dataframe[numeric_columns] = imputer.fit_transform(dataframe[numeric_columns])
+
+    # Imputación para columnas categóricas
+    for column in categorical_columns:
+        # Rellenar con la moda (valor más frecuente)
+        dataframe[column].fillna(dataframe[column].mode()[0], inplace=True)
+
+    return dataframe
+
+
 @app.route('/upload_csv_stat', methods=['POST'])
 def upload_file_stat():
     global dataframe
@@ -1523,9 +1553,8 @@ def upload_file_stat():
             # Normalizar encabezados quitando espacios adicionales
             dataframe.columns = dataframe.columns.str.strip()
 
-            # Manejo de celdas vacías
-            dataframe = dataframe.replace("N/A", np.nan)
-            dataframe = dataframe.dropna()  # Eliminar filas con valores nulos
+            # Manejo de celdas vacías con KNN imputación
+            dataframe = imputar_valores_knn(dataframe)
 
             # Intentar convertir columnas numéricas interpretadas como texto
             for column in dataframe.columns:
