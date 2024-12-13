@@ -1939,6 +1939,59 @@ def get_category_names():
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
+# WELCH ttest
+@app.route('/run_welch_ttest', methods=['POST'])
+def run_welch_ttest():
+    global dataframe
+    try:
+        # Obtener los datos de la solicitud
+        data = request.get_json()
+        numeric_column = data.get('numeric_column')
+        categorical_column = data.get('categorical_column')
+        alternative = data.get('alternative', 'two-sided')
+
+        # Validar las columnas especificadas
+        if numeric_column not in dataframe.columns or categorical_column not in dataframe.columns:
+            return jsonify({'error': 'Las columnas especificadas no se encontraron en los datos.'}), 400
+
+        # Agrupar los datos por la columna categórica
+        groups = dataframe.groupby(categorical_column)[numeric_column].apply(list)
+
+        # Verificar que haya al menos dos grupos
+        if len(groups) < 2:
+            return jsonify({'error': 'Datos insuficientes para realizar el Welch T-Test. Se requieren al menos dos categorías.'}), 400
+
+        category_names = groups.index.tolist()
+
+        # Realizar la prueba T de Welch
+        t_stat, p_value = stats.ttest_ind(
+            groups.iloc[0], 
+            groups.iloc[1], 
+            equal_var=False,  # Welch T-Test: no se asume igualdad de varianzas
+            alternative=alternative
+        )
+
+        # Evaluar la significancia según el valor p
+        significance = "significativo" if p_value < 0.05 else "no significativo"
+        decision = "Rechazar la hipótesis nula" if p_value < 0.05 else "No rechazar la hipótesis nula"
+
+        # Construir el resultado
+        result = {
+            'test': 'Welch T-Test',
+            't_statistic': t_stat,
+            'p_value': p_value,
+            'significance': significance,
+            'decision': decision,
+            'category1': category_names[0],
+            'category2': category_names[1],
+            'alternative': alternative
+        }
+
+        return jsonify({'result': result})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
 # 1. Prueba de Levene
 @app.route('/run_levene', methods=['POST'])
 def run_levene():
