@@ -2145,32 +2145,39 @@ def run_friedman():
         # Agrupar los datos por el sujeto y las categorías del grupo
         grouped_data = dataframe.pivot(index=subject_column, columns=group_column, values=numeric_column)
 
-        # Verificar que cada sujeto tenga observaciones en todas las categorías del grupo
-        if grouped_data.isnull().any().any():
-            return jsonify({'error': 'Datos incompletos: cada sujeto debe tener observaciones en todas las categorías.'}), 400
+        # Detectar y omitir sujetos con datos faltantes
+        initial_subjects = grouped_data.shape[0]
+        grouped_data_clean = grouped_data.dropna()  # Eliminar filas con valores nulos
+        remaining_subjects = grouped_data_clean.shape[0]
+        omitted_subjects = initial_subjects - remaining_subjects
+
+        # Verificar que haya suficientes sujetos con datos completos
+        if remaining_subjects < 2:
+            return jsonify({'error': 'No hay suficientes sujetos con datos completos para realizar la prueba.'}), 400
 
         # Realizar la prueba de Friedman
-        friedman_stat, p_value = friedmanchisquare(*[grouped_data[col].dropna() for col in grouped_data.columns])
+        friedman_stat, p_value = friedmanchisquare(*[grouped_data_clean[col] for col in grouped_data_clean.columns])
 
         # Crear la respuesta inicial
         result = {
             'test': 'Prueba de Friedman',
             'friedman_statistic': friedman_stat,
             'p_value': p_value,
-            'num_groups': grouped_data.shape[1],
-            'num_subjects': grouped_data.shape[0],
+            'num_groups': grouped_data_clean.shape[1],
+            'num_subjects': remaining_subjects,
             'significance': "significativo" if p_value < 0.05 else "no significativo",
-            'decision': "Rechazar la hipótesis nula" if p_value < 0.05 else "No rechazar la hipótesis nula"
+            'decision': "Rechazar la hipótesis nula" if p_value < 0.05 else "No rechazar la hipótesis nula",
+            'omitted_subjects': omitted_subjects
         }
 
         # Si se habilitan las comparaciones múltiples
         if include_posthoc:
-            if grouped_data.shape[1] < 3:
+            if grouped_data_clean.shape[1] < 3:
                 return jsonify({'error': 'Se requieren al menos tres grupos para realizar comparaciones múltiples.'}), 400
 
             try:
                 # Realizar comparaciones múltiples con el test de Nemenyi
-                posthoc_results = sp.posthoc_nemenyi_friedman(grouped_data.T)
+                posthoc_results = sp.posthoc_nemenyi_friedman(grouped_data_clean.T)
 
                 # Formatear los resultados
                 posthoc_summary = []
@@ -2192,6 +2199,10 @@ def run_friedman():
 
             except Exception as e:
                 return jsonify({'error': f'Error al realizar comparaciones múltiples: {str(e)}'}), 500
+
+        # Incluir advertencia sobre sujetos omitidos
+        if omitted_subjects > 0:
+            result['warnings'] = [f'Se omitieron {omitted_subjects} sujetos debido a datos faltantes.']
 
         return jsonify({'result': result})
 
