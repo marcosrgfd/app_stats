@@ -2133,48 +2133,52 @@ def run_friedman():
     try:
         # Obtener los datos de la solicitud
         data = request.get_json()
-        numeric_column = data.get('numeric_column')
-        group_column = data.get('group_column')
-        subject_column = data.get('subject_column')
+        numeric_column = data.get('numeric_column')  # Columna numérica
+        group_column = data.get('group_column')      # Variable categórica
+        subject_column = data.get('subject_column')  # Variable de identificación de sujetos
         include_posthoc = data.get('multipleComparisons', False)
 
         # Validar que las columnas existan
         if not all(col in dataframe.columns for col in [numeric_column, group_column, subject_column]):
             return jsonify({'error': 'Las columnas especificadas no se encontraron en los datos.'}), 400
 
-        # Filtrar solo las columnas seleccionadas
-        filtered_df = dataframe[[subject_column, group_column, numeric_column]]
+        # Filtrar solo las columnas seleccionadas y eliminar filas con nulos en estas columnas
+        filtered_df = dataframe[[subject_column, group_column, numeric_column]].dropna(subset=[subject_column, group_column, numeric_column])
 
-        # Eliminar filas donde haya valores nulos en las columnas seleccionadas
-        filtered_df = filtered_df.dropna(subset=[subject_column, group_column, numeric_column])
+        # Verificar si hay datos después de eliminar nulos
+        if filtered_df.empty:
+            return jsonify({'error': 'No hay datos suficientes después de eliminar filas con valores nulos.'}), 400
 
-        # Agrupar los datos por el sujeto y las categorías del grupo
+        # Reorganizar los datos para la prueba de Friedman
         grouped_data = filtered_df.pivot(index=subject_column, columns=group_column, values=numeric_column)
 
-        # Verificar si hay suficientes sujetos después de eliminar nulos
-        initial_subjects = grouped_data.shape[0]
-        if initial_subjects < 2:
+        # Contar los sujetos iniciales y finales (para advertencia)
+        initial_subjects = dataframe[subject_column].nunique()
+        remaining_subjects = grouped_data.shape[0]
+        omitted_subjects = initial_subjects - remaining_subjects
+
+        # Verificar si hay suficientes sujetos con datos completos
+        if remaining_subjects < 2:
             return jsonify({'error': 'No hay suficientes sujetos con datos completos para realizar la prueba.'}), 400
 
         # Realizar la prueba de Friedman
         from scipy.stats import friedmanchisquare
-        friedman_stat, p_value = friedmanchisquare(*[grouped_data[col].dropna() for col in grouped_data.columns])
+        friedman_stat, p_value = friedmanchisquare(*[grouped_data[group].dropna() for group in grouped_data.columns])
 
-        # Crear la respuesta inicial
+        # Crear la respuesta inicial con resultados
         result = {
             'test': 'Prueba de Friedman',
-            'friedman_statistic': friedman_stat,
-            'p_value': p_value,
+            'friedman_statistic': round(friedman_stat, 4),
+            'p_value': round(p_value, 4),
             'num_groups': grouped_data.shape[1],
-            'num_subjects': grouped_data.shape[0],
+            'num_subjects': remaining_subjects,
             'significance': "significativo" if p_value < 0.05 else "no significativo",
             'decision': "Rechazar la hipótesis nula" if p_value < 0.05 else "No rechazar la hipótesis nula"
         }
 
         # Advertencia si se eliminaron sujetos
-        omitted_subjects = dataframe.shape[0] - filtered_df.shape[0]
         if omitted_subjects > 0:
-            result['warnings'] = [f'Se omitieron {omitted_subjects} filas debido a datos faltantes en las columnas seleccionadas.']
+            result['warnings'] = [f"Se omitieron {omitted_subjects} sujetos debido a datos incompletos."]
 
         # Comparaciones múltiples (Nemenyi) si se habilita
         if include_posthoc:
@@ -2183,19 +2187,23 @@ def run_friedman():
 
             try:
                 import scikit_posthocs as sp
-                posthoc_results = sp.posthoc_nemenyi_friedman(grouped_data.T)
+                # Realizar comparaciones múltiples entre grupos
+                posthoc_results = sp.posthoc_nemenyi_friedman(grouped_data.dropna().values)
 
+                # Formatear resultados
                 posthoc_summary = []
-                for i, col1 in enumerate(posthoc_results.columns):
-                    for j, col2 in enumerate(posthoc_results.columns):
-                        if i < j:
-                            p_value_adj = posthoc_results.iloc[i, j]
+                group_labels = grouped_data.columns  # Obtener los nombres de los grupos
+                for i, group1 in enumerate(group_labels):
+                    for j, group2 in enumerate(group_labels):
+                        if i < j:  # Evitar duplicados
+                            p_value_adj = posthoc_results[i, j]
                             posthoc_summary.append({
-                                'comparison': f"{col1} vs {col2}",
-                                'p_value_adjusted': f"{p_value_adj:.3f}",
+                                'comparison': f"{group1} vs {group2}",
+                                'p_value_adjusted': round(p_value_adj, 4),
                                 'reject_h0': "Sí" if p_value_adj < 0.05 else "No"
                             })
 
+                # Agregar comparaciones múltiples al resultado
                 result['posthoc_comparisons'] = posthoc_summary
 
             except Exception as e:
@@ -2205,6 +2213,7 @@ def run_friedman():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
 
 
 # 5. Chi-Square
