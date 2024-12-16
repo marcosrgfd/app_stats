@@ -1862,7 +1862,123 @@ def run_regression():
             error_message = str(e)
         return jsonify({'error': error_message}), 400
 
+# REGRESIÓN LOGÍSTICA
+@app.route('/run_logistic_regression', methods=['POST'])
+def run_logistic_regression():
+    global dataframe
+    try:
+        if dataframe is None:
+            return jsonify({'error': 'No se ha cargado ningún archivo para analizar.'}), 400
 
+        # Limpia los nombres de las columnas antes de procesar
+        name_mapping = clean_column_names(dataframe)
+
+        # Obtener los datos de la solicitud
+        data = request.get_json()
+        response_variable = data.get('response_variable')  # Variable dependiente
+        covariates = data.get('covariates')  # Lista de covariables
+        analyze_residuals = data.get('analyze_residuals', False)  # Nuevo parámetro
+
+        if not response_variable or not covariates:
+            return jsonify({'error': 'Variables insuficientes para la regresión logística.'}), 400
+
+        # Normaliza los nombres de las variables
+        response_variable_clean = re.sub(r'[^a-zA-Z0-9_]', '_', response_variable).lower()
+        covariates_clean = [re.sub(r'[^a-zA-Z0-9_]', '_', cov).lower() for cov in covariates]
+
+        # Verificar que la variable de respuesta y covariables existen en el DataFrame
+        if response_variable_clean not in dataframe.columns:
+            return jsonify({'error': f'La variable de respuesta {response_variable} no existe en los datos.'}), 400
+
+        for cov_clean, cov_original in zip(covariates_clean, covariates):
+            if cov_clean not in dataframe.columns:
+                return jsonify({'error': f'La covariable {cov_original} no existe en los datos.'}), 400
+
+        # Preparar el DataFrame para el modelo
+        df = dataframe[covariates_clean + [response_variable_clean]].copy()
+        df.replace([np.inf, -np.inf], np.nan, inplace=True)
+        df.dropna(inplace=True)
+
+        # Verificar si el DataFrame tiene suficientes datos
+        if df.empty or len(df) < 10:
+            return jsonify({'error': 'No hay suficientes datos válidos después del preprocesamiento.'}), 400
+
+        # Validar que la variable dependiente sea binaria
+        if df[response_variable_clean].nunique() != 2:
+            return jsonify({'error': 'La variable de respuesta no es binaria.'}), 400
+
+        # Validar que las covariables tengan variación
+        for cov in covariates_clean:
+            if df[cov].nunique() < 2:
+                return jsonify({'error': f'La covariable {cov} no tiene suficiente variación.'}), 400
+
+        # Definir la fórmula para el modelo logístico
+        formula = f"{response_variable_clean} ~ " + " + ".join(covariates_clean)
+
+        # Ajustar el modelo logístico usando statsmodels
+        model = smf.logit(formula=formula, data=df).fit(disp=False)
+
+        # Extraer coeficientes y p-valores
+        coefficients = model.params.to_dict()
+        p_values = model.pvalues.to_dict()
+        intercept = coefficients.pop('Intercept', None)
+
+        # Calcular el pseudo R-cuadrado
+        pseudo_r_squared = model.prsquared
+
+        # Generar predicciones
+        predictions = model.predict(df)
+        predicted_classes = (predictions >= 0.5).astype(int)
+
+        # Calcular precisión y matriz de confusión
+        actual_classes = df[response_variable_clean].astype(int)
+        accuracy = np.mean(predicted_classes == actual_classes)
+        confusion_matrix = pd.crosstab(actual_classes, predicted_classes, rownames=['Actual'], colnames=['Predicted'])
+
+        # Calcular el odds ratio
+        odds_ratios = {key: np.exp(value) for key, value in coefficients.items()}
+
+        # Preparar resultados
+        regression_result = {
+            "coefficients": coefficients,
+            "odds_ratios": odds_ratios,
+            "intercept": intercept,
+            "pseudo_r_squared": pseudo_r_squared,
+            "accuracy": accuracy,
+            "p_values": p_values,
+            "confusion_matrix": confusion_matrix.to_dict()
+        }
+
+        # Análisis de residuos (opcional)
+        residuals_data = None
+        if analyze_residuals:
+            # Calcular los residuos de Pearson
+            pearson_residuals = model.resid_pearson
+
+            # Generar histogramas de residuos
+            fig, ax = plt.subplots(figsize=(8, 6))
+            sns.histplot(pearson_residuals, bins=10, kde=True, color='blue', ax=ax)
+            ax.set_title("Histogram of Pearson Residuals")
+            ax.set_xlabel("Residuals")
+            ax.set_ylabel("Density")
+
+            residuals_image = generate_base64_image(fig)
+            plt.close(fig)
+
+            residuals_data = {
+                "pearson_residuals": pearson_residuals.tolist(),
+                "residuals_histogram": residuals_image
+            }
+
+        return jsonify({
+            'regression_result': regression_result,
+            'residuals': residuals_data,
+            'warnings': []
+        })
+
+    except Exception as e:
+        error_message = str(e)
+        return jsonify({'error': error_message}), 400
     
 # 3. T-Test
 @app.route('/run_ttest', methods=['POST'])
