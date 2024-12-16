@@ -2129,74 +2129,90 @@ def run_anova():
 # FRIEDMAN
 @app.route('/run_friedman', methods=['POST'])
 def run_friedman():
-    global dataframe  # Asume que el DataFrame se define globalmente
+    global dataframe
     try:
         # Obtener los datos de la solicitud
         data = request.get_json()
-        numeric_column = data.get('numeric_column')  # Variable numérica
+        numeric_column = data.get('numeric_column')  # Columna numérica
         group_column = data.get('group_column')      # Variable categórica
-        subject_column = data.get('subject_column')  # Identificador del sujeto
+        subject_column = data.get('subject_column')  # Variable de identificación de sujetos
         include_posthoc = data.get('multipleComparisons', False)
 
-        # Validar columnas seleccionadas
+        # Validar que las columnas existan
         if not all(col in dataframe.columns for col in [numeric_column, group_column, subject_column]):
             return jsonify({'error': 'Las columnas especificadas no se encontraron en los datos.'}), 400
 
-        # Filtrar y eliminar filas nulas
-        filtered_df = dataframe[[subject_column, group_column, numeric_column]].dropna()
+        # Filtrar datos válidos
+        filtered_df = dataframe[[subject_column, group_column, numeric_column]].dropna(subset=[subject_column, group_column, numeric_column])
+
         if filtered_df.empty:
-            return jsonify({'error': 'No hay datos suficientes después de eliminar filas nulas.'}), 400
+            return jsonify({'error': 'No hay datos suficientes después de eliminar filas con valores nulos.'}), 400
 
-        # Reorganizar los datos en formato de bloques
-        # Cada grupo será una columna y cada sujeto será una fila
-        df_pivot = filtered_df.pivot(index=subject_column, columns=group_column, values=numeric_column)
+        # Reorganizar datos para Friedman
+        grouped_data = filtered_df.pivot(index=subject_column, columns=group_column, values=numeric_column)
 
-        # Eliminar filas con valores nulos en los grupos (sujetos con datos faltantes)
-        df_pivot = df_pivot.dropna()
-        if df_pivot.shape[0] < 2:
+        initial_subjects = dataframe[subject_column].nunique()
+        remaining_subjects = grouped_data.shape[0]
+        omitted_subjects = initial_subjects - remaining_subjects
+
+        if remaining_subjects < 2:
             return jsonify({'error': 'No hay suficientes sujetos con datos completos para realizar la prueba.'}), 400
 
-        # Realizar la prueba de Friedman
-        stat, p_value = friedmanchisquare(*[df_pivot[group] for group in df_pivot.columns])
+        # Prueba de Friedman
+        try:
+            friedman_stat, p_value = stats.friedmanchisquare(*[grouped_data[group].dropna() for group in grouped_data.columns])
+        except Exception as e:
+            return jsonify({'error': f'Error en la prueba de Friedman: {str(e)}'}), 500
 
-        # Crear la respuesta inicial
         result = {
             'test': 'Prueba de Friedman',
-            'statistic': round(stat, 4),
+            'friedman_statistic': round(friedman_stat, 4),
             'p_value': round(p_value, 4),
-            'num_groups': len(df_pivot.columns),
-            'num_subjects': df_pivot.shape[0],
+            'num_groups': grouped_data.shape[1],
+            'num_subjects': remaining_subjects,
             'significance': "significativo" if p_value < 0.05 else "no significativo",
             'decision': "Rechazar la hipótesis nula" if p_value < 0.05 else "No rechazar la hipótesis nula"
         }
 
-        # Comparaciones múltiples si está habilitado
+        if omitted_subjects > 0:
+            result['warnings'] = [f"Se omitieron {omitted_subjects} sujetos debido a datos incompletos."]
+
+        # Comparaciones múltiples (Post-hoc Nemenyi)
         if include_posthoc:
             try:
-                # Realizar la prueba de Nemenyi con el DataFrame limpio
-                nemenyi_results = sp.posthoc_nemenyi_friedman(df_pivot.values)
+                # Garantizar datos completos para comparaciones múltiples
+                posthoc_data = grouped_data.dropna()
 
-                # Procesar los resultados de Nemenyi
-                nemenyi_summary = []
-                group_labels = df_pivot.columns.tolist()
-                for i in range(len(group_labels)):
-                    for j in range(i + 1, len(group_labels)):
-                        nemenyi_summary.append({
-                            'comparison': f"{group_labels[i]} vs {group_labels[j]}",
-                            'p_value_adjusted': round(nemenyi_results[i, j], 4),
-                            'reject_h0': "Sí" if nemenyi_results[i, j] < 0.05 else "No"
-                        })
+                if posthoc_data.shape[1] < 3:
+                    return jsonify({'error': 'Se requieren al menos tres grupos para realizar comparaciones múltiples.'}), 400
 
-                # Agregar los resultados de Nemenyi
-                result['posthoc_comparisons'] = nemenyi_summary
+                import scikit_posthocs as sp
+                posthoc_results = sp.posthoc_nemenyi_friedman(posthoc_data.to_numpy())
+
+                # Convertir los resultados a un formato legible
+                posthoc_summary = []
+                group_labels = posthoc_data.columns.tolist()
+
+                for i, group1 in enumerate(group_labels):
+                    for j, group2 in enumerate(group_labels):
+                        if i < j:  # Solo pares únicos
+                            p_value_adj = posthoc_results.iloc[i, j]  # Usar iloc para acceder a DataFrame
+                            posthoc_summary.append({
+                                'comparison': f"{group1} vs {group2}",
+                                'p_value_adjusted': round(p_value_adj, 4),
+                                'reject_h0': "Sí" if p_value_adj < 0.05 else "No"
+                            })
+
+                result['posthoc_comparisons'] = posthoc_summary
 
             except Exception as e:
-                return jsonify({'error': f'Error al realizar comparaciones múltiples: {str(e)}'}), 500
+                return jsonify({'error': f'Error en comparaciones múltiples: {str(e)}'}), 500
 
         return jsonify({'result': result})
 
     except Exception as e:
-        return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
+        return jsonify({'error': str(e)}), 400
+
 
 
 
