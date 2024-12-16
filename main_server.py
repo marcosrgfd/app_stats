@@ -2182,17 +2182,15 @@ def run_friedman():
 
         # Comparaciones múltiples (Nemenyi) si se habilita
         if include_posthoc:
-            if grouped_data.shape[1] < 3:
-                return jsonify({'error': 'Se requieren al menos tres grupos para realizar comparaciones múltiples.'}), 400
-
             try:
                 import scikit_posthocs as sp
-                # Realizar comparaciones múltiples entre grupos
+                # Asegurarse de que los datos sean numéricos y estén limpios
                 posthoc_results = sp.posthoc_nemenyi_friedman(grouped_data.dropna().values)
 
                 # Formatear resultados
                 posthoc_summary = []
                 group_labels = grouped_data.columns  # Obtener los nombres de los grupos
+
                 for i, group1 in enumerate(group_labels):
                     for j, group2 in enumerate(group_labels):
                         if i < j:  # Evitar duplicados
@@ -2203,7 +2201,6 @@ def run_friedman():
                                 'reject_h0': "Sí" if p_value_adj < 0.05 else "No"
                             })
 
-                # Agregar comparaciones múltiples al resultado
                 result['posthoc_comparisons'] = posthoc_summary
 
             except Exception as e:
