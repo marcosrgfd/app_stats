@@ -1949,30 +1949,8 @@ def run_logistic_regression():
             "confusion_matrix": confusion_matrix.to_dict()
         }
 
-        # Análisis de residuos (opcional)
-        residuals_data = None
-        if analyze_residuals:
-            # Calcular los residuos de Pearson
-            pearson_residuals = model.resid_pearson
-
-            # Generar histogramas de residuos
-            fig, ax = plt.subplots(figsize=(8, 6))
-            sns.histplot(pearson_residuals, bins=10, kde=True, color='blue', ax=ax)
-            ax.set_title("Histogram of Pearson Residuals")
-            ax.set_xlabel("Residuals")
-            ax.set_ylabel("Density")
-
-            residuals_image = generate_base64_image(fig)
-            plt.close(fig)
-
-            residuals_data = {
-                "pearson_residuals": pearson_residuals.tolist(),
-                "residuals_histogram": residuals_image
-            }
-
         return jsonify({
             'regression_result': regression_result,
-            'residuals': residuals_data,
             'warnings': []
         })
 
