@@ -1877,7 +1877,6 @@ def run_logistic_regression():
         data = request.get_json()
         response_variable = data.get('response_variable')  # Variable dependiente
         covariates = data.get('covariates')  # Lista de covariables
-        analyze_residuals = data.get('analyze_residuals', False)  # Nuevo parámetro
 
         if not response_variable or not covariates:
             return jsonify({'error': 'Variables insuficientes para la regresión logística.'}), 400
@@ -1903,9 +1902,13 @@ def run_logistic_regression():
         if df.empty or len(df) < 10:
             return jsonify({'error': 'No hay suficientes datos válidos después del preprocesamiento.'}), 400
 
-        # Validar que la variable dependiente sea binaria
-        if df[response_variable_clean].nunique() != 2:
-            return jsonify({'error': 'La variable de respuesta no es binaria.'}), 400
+        # Validar y convertir la variable dependiente a binaria (0 y 1)
+        if df[response_variable_clean].nunique() == 2:
+            # Si es categórica, convertir a 0 y 1
+            if not pd.api.types.is_numeric_dtype(df[response_variable_clean]):
+                df[response_variable_clean] = pd.Categorical(df[response_variable_clean]).codes
+        else:
+            return jsonify({'error': 'La variable de respuesta no es binaria (debe tener exactamente dos niveles).'}), 400
 
         # Validar que las covariables tengan variación
         for cov in covariates_clean:
@@ -1931,9 +1934,10 @@ def run_logistic_regression():
         predicted_classes = (predictions >= 0.5).astype(int)
 
         # Calcular precisión y matriz de confusión
-        actual_classes = df[response_variable_clean].astype(int)
+        actual_classes = df[response_variable_clean]
         accuracy = np.mean(predicted_classes == actual_classes)
-        confusion_matrix = pd.crosstab(actual_classes, predicted_classes, rownames=['Actual'], colnames=['Predicted'])
+        confusion_matrix = pd.crosstab(actual_classes, predicted_classes,
+                                       rownames=['Actual'], colnames=['Predicted'])
 
         # Calcular el odds ratio
         odds_ratios = {key: np.exp(value) for key, value in coefficients.items()}
@@ -1957,6 +1961,7 @@ def run_logistic_regression():
     except Exception as e:
         error_message = str(e)
         return jsonify({'error': error_message}), 400
+
     
 # 3. T-Test
 @app.route('/run_ttest', methods=['POST'])
