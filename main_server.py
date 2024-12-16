@@ -2163,7 +2163,10 @@ def run_friedman():
 
         # Realizar la prueba de Friedman
         from scipy.stats import friedmanchisquare
-        friedman_stat, p_value = friedmanchisquare(*[grouped_data[group].dropna() for group in grouped_data.columns])
+        try:
+            friedman_stat, p_value = friedmanchisquare(*[grouped_data[group].dropna() for group in grouped_data.columns])
+        except Exception as e:
+            return jsonify({'error': f'Error en la prueba de Friedman: {str(e)}'}), 500
 
         # Crear la respuesta inicial con resultados
         result = {
@@ -2184,8 +2187,15 @@ def run_friedman():
         if include_posthoc:
             try:
                 import scikit_posthocs as sp
-                # Asegurarse de que los datos sean numéricos y estén limpios
-                posthoc_results = sp.posthoc_nemenyi_friedman(grouped_data.dropna().values)
+                # Garantizar que no haya valores nulos en la matriz de comparación
+                posthoc_data = grouped_data.dropna().values
+
+                # Asegurar que haya suficientes grupos y observaciones para la comparación
+                if posthoc_data.shape[1] < 3:
+                    return jsonify({'error': 'Se requieren al menos tres grupos para realizar comparaciones múltiples.'}), 400
+
+                # Realizar comparaciones múltiples con el test de Nemenyi
+                posthoc_results = sp.posthoc_nemenyi_friedman(posthoc_data)
 
                 # Formatear resultados
                 posthoc_summary = []
