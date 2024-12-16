@@ -2138,76 +2138,74 @@ def run_friedman():
         subject_column = data.get('subject_column')
         include_posthoc = data.get('multipleComparisons', False)
 
-        # Validar las columnas
-        if numeric_column not in dataframe.columns or group_column not in dataframe.columns or subject_column not in dataframe.columns:
+        # Validar que las columnas existan
+        if not all(col in dataframe.columns for col in [numeric_column, group_column, subject_column]):
             return jsonify({'error': 'Las columnas especificadas no se encontraron en los datos.'}), 400
 
+        # Filtrar solo las columnas seleccionadas
+        filtered_df = dataframe[[subject_column, group_column, numeric_column]]
+
+        # Eliminar filas donde haya valores nulos en las columnas seleccionadas
+        filtered_df = filtered_df.dropna(subset=[subject_column, group_column, numeric_column])
+
         # Agrupar los datos por el sujeto y las categorías del grupo
-        grouped_data = dataframe.pivot(index=subject_column, columns=group_column, values=numeric_column)
+        grouped_data = filtered_df.pivot(index=subject_column, columns=group_column, values=numeric_column)
 
-        # Detectar y omitir sujetos con datos faltantes
+        # Verificar si hay suficientes sujetos después de eliminar nulos
         initial_subjects = grouped_data.shape[0]
-        grouped_data_clean = grouped_data.dropna()  # Eliminar filas con valores nulos
-        remaining_subjects = grouped_data_clean.shape[0]
-        omitted_subjects = initial_subjects - remaining_subjects
-
-        # Verificar que haya suficientes sujetos con datos completos
-        if remaining_subjects < 2:
+        if initial_subjects < 2:
             return jsonify({'error': 'No hay suficientes sujetos con datos completos para realizar la prueba.'}), 400
 
         # Realizar la prueba de Friedman
-        friedman_stat, p_value = friedmanchisquare(*[grouped_data_clean[col] for col in grouped_data_clean.columns])
+        from scipy.stats import friedmanchisquare
+        friedman_stat, p_value = friedmanchisquare(*[grouped_data[col].dropna() for col in grouped_data.columns])
 
         # Crear la respuesta inicial
         result = {
             'test': 'Prueba de Friedman',
             'friedman_statistic': friedman_stat,
             'p_value': p_value,
-            'num_groups': grouped_data_clean.shape[1],
-            'num_subjects': remaining_subjects,
+            'num_groups': grouped_data.shape[1],
+            'num_subjects': grouped_data.shape[0],
             'significance': "significativo" if p_value < 0.05 else "no significativo",
-            'decision': "Rechazar la hipótesis nula" if p_value < 0.05 else "No rechazar la hipótesis nula",
-            'omitted_subjects': omitted_subjects
+            'decision': "Rechazar la hipótesis nula" if p_value < 0.05 else "No rechazar la hipótesis nula"
         }
 
-        # Si se habilitan las comparaciones múltiples
+        # Advertencia si se eliminaron sujetos
+        omitted_subjects = dataframe.shape[0] - filtered_df.shape[0]
+        if omitted_subjects > 0:
+            result['warnings'] = [f'Se omitieron {omitted_subjects} filas debido a datos faltantes en las columnas seleccionadas.']
+
+        # Comparaciones múltiples (Nemenyi) si se habilita
         if include_posthoc:
-            if grouped_data_clean.shape[1] < 3:
+            if grouped_data.shape[1] < 3:
                 return jsonify({'error': 'Se requieren al menos tres grupos para realizar comparaciones múltiples.'}), 400
 
             try:
-                # Realizar comparaciones múltiples con el test de Nemenyi
-                posthoc_results = sp.posthoc_nemenyi_friedman(grouped_data_clean.T)
+                import scikit_posthocs as sp
+                posthoc_results = sp.posthoc_nemenyi_friedman(grouped_data.T)
 
-                # Formatear los resultados
                 posthoc_summary = []
                 for i, col1 in enumerate(posthoc_results.columns):
                     for j, col2 in enumerate(posthoc_results.columns):
-                        if i < j:  # Evitar duplicados y la diagonal
+                        if i < j:
                             p_value_adj = posthoc_results.iloc[i, j]
-                            comparison = f"{col1} vs {col2}"
-                            reject_h0 = "Sí" if p_value_adj < 0.05 else "No"
-
                             posthoc_summary.append({
-                                'comparison': comparison,
+                                'comparison': f"{col1} vs {col2}",
                                 'p_value_adjusted': f"{p_value_adj:.3f}",
-                                'reject_h0': reject_h0
+                                'reject_h0': "Sí" if p_value_adj < 0.05 else "No"
                             })
 
-                # Agregar resultados de comparaciones múltiples al resultado
                 result['posthoc_comparisons'] = posthoc_summary
 
             except Exception as e:
-                return jsonify({'error': f'Error al realizar comparaciones múltiples: {str(e)}'}), 500
-
-        # Incluir advertencia sobre sujetos omitidos
-        if omitted_subjects > 0:
-            result['warnings'] = [f'Se omitieron {omitted_subjects} sujetos debido a datos faltantes.']
+                return jsonify({'error': f'Error en comparaciones múltiples: {str(e)}'}), 500
 
         return jsonify({'result': result})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
 
 # 5. Chi-Square
 @app.route('/run_chisquare', methods=['POST'])
