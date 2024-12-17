@@ -2417,7 +2417,59 @@ def run_fisher():
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
+# MC NEMAR
+@app.route('/run_mcnemar', methods=['POST'])
+def run_mcnemar():
+    global dataframe
+    try:
+        # Obtener los datos de la solicitud
+        data = request.get_json()
+        categorical_column1 = data.get('categorical_column1')
+        categorical_column2 = data.get('categorical_column2')
+        show_contingency_table = data.get('show_contingency_table', False)
 
+        # Validar que las columnas existan
+        if categorical_column1 not in dataframe.columns or categorical_column2 not in dataframe.columns:
+            return jsonify({'error': 'Las columnas especificadas no se encontraron en los datos.'}), 400
+
+        # Crear la tabla de contingencia
+        contingency_table = pd.crosstab(dataframe[categorical_column1], dataframe[categorical_column2])
+
+        # Verificar si la tabla es 2x2
+        if contingency_table.shape != (2, 2):
+            return jsonify({
+                'error': 'La tabla de contingencia no es 2x2. El Test de McNemar requiere una tabla de este tipo.'
+            }), 400
+
+        # Ejecutar el Test de McNemar
+        try:
+            result = mcnemar(contingency_table, exact=True)
+            p_value = result.pvalue
+            statistic = result.statistic
+        except ValueError as e:
+            return jsonify({'error': f'Error al calcular el Test de McNemar: {str(e)}'}), 400
+
+        # Evaluar la significancia
+        significance = "significativo" if p_value < 0.05 else "no significativo"
+        decision = "Rechazar la hipótesis nula" if p_value < 0.05 else "No rechazar la hipótesis nula"
+
+        # Preparar el resultado
+        response = {
+            'test': "McNemar's Test",
+            'statistic': statistic,
+            'p_value': p_value,
+            'significance': significance,
+            'decision': decision
+        }
+
+        # Incluir la tabla de contingencia si se solicitó
+        if show_contingency_table:
+            response['contingency_table'] = contingency_table.to_dict()
+
+        return jsonify({'result': response})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 # 6. Shapiro-Wilk 
 @app.route('/run_shapiro', methods=['POST'])
