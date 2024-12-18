@@ -2733,6 +2733,55 @@ def run_kruskal_wallis():
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
+# PEARSON
+@app.route('/run_pearson', methods=['POST'])
+def run_pearson():
+    global dataframe
+    try:
+        data = request.get_json()
+        numeric_column1 = data.get('numeric_column1')
+        numeric_column2 = data.get('numeric_column2')
+        categorical_column = data.get('categorical_column')  # Opcional
+        correlation_by_categories = data.get('correlation_by_categories', False)  # Checkbox booleano
+
+        # Validar las columnas especificadas
+        if correlation_by_categories:
+            if not categorical_column or numeric_column1 not in dataframe.columns:
+                return jsonify({'error': 'Para la correlación por categorías, especifique una columna categórica y una numérica.'}), 400
+
+            # Agrupar por la columna categórica y calcular las medias para las categorías
+            groups = dataframe.groupby(categorical_column)[numeric_column1].mean()
+            if len(groups) != 2:
+                return jsonify({'error': 'Se necesitan exactamente dos categorías para realizar esta correlación.'}), 400
+
+            category_values = groups.index.tolist()
+            correlation = {
+                'category1': category_values[0],
+                'category2': category_values[1],
+                'mean_numeric1_category1': groups.iloc[0],
+                'mean_numeric1_category2': groups.iloc[1]
+            }
+
+            return jsonify({'result': correlation})
+        else:
+            if numeric_column1 not in dataframe.columns or numeric_column2 not in dataframe.columns:
+                return jsonify({'error': 'Las columnas numéricas especificadas no se encontraron en los datos.'}), 400
+
+            # Calcular la correlación para todas las filas
+            if dataframe[[numeric_column1, numeric_column2]].notnull().all(axis=None):
+                corr, p_value = stats.pearsonr(dataframe[numeric_column1], dataframe[numeric_column2])
+                result = {
+                    'correlation': corr,
+                    'p_value': p_value,
+                    'significance': "significativo" if p_value < 0.05 else "no significativo"
+                }
+                return jsonify({'result': result})
+            else:
+                return jsonify({'error': 'Datos faltantes en las columnas especificadas.'}), 400
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
 ##########################################################################################
 ####################################### STAT TESTS #######################################
 ##########################################################################################
