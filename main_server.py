@@ -2800,6 +2800,73 @@ def run_pearson():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# SPEARMAN
+@app.route('/run_spearman', methods=['POST'])
+def run_spearman():
+    global dataframe
+    try:
+        data = request.get_json()
+        numeric_column1 = data.get('numeric_column1')
+        numeric_column2 = data.get('numeric_column2')
+        categorical_column = data.get('categorical_column')  # Variable categórica
+        correlation_by_categories = data.get('correlation_by_categories', False)
+
+        if not numeric_column1 or not numeric_column2:
+            return jsonify({'error': 'Debe especificar dos columnas numéricas válidas.'}), 400
+
+        # Caso: Correlación general sin categorías
+        if not correlation_by_categories:
+            corr, p_value = stats.spearmanr(dataframe[numeric_column1], dataframe[numeric_column2])
+            
+            # Reemplazar NaN o infinito con None
+            corr = None if not math.isfinite(corr) else round(corr, 4)
+            p_value = None if not math.isfinite(p_value) else round(p_value, 4)
+
+            result = {
+                'correlation': corr,
+                'p_value': p_value,
+                'significance': "significativo" if p_value and p_value < 0.05 else "no significativo"
+            }
+            return jsonify({'result': result})
+
+        # Caso: Correlación por categorías
+        if not categorical_column:
+            return jsonify({'error': 'Debe especificar una columna categórica.'}), 400
+
+        grouped = dataframe.groupby(categorical_column)
+        correlation_results = []
+
+        for category, group in grouped:
+            # Asegurarse de que existan suficientes datos
+            if len(group) > 1 and group[[numeric_column1, numeric_column2]].notnull().all(axis=None):
+                corr, p_value = stats.spearmanr(group[numeric_column1], group[numeric_column2])
+                
+                # Reemplazar NaN o infinito con None
+                corr = None if not math.isfinite(corr) else round(corr, 4)
+                p_value = None if not math.isfinite(p_value) else round(p_value, 4)
+
+                correlation_results.append({
+                    'category': category,
+                    'correlation': corr,
+                    'p_value': p_value,
+                    'significance': "significativo" if p_value and p_value < 0.05 else "no significativo"
+                })
+            else:
+                correlation_results.append({
+                    'category': category,
+                    'error': 'No hay suficientes datos para calcular la correlación.'
+                })
+
+        # Return debe ir FUERA del bucle
+        return jsonify({
+            'result': {
+                'categories': correlation_results
+            }
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 ##########################################################################################
 ####################################### STAT TESTS #######################################
