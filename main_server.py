@@ -2755,22 +2755,24 @@ def run_pearson():
 
             # Agrupar por la columna categórica y calcular la correlación para cada nivel
             grouped = dataframe.groupby(categorical_column)
-            correlations = {}
+            results = []
 
             for group_name, group_data in grouped:
                 if len(group_data) > 1:  # Se necesita al menos dos filas para calcular la correlación
                     corr, p_value = stats.pearsonr(group_data[numeric_column1], group_data[numeric_column2])
-                    correlations[group_name] = {
-                        'correlation': corr,
-                        'p_value': p_value,
-                        'significance': "significativo" if p_value < 0.05 else "no significativo"
-                    }
+                    significance = "significativo" if p_value < 0.05 else "no significativo"
+                    results.append(
+                        f"Categoría: {group_name} | Correlación: {corr:.4f} | Valor p: {p_value:.4f} | Significancia: {significance}"
+                    )
                 else:
-                    correlations[group_name] = {
-                        'error': 'El grupo tiene menos de 2 datos, no se puede calcular la correlación.'
-                    }
+                    results.append(
+                        f"Categoría: {group_name} | Error: El grupo tiene menos de 2 datos, no se puede calcular la correlación."
+                    )
 
-            return jsonify({'result': correlations})
+            # Unir todos los resultados en una sola cadena
+            final_result = "\n".join(results)
+            return jsonify({'result': final_result})
+
         else:
             if numeric_column1 not in dataframe.columns or numeric_column2 not in dataframe.columns:
                 return jsonify({'error': 'Las columnas numéricas especificadas no se encontraron en los datos.'}), 400
@@ -2778,12 +2780,11 @@ def run_pearson():
             # Calcular la correlación para todas las filas
             if dataframe[[numeric_column1, numeric_column2]].notnull().all(axis=None):
                 corr, p_value = stats.pearsonr(dataframe[numeric_column1], dataframe[numeric_column2])
-                result = {
-                    'correlation': corr,
-                    'p_value': p_value,
-                    'significance': "significativo" if p_value < 0.05 else "no significativo"
-                }
-                return jsonify({'result': result})
+                significance = "significativo" if p_value < 0.05 else "no significativo"
+                final_result = (
+                    f"Correlación: {corr:.4f} | Valor p: {p_value:.4f} | Significancia: {significance}"
+                )
+                return jsonify({'result': final_result})
             else:
                 return jsonify({'error': 'Datos faltantes en las columnas especificadas.'}), 400
 
