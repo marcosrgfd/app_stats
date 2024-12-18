@@ -2746,39 +2746,38 @@ def run_pearson():
 
         # Validar las columnas especificadas
         if correlation_by_categories:
-            if not categorical_column or numeric_column1 not in dataframe.columns:
-                return jsonify({'error': 'Para la correlación por categorías, especifique una columna categórica y una numérica.'}), 400
+            if not categorical_column or numeric_column1 not in dataframe.columns or numeric_column2 not in dataframe.columns:
+                return jsonify({'error': 'Para la correlación por categorías, especifique columnas numéricas y una categórica.'}), 400
 
-            # Agrupar por la columna categórica y calcular las medias para las categorías
-            groups = dataframe.groupby(categorical_column)[numeric_column1].mean()
-            if len(groups) != 2:
-                return jsonify({'error': 'Se necesitan exactamente dos categorías para realizar esta correlación.'}), 400
+            # Verificar que no existan valores faltantes en las columnas seleccionadas
+            if dataframe[[numeric_column1, numeric_column2, categorical_column]].isnull().any().any():
+                return jsonify({'error': 'Existen valores faltantes en las columnas seleccionadas.'}), 400
 
-            # Obtener las medias de las categorías
-            category_values = groups.index.tolist()
-            means = groups.values
+            # Agrupar por la columna categórica y calcular la correlación para cada nivel
+            grouped = dataframe.groupby(categorical_column)
+            correlations = {}
 
-            # Calcular la correlación de Pearson entre las dos medias
-            corr, p_value = stats.pearsonr([0, 1], means)  # Correlación entre las categorías y sus medias
+            for group_name, group_data in grouped:
+                if len(group_data) > 1:  # Se necesita al menos dos filas para calcular la correlación
+                    corr, p_value = pearsonr(group_data[numeric_column1], group_data[numeric_column2])
+                    correlations[group_name] = {
+                        'correlation': corr,
+                        'p_value': p_value,
+                        'significance': "significativo" if p_value < 0.05 else "no significativo"
+                    }
+                else:
+                    correlations[group_name] = {
+                        'error': 'El grupo tiene menos de 2 datos, no se puede calcular la correlación.'
+                    }
 
-            correlation = {
-                'category1': category_values[0],
-                'category2': category_values[1],
-                'mean_numeric1_category1': means[0],
-                'mean_numeric1_category2': means[1],
-                'correlation': corr,
-                'p_value': p_value,
-                'significance': "significativo" if p_value < 0.05 else "no significativo"
-            }
-
-            return jsonify({'result': correlation})
+            return jsonify({'result': correlations})
         else:
             if numeric_column1 not in dataframe.columns or numeric_column2 not in dataframe.columns:
                 return jsonify({'error': 'Las columnas numéricas especificadas no se encontraron en los datos.'}), 400
 
             # Calcular la correlación para todas las filas
             if dataframe[[numeric_column1, numeric_column2]].notnull().all(axis=None):
-                corr, p_value = stats.pearsonr(dataframe[numeric_column1], dataframe[numeric_column2])
+                corr, p_value = pearsonr(dataframe[numeric_column1], dataframe[numeric_column2])
                 result = {
                     'correlation': corr,
                     'p_value': p_value,
