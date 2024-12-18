@@ -2759,7 +2759,7 @@ def run_pearson():
             means = groups.values
 
             # Calcular la correlación de Pearson entre las dos medias
-            corr, p_value = pearsonr([0, 1], means)  # Correlación entre las categorías y sus medias
+            corr, p_value = stats.pearsonr([0, 1], means)  # Correlación entre las categorías y sus medias
 
             correlation = {
                 'category1': category_values[0],
@@ -2778,7 +2778,7 @@ def run_pearson():
 
             # Calcular la correlación para todas las filas
             if dataframe[[numeric_column1, numeric_column2]].notnull().all(axis=None):
-                corr, p_value = pearsonr(dataframe[numeric_column1], dataframe[numeric_column2])
+                corr, p_value = stats.pearsonr(dataframe[numeric_column1], dataframe[numeric_column2])
                 result = {
                     'correlation': corr,
                     'p_value': p_value,
