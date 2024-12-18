@@ -2742,64 +2742,50 @@ def run_pearson():
         numeric_column1 = data.get('numeric_column1')
         numeric_column2 = data.get('numeric_column2')
         categorical_column = data.get('categorical_column')  # Variable categórica
-        correlation_by_categories = data.get('correlation_by_categories', False)  # Checkbox booleano
+        correlation_by_categories = data.get('correlation_by_categories', False)
 
-        # Validar las columnas especificadas
-        if correlation_by_categories:
-            if not categorical_column or not numeric_column1 or not numeric_column2:
-                return jsonify({'error': 'Debe especificar columnas categóricas y numéricas válidas.'}), 400
+        if not numeric_column1 or not numeric_column2:
+            return jsonify({'error': 'Debe especificar dos columnas numéricas válidas.'}), 400
 
-            if categorical_column not in dataframe.columns or \
-               numeric_column1 not in dataframe.columns or \
-               numeric_column2 not in dataframe.columns:
-                return jsonify({'error': 'Alguna de las columnas especificadas no se encuentra en los datos.'}), 400
+        # Caso: Correlación general sin categorías
+        if not correlation_by_categories:
+            corr, p_value = stats.pearsonr(dataframe[numeric_column1], dataframe[numeric_column2])
+            result = {
+                'correlation': corr,
+                'p_value': p_value,
+                'significance': "significativo" if p_value < 0.05 else "no significativo"
+            }
+            return jsonify({'result': result})
 
-            # Agrupar por la variable categórica y calcular la correlación para cada grupo
-            grouped = dataframe.groupby(categorical_column)
-            results = []
+        # Caso: Correlación por categorías
+        if not categorical_column:
+            return jsonify({'error': 'Debe especificar una columna categórica.'}), 400
 
-            for category, group in grouped:
-                # Asegurarse de que no haya datos faltantes en el grupo
-                if group[[numeric_column1, numeric_column2]].notnull().all(axis=None):
-                    if len(group) > 1:  # Se necesitan al menos dos puntos para calcular la correlación
-                        corr, p_value = stats.pearsonr(group[numeric_column1], group[numeric_column2])
-                        results.append({
-                            'category': category,
-                            'correlation': corr,
-                            'p_value': p_value,
-                            'significance': "significativo" if p_value < 0.05 else "no significativo"
-                        })
-                    else:
-                        results.append({
-                            'category': category,
-                            'error': 'No hay suficientes datos para calcular la correlación.'
-                        })
-                else:
-                    results.append({
-                        'category': category,
-                        'error': 'Existen datos faltantes en esta categoría.'
-                    })
+        grouped = dataframe.groupby(categorical_column)
+        correlation_results = []
 
-            return jsonify({'result': results})
-
-        else:
-            # Calcular la correlación para todas las filas sin agrupar
-            if numeric_column1 not in dataframe.columns or numeric_column2 not in dataframe.columns:
-                return jsonify({'error': 'Las columnas numéricas especificadas no se encontraron en los datos.'}), 400
-
-            if dataframe[[numeric_column1, numeric_column2]].notnull().all(axis=None):
-                corr, p_value = stats.pearsonr(dataframe[numeric_column1], dataframe[numeric_column2])
-                result = {
-                    'correlation': corr,
-                    'p_value': p_value,
+        for category, group in grouped:
+            # Asegurarse de que existan suficientes datos
+            if len(group) > 1 and group[[numeric_column1, numeric_column2]].notnull().all(axis=None):
+                corr, p_value = stats.pearsonr(group[numeric_column1], group[numeric_column2])
+                correlation_results.append({
+                    'category': category,
+                    'correlation': round(corr, 4),
+                    'p_value': round(p_value, 4),
                     'significance': "significativo" if p_value < 0.05 else "no significativo"
-                }
-                return jsonify({'result': result})
+                })
             else:
-                return jsonify({'error': 'Datos faltantes en las columnas especificadas.'}), 400
+                correlation_results.append({
+                    'category': category,
+                    'error': 'No hay suficientes datos para calcular la correlación.'
+                })
+
+        # Devuelve los resultados como una lista
+        return jsonify({'result': correlation_results})
 
     except Exception as e:
-        return jsonify({'error': str(e)}), 400
+        return jsonify({'error': str(e)}), 500
+
 
 ##########################################################################################
 ####################################### STAT TESTS #######################################
