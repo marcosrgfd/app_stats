@@ -2750,10 +2750,15 @@ def run_pearson():
         # Caso: Correlación general sin categorías
         if not correlation_by_categories:
             corr, p_value = stats.pearsonr(dataframe[numeric_column1], dataframe[numeric_column2])
+            
+            # Reemplazar NaN o infinito con None
+            corr = None if not math.isfinite(corr) else round(corr, 4)
+            p_value = None if not math.isfinite(p_value) else round(p_value, 4)
+
             result = {
                 'correlation': corr,
                 'p_value': p_value,
-                'significance': "significativo" if p_value < 0.05 else "no significativo"
+                'significance': "significativo" if p_value and p_value < 0.05 else "no significativo"
             }
             return jsonify({'result': result})
 
@@ -2768,11 +2773,16 @@ def run_pearson():
             # Asegurarse de que existan suficientes datos
             if len(group) > 1 and group[[numeric_column1, numeric_column2]].notnull().all(axis=None):
                 corr, p_value = stats.pearsonr(group[numeric_column1], group[numeric_column2])
+                
+                # Reemplazar NaN o infinito con None
+                corr = None if not math.isfinite(corr) else round(corr, 4)
+                p_value = None if not math.isfinite(p_value) else round(p_value, 4)
+
                 correlation_results.append({
                     'category': category,
-                    'correlation': round(corr, 4),
-                    'p_value': round(p_value, 4),
-                    'significance': "significativo" if p_value < 0.05 else "no significativo"
+                    'correlation': corr,
+                    'p_value': p_value,
+                    'significance': "significativo" if p_value and p_value < 0.05 else "no significativo"
                 })
             else:
                 correlation_results.append({
