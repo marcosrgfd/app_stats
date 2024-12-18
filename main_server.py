@@ -2759,7 +2759,7 @@ def run_pearson():
 
             for group_name, group_data in grouped:
                 if len(group_data) > 1:  # Se necesita al menos dos filas para calcular la correlación
-                    corr, p_value = pearsonr(group_data[numeric_column1], group_data[numeric_column2])
+                    corr, p_value = stats.pearsonr(group_data[numeric_column1], group_data[numeric_column2])
                     correlations[group_name] = {
                         'correlation': corr,
                         'p_value': p_value,
@@ -2777,7 +2777,7 @@ def run_pearson():
 
             # Calcular la correlación para todas las filas
             if dataframe[[numeric_column1, numeric_column2]].notnull().all(axis=None):
-                corr, p_value = pearsonr(dataframe[numeric_column1], dataframe[numeric_column2])
+                corr, p_value = stats.pearsonr(dataframe[numeric_column1], dataframe[numeric_column2])
                 result = {
                     'correlation': corr,
                     'p_value': p_value,
