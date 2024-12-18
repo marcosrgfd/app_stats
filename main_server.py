@@ -2780,8 +2780,12 @@ def run_pearson():
                     'error': 'No hay suficientes datos para calcular la correlación.'
                 })
 
-        # Devuelve los resultados como una lista
-        return jsonify({'result': correlation_results})
+        # Devuelve los resultados con una clave específica
+            return jsonify({
+                'result': {
+                    'categories': correlation_results
+                }
+            })
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
