@@ -2754,12 +2754,21 @@ def run_pearson():
             if len(groups) != 2:
                 return jsonify({'error': 'Se necesitan exactamente dos categorías para realizar esta correlación.'}), 400
 
+            # Obtener las medias de las categorías
             category_values = groups.index.tolist()
+            means = groups.values
+
+            # Calcular la correlación de Pearson entre las dos medias
+            corr, p_value = pearsonr([0, 1], means)  # Correlación entre las categorías y sus medias
+
             correlation = {
                 'category1': category_values[0],
                 'category2': category_values[1],
-                'mean_numeric1_category1': groups.iloc[0],
-                'mean_numeric1_category2': groups.iloc[1]
+                'mean_numeric1_category1': means[0],
+                'mean_numeric1_category2': means[1],
+                'correlation': corr,
+                'p_value': p_value,
+                'significance': "significativo" if p_value < 0.05 else "no significativo"
             }
 
             return jsonify({'result': correlation})
@@ -2769,7 +2778,7 @@ def run_pearson():
 
             # Calcular la correlación para todas las filas
             if dataframe[[numeric_column1, numeric_column2]].notnull().all(axis=None):
-                corr, p_value = stats.pearsonr(dataframe[numeric_column1], dataframe[numeric_column2])
+                corr, p_value = pearsonr(dataframe[numeric_column1], dataframe[numeric_column2])
                 result = {
                     'correlation': corr,
                     'p_value': p_value,
