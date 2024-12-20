@@ -2197,11 +2197,22 @@ def run_anova():
                 # Formatear los resultados de Tukey HSD
                 tukey_summary = []
                 for res in tukey.summary().data[1:]:  # Ignorar la cabecera
+                    # Determinar el nivel de significancia para los asteriscos
+                    if res[3] < 0.001:
+                        significance = "***"
+                    elif res[3] < 0.01:
+                        significance = "**"
+                    elif res[3] < 0.05:
+                        significance = "*"
+                    else:
+                        significance = ""
+
+                    # Formatear cada resultado y redondear
                     comparison = f"{res[0]} vs {res[1]}"
-                    mean_diff = f"{res[2]:.2f}"
-                    p_adj = f"{res[3]:.3f}"
-                    ci_lower = f"{res[4]:.2f}"
-                    ci_upper = f"{res[5]:.2f}"
+                    mean_diff = f"{res[2]:.4f}"
+                    p_adj = f"{res[3]:.4f} {significance}"
+                    ci_lower = f"{res[4]:.4f}"
+                    ci_upper = f"{res[5]:.4f}"
                     reject_h0 = "Sí" if res[6] else "No"
 
                     tukey_summary.append({
