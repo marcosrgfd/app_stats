@@ -2726,9 +2726,21 @@ def run_kruskal_wallis():
                 for i, row in dunn.iterrows():
                     for j, p_val in row.items():
                         if i != j:
+                            # Determinar el nivel de significancia para los asteriscos
+                            if p_val < 0.001:
+                                significance = "***"
+                            elif p_val < 0.01:
+                                significance = "**"
+                            elif p_val < 0.05:
+                                significance = "*"
+                            else:
+                                significance = ""
+
+                            # Formatear cada resultado y redondear
                             comparison = f"{i} vs {j}"
-                            p_adj = f"{p_val:.3f}"
+                            p_adj = f"{round(p_val, 4)} {significance}"
                             reject_h0 = "Sí" if p_val < 0.05 else "No"
+
                             dunn_summary.append({
                                 'comparison': comparison,
                                 'p_value_adjusted': p_adj,
