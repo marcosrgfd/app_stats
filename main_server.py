@@ -1962,6 +1962,7 @@ def run_logistic_regression():
         error_message = str(e)
         return jsonify({'error': error_message}), 400
 
+
     
 # 3. T-Test
 @app.route('/run_ttest', methods=['POST'])
@@ -2037,7 +2038,7 @@ def get_category_names():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
-
+    
 # WELCH ttest
 @app.route('/run_welch_ttest', methods=['POST'])
 def run_welch_ttest():
@@ -2136,6 +2137,7 @@ def run_levene():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
 # 4. ANOVA
 # Ruta para ANOVA
 @app.route('/run_anova', methods=['POST'])
@@ -2224,6 +2226,7 @@ def run_anova():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+    
 
 # FRIEDMAN
 @app.route('/run_friedman', methods=['POST'])
@@ -2311,7 +2314,6 @@ def run_friedman():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
-
 
 
 
@@ -2470,6 +2472,7 @@ def run_mcnemar():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
 
 # 6. Shapiro-Wilk 
 @app.route('/run_shapiro', methods=['POST'])
@@ -2732,7 +2735,7 @@ def run_kruskal_wallis():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
-
+    
 # PEARSON
 @app.route('/run_pearson', methods=['POST'])
 def run_pearson():
@@ -2799,7 +2802,7 @@ def run_pearson():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
+    
 # SPEARMAN
 @app.route('/run_spearman', methods=['POST'])
 def run_spearman():
@@ -2866,6 +2869,7 @@ def run_spearman():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 
 ##########################################################################################
@@ -3170,12 +3174,22 @@ def anova_one_way():
                 # Procesar los resultados de Tukey HSD y generar texto formateado
                 tukey_summary = "Comparaciones múltiples (Tukey HSD):\n"
                 for result in tukey.summary().data[1:]:  # Ignorar la cabecera
+                    # Determinar el número de asteriscos en función del valor p ajustado
+                    if result[3] < 0.001:
+                        significance = "***"
+                    elif result[3] < 0.01:
+                        significance = "**"
+                    elif result[3] < 0.05:
+                        significance = "*"
+                    else:
+                        significance = ""
+                        
                     tukey_summary += (
                         f"----------------------------\n"  # Separador para mayor claridad
                         f"Comparación: {result[0]} vs {result[1]}\n"
-                        f"  • Diferencia de Medias: {result[2]:.2f}\n"
-                        f"  • p-Value ajustado: {result[3]:.3f}\n"
-                        f"  • IC Inferior: {result[4]:.2f}, IC Superior: {result[5]:.2f}\n"
+                        f"  • Diferencia de Medias: {result[2]:.4f}\n"
+                        f"  • p-Value ajustado: {result[3]:.4f} {significance}\n"
+                        f"  • IC Inferior: {result[4]:.4f}, IC Superior: {result[5]:.4f}\n"
                         f"  • Rechazo H0: {'Sí' if result[6] else 'No'}\n"
                     )
 
