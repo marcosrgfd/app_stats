@@ -3374,10 +3374,22 @@ def kruskal_wallis():
                 dunn_summary = f"Comparaciones múltiples (Dunn con corrección {p_value_adjustment.capitalize()}):\n"
                 for i in range(len(dunn)):
                     for j in range(i+1, len(dunn)):
+                        # Determinar el número de asteriscos en función del valor p ajustado
+                        p_val = dunn.iloc[i, j]
+                        if p_val < 0.001:
+                            significance = "***"
+                        elif p_val < 0.01:
+                            significance = "**"
+                        elif p_val < 0.05:
+                            significance = "*"
+                        else:
+                            significance = ""
+
+                        # Generar el texto para cada comparación
                         dunn_summary += (
                             f"----------------------------\n"
-                            f"Comparación: Grupo {i+1} vs Grupo {j+1}\n"
-                            f"  • p-Value ajustado: {dunn.iloc[i, j]:.3f}\n"
+                            f"Comparación: Grupo {i + 1} vs Grupo {j + 1}\n"
+                            f"  • p-Value ajustado: {p_val:.4f} {significance}\n"
                         )
 
                 # Agregar el resumen de Dunn al resultado
@@ -3448,10 +3460,22 @@ def friedman_test():
                 nemenyi_summary = "Comparaciones múltiples (Nemenyi):\n"
                 for i in range(len(nemenyi)):
                     for j in range(i + 1, len(nemenyi)):
+                        # Determinar el número de asteriscos en función del valor p ajustado
+                        p_val = nemenyi.iloc[i, j]
+                        if p_val < 0.001:
+                            significance = "***"
+                        elif p_val < 0.01:
+                            significance = "**"
+                        elif p_val < 0.05:
+                            significance = "*"
+                        else:
+                            significance = ""
+
+                        # Generar el texto para cada comparación
                         nemenyi_summary += (
                             f"----------------------------\n"
-                            f"Comparación: Grupo {i+1} vs Grupo {j+1}\n"
-                            f"  • p-Value ajustado: {nemenyi.iloc[i, j]:.3f}\n"
+                            f"Comparación: Grupo {i + 1} vs Grupo {j + 1}\n"
+                            f"  • p-Value ajustado: {p_val:.3f} {significance}\n"
                         )
 
                 # Agregar el resumen de Nemenyi al resultado
