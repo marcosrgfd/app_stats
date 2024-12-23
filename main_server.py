@@ -1976,16 +1976,26 @@ def run_ttest():
         alternative = data.get('alternative', 'two-sided')
 
         if numeric_column not in dataframe.columns or categorical_column not in dataframe.columns:
-            return jsonify({'error': 'Las columnas especificadas no se encontraron en los datos.'}), 400
+            return jsonify({'error': 'Las columnas especificadas no existen en los datos cargados. Verifique los nombres y vuelva a intentarlo.'}), 400
 
         # Agrupar los datos por la columna categórica
         groups = dataframe.groupby(categorical_column)[numeric_column].apply(list)
 
         # Verificar que haya al menos dos grupos
         if len(groups) < 2:
-            return jsonify({'error': 'Datos insuficientes para realizar el T-Test. Se requieren al menos dos categorías.'}), 400
+            return jsonify({'error': 'Datos insuficientes para realizar el T-Test. Se requieren al menos dos categorías diferentes.'}), 400
 
         category_names = groups.index.tolist()
+
+        # Verificar longitudes para pruebas pareadas
+        if paired and len(groups.iloc[0]) != len(groups.iloc[1]):
+            return jsonify({
+                'error': (
+                    f'El T-Test pareado requiere que los dos grupos tengan el mismo número de elementos. '
+                    f'Grupo "{category_names[0]}" tiene {len(groups.iloc[0])} elementos, mientras que '
+                    f'grupo "{category_names[1]}" tiene {len(groups.iloc[1])} elementos.'
+                )
+            }), 400
 
         # Realizar la prueba T con el tipo de prueba especificado
         if paired:
@@ -2014,7 +2024,11 @@ def run_ttest():
         return jsonify({'result': result})
 
     except Exception as e:
-        return jsonify({'error': str(e)}), 400
+        return jsonify({
+            'error': 'Ocurrió un error inesperado durante el cálculo del T-Test. Verifique los datos ingresados y vuelva a intentarlo.',
+            'details': str(e)
+        }), 400
+
 
 
 # DEVOLVER A LA APP EL NOMBRE DE LAS CATEGORÍAS
