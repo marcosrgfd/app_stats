@@ -107,7 +107,7 @@ def calculate_sample_size():
                 # Calcular el tamaño del efecto
                 effect_size = abs(mean1 - mean2) / pooled_std_dev
             else:
-                raise ValueError("Si no se proporciona el tamaño del efecto, se deben proporcionar mean1, mean2, std_dev_group1 y std_dev_group2.")
+                raise ValueError("If the effect size is not provided, mean1, mean2, std_dev_group1, and std_dev_group2 must be provided.")
 
         # Configurar el análisis de poder para prueba t de medias independientes
         analysis = TTestIndPower()
@@ -192,7 +192,7 @@ def calculate_sample_size_regression():
         num_predictors = data.get('num_predictors', 1)  # Número de predictores en el modelo
 
         if effect_size is None:
-            raise ValueError("El tamaño del efecto (f²) es requerido para el cálculo de regresión lineal.")
+            raise ValueError("The effect size (f²) is required for linear regression calculation.")
 
         # Configurar el análisis de poder para regresión lineal
         analysis = FTestPower()
@@ -262,7 +262,7 @@ def calculate_sample_size_paired_ttest():
                 # Calcular el tamaño del efecto
                 effect_size = abs(mean1 - mean2) / pooled_std_dev
             else:
-                raise ValueError("Si no se proporciona el tamaño del efecto, se deben proporcionar mean1, mean2, std_dev_group1 y std_dev_group2.")
+                raise ValueError("If the effect size is not provided, mean1, mean2, std_dev_group1, and std_dev_group2 must be provided.")
 
         # Configurar el análisis de poder para prueba t de datos pareados
         analysis = TTestPower()
@@ -291,7 +291,7 @@ def calculate_sample_size_chi_square():
         df = data.get('df', None)  # Grados de libertad
 
         if df is None:
-            raise ValueError("Los grados de libertad (df) son necesarios para el cálculo de Chi-cuadrado.")
+            raise ValueError("Degrees of freedom (df) are required for Chi-square calculation.")
 
         # Definir la función para calcular el poder basado en el tamaño de muestra
         def power_function(sample_size):
@@ -384,11 +384,11 @@ def calculate_sample_size_pearson():
         alternative = data.get('alternative', 'two-sided')  # Tipo de prueba ('two-sided', 'larger', 'smaller')
 
         if r is None:
-            raise ValueError("El tamaño del efecto (coeficiente de correlación r) es necesario para el cálculo.")
+            raise ValueError("The effect size (correlation coefficient r) is required for the calculation.")
 
         # Verificar que el coeficiente de correlación esté en el rango válido
         if not -1 <= r <= 1:
-            raise ValueError("El coeficiente de correlación (r) debe estar entre -1 y 1.")
+            raise ValueError("The correlation coefficient (r) must be between -1 and 1.")
 
         # Calcular el tamaño del efecto para el análisis de poder
         effect_size = math.sqrt(r**2 / (1 - r**2))
@@ -483,7 +483,7 @@ def calculate_sample_size_non_inferiority():
         alternative = data.get('alternative', 'larger')  # Tipo de hipótesis (unilateral)
 
         if effect_size is None:
-            raise ValueError("El tamaño del efecto es necesario para el cálculo.")
+            raise ValueError("The effect size is required for the calculation.")
 
         # Configurar el análisis de poder para no inferioridad
         analysis = TTestIndPower()
@@ -519,7 +519,7 @@ def calculate_sample_size_tost():
         effect_size = data.get('effect_size', None)  # Tamaño del efecto (Cohen's d)
 
         if effect_size is None:
-            raise ValueError("El tamaño del efecto es necesario para el cálculo.")
+            raise ValueError("The effect size is required for the calculation.")
 
         # Configurar el análisis de poder para prueba TOST
         analysis = TTestIndPower()
@@ -567,7 +567,7 @@ def calculate_descriptive_statistics(request_body):
 
             # Verificar que data_series1 y category_series tengan la misma longitud
             if len(data_series1) != len(category_series):
-                raise ValueError("El número de elementos en data1 no coincide con el número de categorías.")
+                raise ValueError("The number of elements in data1 does not match the number of categories.")
 
             # Calcular estadísticas descriptivas por categoría
             grouped = data_series1.groupby(category_series)
@@ -592,9 +592,9 @@ def calculate_descriptive_statistics(request_body):
             if show_boxplot:
                 plt.figure(figsize=(8, 6))
                 sns.boxplot(x=category_series, y=data_series1, palette="Set2", width=0.4)
-                plt.title('Boxplot por Categorías')
-                plt.xlabel('Categoría')
-                plt.ylabel('Valor')
+                plt.title('Boxplot by categories')
+                plt.xlabel('Category')
+                plt.ylabel('Value')
                 plt.tight_layout()
                 boxplot_img = io.BytesIO()
                 plt.savefig(boxplot_img, format='png', bbox_inches='tight', dpi=100)
@@ -605,9 +605,9 @@ def calculate_descriptive_statistics(request_body):
             if show_violinplot:
                 plt.figure(figsize=(8, 6))
                 sns.violinplot(x=category_series, y=data_series1, palette="Set2", width=0.8)
-                plt.title('Gráfico de Violín por Categorías')
-                plt.xlabel('Categoría')
-                plt.ylabel('Valor')
+                plt.title('Violin plot by categories')
+                plt.xlabel('Category')
+                plt.ylabel('Value')
                 plt.tight_layout()
                 violin_img = io.BytesIO()
                 plt.savefig(violin_img, format='png', bbox_inches='tight', dpi=100)
@@ -631,8 +631,8 @@ def calculate_descriptive_statistics(request_body):
                     ax.scatter(cat_data, y_jitter, s=3, color=palette[i], alpha=0.5)
                 ax.set_yticks(np.arange(1, len(category_series.unique()) + 1))
                 ax.set_yticklabels(category_series.unique())
-                ax.set_xlabel('Valor')
-                ax.set_title('Raincloud Plot')
+                ax.set_xlabel('Value')
+                ax.set_title('Raincloud plot')
                 plt.tight_layout()
                 raincloud_img = io.BytesIO()
                 plt.savefig(raincloud_img, format='png', bbox_inches='tight', dpi=100)
@@ -669,9 +669,9 @@ def calculate_descriptive_statistics(request_body):
             if show_histogram:
                 plt.figure(figsize=(6, 4))
                 plt.hist(data_series.dropna(), bins=10, color='skyblue', edgecolor='black')
-                plt.title(f'Histograma de Datos {title_suffix}')
-                plt.xlabel('Valor')
-                plt.ylabel('Frecuencia')
+                plt.title(f'Histogram of data {title_suffix}')
+                plt.xlabel('Value')
+                plt.ylabel('Frequency')
                 plt.tight_layout()
                 img = io.BytesIO()
                 plt.savefig(img, format='png')
@@ -682,8 +682,8 @@ def calculate_descriptive_statistics(request_body):
             if show_boxplot:
                 plt.figure(figsize=(6, 4))
                 plt.boxplot(data_series.dropna(), vert=False, patch_artist=True, boxprops=dict(facecolor='lightblue'))
-                plt.title(f'Boxplot de Datos {title_suffix}')
-                plt.xlabel('Valor')
+                plt.title(f'Boxplot of data {title_suffix}')
+                plt.xlabel('Value')
                 plt.tight_layout()
                 boxplot_img = io.BytesIO()
                 plt.savefig(boxplot_img, format='png')
@@ -694,8 +694,8 @@ def calculate_descriptive_statistics(request_body):
             if show_density:
                 plt.figure(figsize=(6, 4))
                 sns.kdeplot(data_series.dropna(), shade=True, color='green')
-                plt.title(f'Gráfico de Densidad {title_suffix}')
-                plt.xlabel('Valor')
+                plt.title(f'Density plot {title_suffix}')
+                plt.xlabel('Value')
                 plt.tight_layout()
                 density_img = io.BytesIO()
                 plt.savefig(density_img, format='png')
@@ -705,8 +705,8 @@ def calculate_descriptive_statistics(request_body):
             if show_violinplot:
                 plt.figure(figsize=(6, 4))
                 sns.violinplot(data=data_series.dropna(), color='lightcoral')
-                plt.title(f'Gráfico de Violín {title_suffix}')
-                plt.xlabel('Valor')
+                plt.title(f'Violin plot {title_suffix}')
+                plt.xlabel('Value')
                 plt.tight_layout()
                 violin_img = io.BytesIO()
                 plt.savefig(violin_img, format='png')
@@ -718,8 +718,8 @@ def calculate_descriptive_statistics(request_body):
                 fig, ax = plt.subplots(figsize=(8, 6))
                 sns.violinplot(data=data_series.dropna(), ax=ax, inner=None, color='lightblue', alpha=0.5)
                 sns.stripplot(data=data_series.dropna(), ax=ax, color='darkblue', size=4, jitter=True, alpha=0.6)
-                ax.set_title(f'Raincloud Plot {title_suffix}')
-                ax.set_xlabel('Valor')
+                ax.set_title(f'Raincloud plot {title_suffix}')
+                ax.set_xlabel('Value')
                 plt.tight_layout()
                 raincloud_img = io.BytesIO()
                 plt.savefig(raincloud_img, format='png')
@@ -747,9 +747,9 @@ def calculate_descriptive_statistics(request_body):
         if show_scatter:
             plt.figure(figsize=(6, 4))
             plt.scatter(data_series1, data_series2, color='purple', alpha=0.6)
-            plt.title('Gráfico de Dispersión con Línea de Tendencia')
-            plt.xlabel('Muestra 1')
-            plt.ylabel('Muestra 2')
+            plt.title('Scatter plot with trend line')
+            plt.xlabel('Sample 1')
+            plt.ylabel('Sample 2')
             plt.tight_layout()
             m, b = np.polyfit(data_series1, data_series2, 1)
             plt.plot(data_series1, m * data_series1 + b, color='red')
@@ -772,7 +772,7 @@ def calculate_basic_analysis():
         # Obtener la primera muestra
         data_list1 = data.get('data1', None)
         if data_list1 is None or not isinstance(data_list1, list):
-            raise ValueError("Los datos de la primera muestra no son válidos o no se encuentran en el formato adecuado.")
+            raise ValueError("The data for the first sample is either invalid or not in the correct format.")
 
         data_series1 = pd.Series(data_list1)
 
@@ -789,7 +789,7 @@ def calculate_basic_analysis():
         # Caso 1: Análisis con categorías
         if category_list is not None:
             if not isinstance(category_list, list):
-                raise ValueError("Las categorías no son válidas o no se encuentran en el formato adecuado.")
+                raise ValueError("The categories are either invalid or not in the correct format.")
             category_series = pd.Series(category_list)
             result = calculate_descriptive_statistics({
                 'data1': data_series1, 
@@ -802,7 +802,7 @@ def calculate_basic_analysis():
         # Caso 2: Análisis para dos muestras
         elif data_list2 is not None:
             if not isinstance(data_list2, list):
-                raise ValueError("Los datos de la segunda muestra no son válidos o no se encuentran en el formato adecuado.")
+                raise ValueError("The data for the second sample is either invalid or not in the correct format.")
             data_series2 = pd.Series(data_list2)
             result = calculate_descriptive_statistics({
                 'data1': data_series1, 
@@ -857,7 +857,7 @@ def leer_csv_automatico(content):
                 return df
         except pd.errors.ParserError:
             continue
-    raise ValueError("No se pudo determinar el delimitador del archivo.")
+    raise ValueError("The file delimiter could not be determined.")
 
 # Método para manejar celdas vacías usando imputación básica
 def imputar_valores_basico(dataframe):
@@ -895,12 +895,12 @@ def upload_file_descriptive():
     global dataframe
     try:
         if 'file' not in request.files:
-            return jsonify({'error': 'No se encontró el archivo.'}), 400
+            return jsonify({'error': 'File not found.'}), 400
 
         file = request.files['file']
 
         if file.filename == '':
-            return jsonify({'error': 'El archivo no tiene nombre.'}), 400
+            return jsonify({'error': 'The file has no name.'}), 400
 
         filename = file.filename.lower()
 
@@ -924,9 +924,10 @@ def upload_file_descriptive():
                     file_stream = io.BytesIO(file.read())
                     dataframe = pd.read_excel(file_stream, engine='openpyxl')
                 except ValueError as e:
-                    return jsonify({'error': f'Error al leer el archivo Excel: {str(e)}'}), 400
+                    return jsonify({'error': f'Error reading the Excel file: {str(e)}'}), 400
                 except Exception as e:
-                    return jsonify({'error': f'Error desconocido al leer el archivo Excel: {str(e)}'}), 400
+                    return jsonify({'error': f'Unknown error reading the Excel file: {str(e)}'}), 400
+
 
             elif filename.endswith('.txt'):
                 try:
@@ -936,11 +937,11 @@ def upload_file_descriptive():
                     content = file.stream.read().decode("ISO-8859-1")
                     dataframe = pd.read_csv(io.StringIO(content), delimiter=r'\s+')
             else:
-                return jsonify({'error': "Formato de archivo no soportado. Proporcione un archivo CSV, XLSX, XLS o TXT."}), 400
+                return jsonify({'error': "Unsupported file format. Please provide a CSV, XLSX, XLS, or TXT file."}), 400
 
-            # Verificar si el DataFrame se cargó correctamente
+            # Check if the DataFrame was loaded correctly
             if dataframe.empty:
-                return jsonify({'error': 'El archivo está vacío o no se pudo procesar correctamente.'}), 400
+                return jsonify({'error': 'The file is empty or could not be processed correctly.'}), 400
 
             # Normalizar encabezados quitando espacios adicionales
             dataframe.columns = dataframe.columns.str.strip()
@@ -966,16 +967,17 @@ def upload_file_descriptive():
             ]
 
             return jsonify({
-                'message': 'Archivo cargado exitosamente',
+                'message': 'File uploaded successfully',
                 'numeric_columns': numeric_columns,
                 'categorical_columns': categorical_columns,
                 'binary_categorical_columns': binary_categorical_columns
             })
 
         except UnicodeDecodeError:
-            return jsonify({'error': 'Error de codificación. Asegúrese de que el archivo esté en formato UTF-8 o ISO-8859-1.'}), 400
+            return jsonify({'error': 'Encoding error. Ensure the file is in UTF-8 or ISO-8859-1 format.'}), 400
         except pd.errors.ParserError:
-            return jsonify({'error': 'Error al analizar el archivo. Verifique el delimitador y el formato del archivo.'}), 400
+            return jsonify({'error': 'Error parsing the file. Check the delimiter and file format.'}), 400
+
         except Exception as e:
             return jsonify({'error': str(e)}), 400
 
@@ -990,7 +992,7 @@ def analyze_selected_columns():
     global dataframe
     try:
         if dataframe is None:
-            return jsonify({'error': 'No se ha cargado ningún archivo para analizar.'}), 400
+            return jsonify({'error': 'No file has been uploaded for analysis.'}), 400
 
         data = request.get_json()
         analysis_type = data.get('analysis_type', 'Una muestra')
@@ -1005,14 +1007,14 @@ def analyze_selected_columns():
         show_raincloudplot = data.get('showRaincloudPlot', False)
 
         if not selected_columns:
-            return jsonify({'error': "No se proporcionaron columnas numéricas para analizar."}), 400
+            return jsonify({'error': "No numerical columns were provided for analysis."}), 400
 
         result = {}
 
         # Análisis de una muestra (histograma y boxplot)
         if analysis_type == "Una muestra":
             if len(selected_columns) != 1:
-                return jsonify({'error': "Seleccione exactamente una columna numérica para este análisis."}), 400
+                return jsonify({'error': "Select exactly one numerical column for this analysis."}), 400
             
             data_series = dataframe[selected_columns[0]].dropna()
 
@@ -1099,7 +1101,7 @@ def analyze_selected_columns():
             if show_boxplot:
                 plt.figure(figsize=(8, 6))
                 sns.boxplot(x=category_series, y=data_series, palette="Set2", width=0.4)
-                plt.title(f'Boxplot de {selected_columns[0]} según {category_column}')
+                plt.title(f'Boxplot of {selected_columns[0]} by {category_column}')
                 plt.xlabel(category_column)
                 plt.ylabel(selected_columns[0])
                 boxplot_img = io.BytesIO()
@@ -1111,7 +1113,7 @@ def analyze_selected_columns():
             if show_violinplot:
                 plt.figure(figsize=(8, 6))
                 sns.violinplot(x=category_series, y=data_series, palette="Set2", width=0.8)
-                plt.title(f'Violin Plot de {selected_columns[0]} según {category_column}')
+                plt.title(f'Violin plot of {selected_columns[0]} by {category_column}')
                 plt.xlabel(category_column)
                 plt.ylabel(selected_columns[0])
                 violin_img = io.BytesIO()
@@ -1138,8 +1140,8 @@ def analyze_selected_columns():
                     ax.scatter(cat_data, y_jitter, s=3, color=palette[i], alpha=0.5)
                 ax.set_yticks(np.arange(1, len(category_series.unique()) + 1))
                 ax.set_yticklabels(category_series.unique())
-                ax.set_xlabel('Valores')
-                ax.set_title(f'Raincloud Plot de {selected_columns[0]} según {category_column}')
+                ax.set_xlabel('Values')
+                ax.set_title(f'Raincloud plot of {selected_columns[0]} by {category_column}')
                 raincloud_img = io.BytesIO()
                 plt.savefig(raincloud_img, format='png', bbox_inches='tight', dpi=100)
                 raincloud_img.seek(0)
@@ -1337,7 +1339,7 @@ def upload_file_charts():
             ]
 
             return jsonify({
-                'message': 'Archivo cargado exitosamente',
+                'message': 'File uploaded successfully',
                 'numeric_columns': numeric_columns,
                 'categorical_columns': categorical_columns,
                 'binary_categorical_columns': binary_categorical_columns
@@ -1388,14 +1390,14 @@ def generate_charts():
                 sns.scatterplot(x=df_clean[x_column], y=df_clean[y_column], color='blue', alpha=0.6, edgecolor='w', s=80)
                 plt.xlabel(x_column)
                 plt.ylabel(y_column)
-                plt.title(f'Scatterplot de {x_column} vs {y_column}')
+                plt.title(f'Scatterplot of {x_column} vs {y_column}')
                 plt.grid(True)
 
                 # Añadir línea de tendencia si se solicita
                 if add_trendline:
                     m, b = np.polyfit(df_clean[x_column], df_clean[y_column], 1)
                     plt.plot(df_clean[x_column], m * df_clean[x_column] + b, color='red', linestyle='--', linewidth=2)
-                    plt.legend(['Línea de tendencia', 'Datos'])
+                    plt.legend(['Trend line', 'Data'])
                     
             else:
                 return jsonify({'error': 'Both selected columns must be numeric for a scatterplot.'}), 400
@@ -1404,8 +1406,8 @@ def generate_charts():
             if pd.api.types.is_numeric_dtype(dataframe[x_column]):
                 sns.histplot(df_clean[x_column], bins=20, kde=True, color='skyblue')
                 plt.xlabel(x_column)
-                plt.ylabel('Frecuencia')
-                plt.title(f'Histograma de {x_column}')
+                plt.ylabel('Frequency')
+                plt.title(f'Histogram of {x_column}')
             else:
                 return jsonify({'error': 'The selected column must be numeric for a histogram.'}), 400
 
@@ -1424,7 +1426,7 @@ def generate_charts():
                             palette='Set3', 
                             width=0.4  # Ajustar el ancho de las barras para hacerlas más finas
                         )
-                        plt.title(f'Boxplot de {x_column} según {categorical_column}')
+                        plt.title(f'Boxplot of {x_column} by {categorical_column}')
                         plt.xlabel(categorical_column)  # Etiqueta correcta para el eje X
                         plt.ylabel(x_column)  # Etiqueta correcta para el eje Y
                     else:
@@ -1432,14 +1434,14 @@ def generate_charts():
                 else:
                     # Boxplot sin categorización
                     sns.boxplot(x=df_clean[x_column], color='lightgreen', width=0.4)
-                    plt.title(f'Boxplot de {x_column}')
+                    plt.title(f'Boxplot of {x_column}')
                     plt.xlabel(x_column)
-                    plt.ylabel('Frecuencia')  # Etiqueta adecuada para el eje Y cuando no hay categorización
+                    plt.ylabel('Frequency')  # Etiqueta adecuada para el eje Y cuando no hay categorización
             else:
                 return jsonify({'error': 'The selected column must be numeric for a boxplot.'}), 400
 
 
-        elif chart_type == 'Raincloud Plot':
+        elif chart_type == 'Raincloud plot':
             if pd.api.types.is_numeric_dtype(dataframe[x_column]):
                 fig, ax = plt.subplots(figsize=(10, 8))
 
@@ -1468,7 +1470,7 @@ def generate_charts():
                     ax.set_yticks(np.arange(1, len(df_clean[categorical_column].unique()) + 1))
                     ax.set_yticklabels(df_clean[categorical_column].unique())
                     ax.set_xlabel(x_column)
-                    ax.set_title(f'Raincloud Plot of {x_column} by {categorical_column}')
+                    ax.set_title(f'Raincloud plot of {x_column} by {categorical_column}')
                     plt.grid(True)
                 else:
                     # Raincloud Plot sin categorización
@@ -1477,7 +1479,7 @@ def generate_charts():
                     y_jitter = np.random.uniform(-0.05, 0.05, size=len(df_clean[x_column]))
                     plt.scatter(df_clean[x_column], y_jitter, s=10, color='blue', alpha=0.6)
                     plt.xlabel(x_column)
-                    plt.title(f'Raincloud Plot of {x_column}')
+                    plt.title(f'Raincloud plot of {x_column}')
 
             else:
                 return jsonify({'error': 'The selected column must be numeric for a raincloud plot.'}), 400
@@ -1634,7 +1636,7 @@ def upload_file_stat():
             ]
 
             return jsonify({
-                'message': 'Archivo cargado exitosamente',
+                'message': 'File uploaded successfully',
                 'numeric_columns': numeric_columns,
                 'categorical_columns': categorical_columns,
                 'binary_categorical_columns': binary_categorical_columns
@@ -1695,7 +1697,7 @@ def run_regression():
     global dataframe
     try:
         if dataframe is None:
-            return jsonify({'error': 'No se ha cargado ningún archivo para analizar.'}), 400
+            return jsonify({'error': 'No file has been uploaded for analysis'}), 400
 
         # Limpia los nombres de las columnas antes de procesar
         name_mapping = clean_column_names(dataframe)
@@ -1706,7 +1708,7 @@ def run_regression():
         analyze_residuals = data.get('analyze_residuals', False)  # Nuevo parámetro
 
         if not response_variable or not covariates:
-            return jsonify({'error': 'Variables insuficientes para la regresión.'}), 400
+            return jsonify({'error': 'Insufficient variables for regression.'}), 400
         
         # Normaliza los nombres de las variables
         response_variable_clean = re.sub(r'[^a-zA-Z0-9_]', '_', response_variable).lower()
@@ -1714,11 +1716,11 @@ def run_regression():
 
         # Verificar que la variable de respuesta y las covariables existen en el DataFrame
         if response_variable_clean not in dataframe.columns:
-            return jsonify({'error': f'La variable de respuesta {response_variable} no existe en los datos.'}), 400
+            return jsonify({'error': f'The response variable {response_variable} does not exist in the data.'}), 400
 
         for cov_clean, cov_original in zip(covariates_clean, covariates):
             if cov_clean not in dataframe.columns:
-                return jsonify({'error': f'La covariable {cov_original} no existe en los datos.'}), 400
+                return jsonify({'error': f'The covariate {cov_original} does not exist in the data.'}), 400
 
         # Preparar el DataFrame para el modelo
         df = dataframe[covariates_clean + [response_variable_clean]].copy()
@@ -1727,12 +1729,12 @@ def run_regression():
 
         # Verificar si el DataFrame resultante tiene suficientes datos
         if df.empty or len(df) < 2:
-            return jsonify({'error': 'No hay suficientes datos válidos después del preprocesamiento.'}), 400
+            return jsonify({'error': 'There is not enough valid data after preprocessing.'}), 400
 
         # Validar que las covariables tengan variación
         for cov in covariates_clean:
             if df[cov].nunique() < 2:
-                return jsonify({'error': f'La covariable {cov} no tiene suficiente variación.'}), 400
+                return jsonify({'error': f'The covariate {cov} does not have sufficient variation.'}), 400
 
         # Definir la fórmula para el modelo completo
         formula = f"{response_variable_clean} ~ " + " + ".join(covariates_clean)
@@ -1789,12 +1791,12 @@ def run_regression():
 
             # Verificar los valores de residuos
             if residuals.empty:
-                return jsonify({'error': 'No se pudieron calcular residuos válidos.'}), 400
+                return jsonify({'error': 'Valid residuals could not be calculated.'}), 400
 
             # Histograma de residuos
             fig_hist, ax_hist = plt.subplots(figsize=(8, 6))  # Ajustar el tamaño
             sns.histplot(residuals, bins=10, kde=True, color='blue', ax=ax_hist)
-            ax_hist.set_title("Histogram of Residuals")
+            ax_hist.set_title("Histogram of residuals")
             ax_hist.set_xlabel("Residuals")
             ax_hist.set_ylabel("Density")
 
@@ -1855,9 +1857,10 @@ def run_regression():
     except Exception as e:
         if "invalid syntax" in str(e).lower():
             error_message = (
-                "Error en los nombres de las variables. Revisa que no incluyan caracteres especiales "
-                "(tildes, espacios, símbolos)."
+                "Error in variable names. Ensure they do not include special characters "
+                "(accents, spaces, symbols)."
             )
+
         else:
             error_message = str(e)
         return jsonify({'error': error_message}), 400
@@ -1868,7 +1871,7 @@ def run_logistic_regression():
     global dataframe
     try:
         if dataframe is None:
-            return jsonify({'error': 'No se ha cargado ningún archivo para analizar.'}), 400
+            return jsonify({'error': 'No file has been uploaded for analysis.'}), 400
 
         # Limpia los nombres de las columnas antes de procesar
         name_mapping = clean_column_names(dataframe)
@@ -1879,7 +1882,7 @@ def run_logistic_regression():
         covariates = data.get('covariates')  # Lista de covariables
 
         if not response_variable or not covariates:
-            return jsonify({'error': 'Variables insuficientes para la regresión logística.'}), 400
+            return jsonify({'error': 'Insufficient variables for logistic regression.'}), 400
 
         # Normaliza los nombres de las variables
         response_variable_clean = re.sub(r'[^a-zA-Z0-9_]', '_', response_variable).lower()
@@ -1887,11 +1890,11 @@ def run_logistic_regression():
 
         # Verificar que la variable de respuesta y covariables existen en el DataFrame
         if response_variable_clean not in dataframe.columns:
-            return jsonify({'error': f'La variable de respuesta {response_variable} no existe en los datos.'}), 400
+            return jsonify({'error': f'The response variable {response_variable} does not exist in the data.'}), 400
 
         for cov_clean, cov_original in zip(covariates_clean, covariates):
             if cov_clean not in dataframe.columns:
-                return jsonify({'error': f'La covariable {cov_original} no existe en los datos.'}), 400
+                return jsonify({'error': f'The covariate {cov_original} does not exist in the data.'}), 400
 
         # Preparar el DataFrame para el modelo
         df = dataframe[covariates_clean + [response_variable_clean]].copy()
@@ -1900,7 +1903,7 @@ def run_logistic_regression():
 
         # Verificar si el DataFrame tiene suficientes datos
         if df.empty or len(df) < 10:
-            return jsonify({'error': 'No hay suficientes datos válidos después del preprocesamiento.'}), 400
+            return jsonify({'error': 'There is not enough valid data after preprocessing.'}), 400
 
         # Validar y convertir la variable dependiente a binaria (0 y 1)
         if df[response_variable_clean].nunique() == 2:
@@ -1908,12 +1911,12 @@ def run_logistic_regression():
             if not pd.api.types.is_numeric_dtype(df[response_variable_clean]):
                 df[response_variable_clean] = pd.Categorical(df[response_variable_clean]).codes
         else:
-            return jsonify({'error': 'La variable de respuesta no es binaria (debe tener exactamente dos niveles).'}), 400
+            return jsonify({'error': 'The response variable is not binary (it must have exactly two levels).'}), 400
 
         # Validar que las covariables tengan variación
         for cov in covariates_clean:
             if df[cov].nunique() < 2:
-                return jsonify({'error': f'La covariable {cov} no tiene suficiente variación.'}), 400
+                return jsonify({'error': f'The covariate {cov} does not have sufficient variation.'}), 400
 
         # Definir la fórmula para el modelo logístico
         formula = f"{response_variable_clean} ~ " + " + ".join(covariates_clean)
@@ -1976,14 +1979,14 @@ def run_ttest():
         alternative = data.get('alternative', 'two-sided')
 
         if numeric_column not in dataframe.columns or categorical_column not in dataframe.columns:
-            return jsonify({'error': 'Las columnas especificadas no existen en los datos cargados. Verifique los nombres y vuelva a intentarlo.'}), 400
+            return jsonify({'error': 'The specified columns do not exist in the uploaded data. Please check the names and try again.'}), 400
 
         # Agrupar los datos por la columna categórica
         groups = dataframe.groupby(categorical_column)[numeric_column].apply(list)
 
         # Verificar que haya al menos dos grupos
         if len(groups) < 2:
-            return jsonify({'error': 'Datos insuficientes para realizar el T-Test. Se requieren al menos dos categorías diferentes.'}), 400
+            return jsonify({'error': 'Insufficient data to perform the T-Test. At least two different categories are required.'}), 400
 
         category_names = groups.index.tolist()
 
@@ -1991,9 +1994,9 @@ def run_ttest():
         if paired and len(groups.iloc[0]) != len(groups.iloc[1]):
             return jsonify({
                 'error': (
-                    f'El T-Test pareado requiere que los dos grupos tengan el mismo número de elementos. '
-                    f'Grupo "{category_names[0]}" tiene {len(groups.iloc[0])} elementos, mientras que '
-                    f'grupo "{category_names[1]}" tiene {len(groups.iloc[1])} elementos.'
+                    f'The paired T-Test requires the two groups to have the same number of elements. '
+                    f'Group "{category_names[0]}" has {len(groups.iloc[0])} elements, while '
+                    f'group "{category_names[1]}" has {len(groups.iloc[1])} elements.'
                 )
             }), 400
 
@@ -2004,8 +2007,8 @@ def run_ttest():
             t_stat, p_value = stats.ttest_ind(groups.iloc[0], groups.iloc[1], alternative=alternative, equal_var=False)
 
         # Evaluar la significancia según el valor p
-        significance = "significativo" if p_value < 0.05 else "no significativo"
-        decision = "Rechazar la hipótesis nula" if p_value < 0.05 else "No rechazar la hipótesis nula"
+        significance = "significant" if p_value < 0.05 else "not significant"
+        decision = "Reject the null hypothesis" if p_value < 0.05 else "Do not reject the null hypothesis"
 
         result = {
             'test': 'T-Test' + (' pareado' if paired else ''),
@@ -2025,7 +2028,7 @@ def run_ttest():
 
     except Exception as e:
         return jsonify({
-            'error': 'Ocurrió un error inesperado durante el cálculo del T-Test. Verifique los datos ingresados y vuelva a intentarlo.',
+            'error': 'An unexpected error occurred during the T-Test calculation. Please check the input data and try again.',
             'details': str(e)
         }), 400
 
@@ -2040,13 +2043,13 @@ def get_category_names():
         categorical_column = data.get('categorical_column')
 
         if categorical_column not in dataframe.columns:
-            return jsonify({'error': 'La columna categórica especificada no se encontró.'}), 400
+            return jsonify({'error': 'The specified categorical column was not found.'}), 400
 
         # Obtener los nombres de las categorías
         category_names = list(dataframe[categorical_column].dropna().unique())
 
         if len(category_names) < 2:
-            return jsonify({'error': 'Datos insuficientes para obtener los nombres de las categorías.'}), 400
+            return jsonify({'error': 'Insufficient data to retrieve category names.'}), 400
 
         return jsonify({'category_names': category_names[:2]})
 
@@ -2066,14 +2069,14 @@ def run_welch_ttest():
 
         # Validar las columnas especificadas
         if numeric_column not in dataframe.columns or categorical_column not in dataframe.columns:
-            return jsonify({'error': 'Las columnas especificadas no se encontraron en los datos.'}), 400
+            return jsonify({'error': 'The specified columns were not found in the data.'}), 400
 
         # Agrupar los datos por la columna categórica
         groups = dataframe.groupby(categorical_column)[numeric_column].apply(list)
 
         # Verificar que haya al menos dos grupos
         if len(groups) < 2:
-            return jsonify({'error': 'Datos insuficientes para realizar el Welch T-Test. Se requieren al menos dos categorías.'}), 400
+            return jsonify({'error': 'Insufficient data to perform the Welch T-Test. At least two categories are required.'}), 400
 
         category_names = groups.index.tolist()
 
@@ -2086,8 +2089,8 @@ def run_welch_ttest():
         )
 
         # Evaluar la significancia según el valor p
-        significance = "significativo" if p_value < 0.05 else "no significativo"
-        decision = "Rechazar la hipótesis nula" if p_value < 0.05 else "No rechazar la hipótesis nula"
+        significance = "significant" if p_value < 0.05 else "not significant"
+        decision = "Reject the null hypothesis" if p_value < 0.05 else "Do not reject the null hypothesis"
 
         # Construir el resultado
         result = {
@@ -2118,24 +2121,25 @@ def run_levene():
 
         # Validar columnas
         if numeric_column not in dataframe.columns or categorical_column not in dataframe.columns:
-            return jsonify({'error': 'Las columnas especificadas no se encontraron en los datos.'}), 400
+            return jsonify({'error': 'The specified columns were not found in the data.'}), 400
 
-        # Agrupar los datos por la columna categórica
+        # Group the data by the categorical column
         groups = dataframe.groupby(categorical_column)[numeric_column].apply(list)
 
-        # Verificar que haya al menos dos grupos
+        # Ensure there are at least two groups
         if len(groups) < 2:
-            return jsonify({'error': 'Se necesitan al menos dos categorías para realizar la prueba de Levene.'}), 400
+            return jsonify({'error': 'At least two categories are required to perform Levene’s test.'}), 400
 
-        # Convertir los grupos a una lista de listas
+        # Convert the groups to a list of lists
         group_values = [group for group in groups]
 
-        # Realizar la prueba de Levene
+        # Perform Levene’s test
         stat, p_value = stats.levene(*group_values)
 
-        # Evaluar la significancia según el valor p
-        significance = "significativo" if p_value < 0.05 else "no significativo"
-        decision = "Rechazar la hipótesis nula: las varianzas no son iguales" if p_value < 0.05 else "No rechazar la hipótesis nula: las varianzas son iguales"
+        # Evaluate significance based on the p-value
+        significance = "significant" if p_value < 0.05 else "not significant"
+        decision = "Reject the null hypothesis: the variances are not equal" if p_value < 0.05 else "Do not reject the null hypothesis: the variances are equal"
+
 
         # Preparar los resultados
         result = {
@@ -2165,14 +2169,14 @@ def run_anova():
 
         # Verificar que las columnas existan
         if numeric_column not in dataframe.columns or categorical_column not in dataframe.columns:
-            return jsonify({'error': 'Las columnas especificadas no se encontraron en los datos.'}), 400
+            return jsonify({'error': 'The specified columns were not found in the data.'}), 400
 
-        # Agrupar los datos por la columna categórica
+        # Group the data by the categorical column
         groups = dataframe.groupby(categorical_column)[numeric_column].apply(list)
 
-        # Verificar si hay suficientes datos para cada grupo
+        # Check if there is sufficient data for each group
         if any(len(values) < 2 for values in groups):
-            return jsonify({'error': 'Hay grupos con datos insuficientes para realizar ANOVA.'}), 400
+            return jsonify({'error': 'There are groups with insufficient data to perform ANOVA.'}), 400
 
         # Realizar ANOVA
         f_statistic, p_value = f_oneway(*groups)
@@ -2185,19 +2189,19 @@ def run_anova():
             'total_observations': sum(len(group) for group in groups),
         }
 
-        # Si se habilitan las comparaciones múltiples, realizar Tukey HSD
+        # If multiple comparisons are enabled, perform Tukey HSD
         if multiple_comparisons:
             if len(groups) < 3:
-                return jsonify({'error': 'Se requieren al menos tres grupos para realizar comparaciones múltiples (Tukey HSD).'}), 400
+                return jsonify({'error': 'At least three groups are required to perform multiple comparisons (Tukey HSD).'}), 400
 
             try:
-                # Preparar los datos para Tukey HSD
+                # Prepare the data for Tukey HSD
                 all_data = []
                 labels = []
                 for i, group in enumerate(groups):
-                    # Verificar que el grupo tenga al menos un valor
+                    # Check that the group has at least one value
                     if len(group) == 0:
-                        return jsonify({'error': f'El grupo {groups.index[i]} no contiene datos suficientes.'}), 400
+                        return jsonify({'error': f'Group {groups.index[i]} does not contain enough data.'}), 400
 
                     all_data.extend(group)
                     labels.extend([groups.index[i]] * len(group))
@@ -2242,7 +2246,7 @@ def run_anova():
                 result['tukey'] = tukey_summary
 
             except Exception as e:
-                return jsonify({'error': f'Error al ejecutar Tukey HSD: {str(e)}'}), 500
+                return jsonify({'error': f'Error executing Tukey HSD: {str(e)}'}), 500
 
         # Limpiar los resultados antes de enviarlos
         result = clean_results(result)
@@ -2267,15 +2271,15 @@ def run_friedman():
 
         # Validar que las columnas existan
         if not all(col in dataframe.columns for col in [numeric_column, group_column, subject_column]):
-            return jsonify({'error': 'Las columnas especificadas no se encontraron en los datos.'}), 400
+            return jsonify({'error': 'The specified columns were not found in the data.'}), 400
 
-        # Filtrar datos válidos
+        # Filter valid data
         filtered_df = dataframe[[subject_column, group_column, numeric_column]].dropna(subset=[subject_column, group_column, numeric_column])
 
         if filtered_df.empty:
-            return jsonify({'error': 'No hay datos suficientes después de eliminar filas con valores nulos.'}), 400
+            return jsonify({'error': 'There is not enough data after removing rows with null values.'}), 400
 
-        # Reorganizar datos para Friedman
+        # Reshape data for Friedman test
         grouped_data = filtered_df.pivot(index=subject_column, columns=group_column, values=numeric_column)
 
         initial_subjects = dataframe[subject_column].nunique()
@@ -2283,35 +2287,36 @@ def run_friedman():
         omitted_subjects = initial_subjects - remaining_subjects
 
         if remaining_subjects < 2:
-            return jsonify({'error': 'No hay suficientes sujetos con datos completos para realizar la prueba.'}), 400
+            return jsonify({'error': 'There are not enough subjects with complete data to perform the test.'}), 400
 
-        # Prueba de Friedman
+        # Perform Friedman test
         try:
             friedman_stat, p_value = stats.friedmanchisquare(*[grouped_data[group].dropna() for group in grouped_data.columns])
         except Exception as e:
-            return jsonify({'error': f'Error en la prueba de Friedman: {str(e)}'}), 500
+            return jsonify({'error': f'Error in Friedman test: {str(e)}'}), 500
+
 
         result = {
-            'test': 'Prueba de Friedman',
+            'test': 'Friedman Test',
             'friedman_statistic': round(friedman_stat, 4),
             'p_value': round(p_value, 4),
             'num_groups': grouped_data.shape[1],
             'num_subjects': remaining_subjects,
-            'significance': "significativo" if p_value < 0.05 else "no significativo",
-            'decision': "Rechazar la hipótesis nula" if p_value < 0.05 else "No rechazar la hipótesis nula"
+            'significance': "significant" if p_value < 0.05 else "not significant",
+            'decision': "Reject the null hypothesis" if p_value < 0.05 else "Do not reject the null hypothesis"
         }
 
         if omitted_subjects > 0:
-            result['warnings'] = [f"Se omitieron {omitted_subjects} sujetos debido a datos incompletos."]
+            result['warnings'] = [f"{omitted_subjects} subjects were omitted due to incomplete data."]
 
-        # Comparaciones múltiples (Post-hoc Nemenyi)
+        # Multiple comparisons (Post-hoc Nemenyi)
         if include_posthoc:
             try:
-                # Garantizar datos completos para comparaciones múltiples
+                # Ensure complete data for multiple comparisons
                 posthoc_data = grouped_data.dropna()
 
                 if posthoc_data.shape[1] < 3:
-                    return jsonify({'error': 'Se requieren al menos tres grupos para realizar comparaciones múltiples.'}), 400
+                    return jsonify({'error': 'At least three groups are required to perform multiple comparisons.'}), 400
 
                 import scikit_posthocs as sp
                 posthoc_results = sp.posthoc_nemenyi_friedman(posthoc_data.to_numpy())
@@ -2327,13 +2332,13 @@ def run_friedman():
                             posthoc_summary.append({
                                 'comparison': f"{group1} vs {group2}",
                                 'p_value_adjusted': round(p_value_adj, 4),
-                                'reject_h0': "Sí" if p_value_adj < 0.05 else "No"
+                                'reject_h0': "Yes" if p_value_adj < 0.05 else "No"
                             })
 
                 result['posthoc_comparisons'] = posthoc_summary
 
             except Exception as e:
-                return jsonify({'error': f'Error en comparaciones múltiples: {str(e)}'}), 500
+                return jsonify({'error': f'Error in multiple comparisons: {str(e)}'}), 500
 
         return jsonify({'result': result})
 
@@ -2353,21 +2358,22 @@ def run_chisquare():
         show_contingency_table = data.get('show_contingency_table', False)
 
         if categorical_column1 not in dataframe.columns or categorical_column2 not in dataframe.columns:
-            return jsonify({'error': 'Las columnas especificadas no se encontraron en los datos.'}), 400
+            return jsonify({'error': 'The specified columns were not found in the data.'}), 400
 
-        # Crear la tabla de contingencia
+        # Create the contingency table
         contingency_table = pd.crosstab(dataframe[categorical_column1], dataframe[categorical_column2])
 
-        # Realizar el test de Chi-Cuadrado
+        # Perform the Chi-Square test
         chi2, p_value, dof, expected = chi2_contingency(contingency_table)
 
-        # Evaluar la significancia
-        significance = "significativo" if p_value < 0.05 else "no significativo"
-        decision = "Rechazar la hipótesis nula" if p_value < 0.05 else "No rechazar la hipótesis nula"
+        # Evaluate significance
+        significance = "significant" if p_value < 0.05 else "not significant"
+        decision = "Reject the null hypothesis" if p_value < 0.05 else "Do not reject the null hypothesis"
+
 
         # Preparar el resultado
         result = {
-            'test': 'Chi-Square Test',
+            'test': 'Chi-Square test',
             'chi_square_statistic': chi2,
             'p_value': p_value,
             'degrees_of_freedom': dof,
@@ -2395,32 +2401,32 @@ def run_fisher():
         categorical_column2 = data.get('categorical_column2')
         show_contingency_table = data.get('show_contingency_table', False)
 
-        # Validar que las columnas existan en el DataFrame
+        # Validate that the columns exist in the DataFrame
         if categorical_column1 not in dataframe.columns or categorical_column2 not in dataframe.columns:
-            return jsonify({'error': 'Las columnas especificadas no se encontraron en los datos.'}), 400
+            return jsonify({'error': 'The specified columns were not found in the data.'}), 400
 
-        # Crear la tabla de contingencia
+        # Create the contingency table
         contingency_table = pd.crosstab(dataframe[categorical_column1], dataframe[categorical_column2])
 
-        # Verificar el tamaño de la tabla
+        # Check the size of the table
         is_not_2x2 = contingency_table.shape != (2, 2)
         warning_message = None
 
-        # Si la tabla no es 2x2, establecer una advertencia
+        # If the table is not 2x2, set a warning
         if is_not_2x2:
-            warning_message = "La tabla de contingencia no es 2x2. Se realizará el cálculo, pero los resultados pueden no ser válidos según los supuestos del Test de Fisher."
+            warning_message = "The contingency table is not 2x2. The calculation will proceed, but the results may not be valid under Fisher's Test assumptions."
 
-        # Intentar realizar el Test de Fisher
+        # Attempt to perform Fisher's Test
         try:
             _, p_value = fisher_exact(contingency_table)
         except ValueError as e:
             return jsonify({
-                'error': f'Error al calcular el Test de Fisher: {str(e)}'
+                'error': f'Error calculating Fisher\'s Test: {str(e)}'
             }), 400
 
-        # Evaluar la significancia
-        significance = "significativo" if p_value < 0.05 else "no significativo"
-        decision = "Rechazar la hipótesis nula" if p_value < 0.05 else "No rechazar la hipótesis nula"
+        # Evaluate significance
+        significance = "significant" if p_value < 0.05 else "not significant"
+        decision = "Reject the null hypothesis" if p_value < 0.05 else "Do not reject the null hypothesis"
 
         # Preparar el resultado
         result = {
@@ -2455,30 +2461,30 @@ def run_mcnemar():
         categorical_column2 = data.get('categorical_column2')
         show_contingency_table = data.get('show_contingency_table', False)
 
-        # Validar que las columnas existan
+        # Validate that the columns exist
         if categorical_column1 not in dataframe.columns or categorical_column2 not in dataframe.columns:
-            return jsonify({'error': 'Las columnas especificadas no se encontraron en los datos.'}), 400
+            return jsonify({'error': 'The specified columns were not found in the data.'}), 400
 
-        # Crear la tabla de contingencia
+        # Create the contingency table
         contingency_table = pd.crosstab(dataframe[categorical_column1], dataframe[categorical_column2])
 
-        # Verificar si la tabla es 2x2
+        # Check if the table is 2x2
         if contingency_table.shape != (2, 2):
             return jsonify({
-                'error': 'La tabla de contingencia no es 2x2. El Test de McNemar requiere una tabla de este tipo.'
+                'error': 'The contingency table is not 2x2. McNemar’s Test requires a table of this type.'
             }), 400
 
-        # Ejecutar el Test de McNemar
+        # Perform McNemar's Test
         try:
             result = mcnemar(contingency_table, exact=True)
             p_value = result.pvalue
             statistic = result.statistic
         except ValueError as e:
-            return jsonify({'error': f'Error al calcular el Test de McNemar: {str(e)}'}), 400
+            return jsonify({'error': f'Error calculating McNemar’s Test: {str(e)}'}), 400
 
-        # Evaluar la significancia
-        significance = "significativo" if p_value < 0.05 else "no significativo"
-        decision = "Rechazar la hipótesis nula" if p_value < 0.05 else "No rechazar la hipótesis nula"
+        # Evaluate significance
+        significance = "significant" if p_value < 0.05 else "not significant"
+        decision = "Reject the null hypothesis" if p_value < 0.05 else "Do not reject the null hypothesis"
 
         # Preparar el resultado
         response = {
@@ -2509,29 +2515,29 @@ def run_shapiro():
         numeric_column = data.get('sample')
         group_column = data.get('group_column', None)
 
-        # Validar que la columna numérica exista
+        # Validate that the numeric column exists
         if numeric_column not in dataframe.columns:
-            return jsonify({'error': 'La columna numérica especificada no se encontró en los datos.'}), 400
+            return jsonify({'error': 'The specified numeric column was not found in the data.'}), 400
 
-        # Si se especifica una columna de grupo, hacer Shapiro-Wilk por grupo
+        # If a group column is specified, perform Shapiro-Wilk by group
         if group_column and group_column in dataframe.columns:
             groups = dataframe.groupby(group_column)[numeric_column].apply(list)
             shapiro_results = {}
 
             for group, values in groups.items():
                 if len(values) < 3:
-                    shapiro_results[group] = {'w_statistic': None, 'p_value': 'Datos insuficientes'}
+                    shapiro_results[group] = {'w_statistic': None, 'p_value': 'Insufficient data'}
                 else:
                     w_stat, p_value = shapiro(values)
-                    # Resultado por grupos
+                    # Result by groups
                     shapiro_results[group] = clean_results({'w_statistic': w_stat, 'p_value': p_value})
 
             return jsonify({'type': 'grouped', 'result': shapiro_results})
 
-        # Si no se especifica grupo, hacer Shapiro-Wilk global
+        # If no group is specified, perform a global Shapiro-Wilk test
         values = dataframe[numeric_column].dropna()
         if len(values) < 3:
-            return jsonify({'error': 'Datos insuficientes para realizar la prueba de Shapiro-Wilk.'}), 400
+            return jsonify({'error': 'Insufficient data to perform the Shapiro-Wilk test.'}), 400
 
         w_stat, p_value = shapiro(values)
         # Resultado global
@@ -2553,30 +2559,30 @@ def run_kolmogorov():
         numeric_column = data.get('sample')
         group_column = data.get('group_column', None)
 
-        # Validar que la columna numérica exista
+        # Validate that the numeric column exists
         if numeric_column not in dataframe.columns:
-            return jsonify({'error': 'La columna numérica especificada no se encontró en los datos.'}), 400
+            return jsonify({'error': 'The specified numeric column was not found in the data.'}), 400
 
-        # Si se especifica una columna de grupo, hacer Kolmogorov-Smirnov por grupo
+        # If a group column is specified, perform Kolmogorov-Smirnov by group
         if group_column and group_column in dataframe.columns:
             groups = dataframe.groupby(group_column)[numeric_column].apply(list)
             ks_results = {}
 
             for group, values in groups.items():
                 if len(values) < 3:
-                    ks_results[group] = {'ks_statistic': None, 'p_value': 'Datos insuficientes'}
+                    ks_results[group] = {'ks_statistic': None, 'p_value': 'Insufficient data'}
                 else:
-                    # Realizar prueba de Kolmogorov-Smirnov asumiendo distribución normal
+                    # Perform Kolmogorov-Smirnov test assuming normal distribution
                     ks_stat, p_value = stats.kstest(values, 'norm', args=(np.mean(values), np.std(values)))
-                    # Resultado por grupos
+                    # Result by groups
                     ks_results[group] = clean_results({'ks_statistic': ks_stat, 'p_value': p_value})
 
             return jsonify({'type': 'grouped', 'result': ks_results})
 
-        # Si no se especifica grupo, hacer Kolmogorov-Smirnov global
+        # If no group is specified, perform a global Kolmogorov-Smirnov test
         values = dataframe[numeric_column].dropna()
         if len(values) < 3:
-            return jsonify({'error': 'Datos insuficientes para realizar la prueba de Kolmogorov-Smirnov.'}), 400
+            return jsonify({'error': 'Insufficient data to perform the Kolmogorov-Smirnov test.'}), 400
 
         # Realizar prueba de Kolmogorov-Smirnov asumiendo distribución normal
         ks_stat, p_value = stats.kstest(values, 'norm', args=(np.mean(values), np.std(values)))
@@ -2599,23 +2605,23 @@ def run_mannwhitney():
         alternative = data.get('alternative', 'two-sided')
 
         if numeric_column not in dataframe.columns or categorical_column not in dataframe.columns:
-            return jsonify({'error': 'Las columnas especificadas no se encontraron en los datos.'}), 400
+            return jsonify({'error': 'The specified columns were not found in the data.'}), 400
 
-        # Agrupar los datos por la columna categórica
+        # Group the data by the categorical column
         groups = dataframe.groupby(categorical_column)[numeric_column].apply(list)
 
-        # Verificar que haya al menos dos grupos
+        # Ensure there are at least two groups
         if len(groups) < 2:
-            return jsonify({'error': 'Datos insuficientes para realizar el Mann-Whitney U Test. Se requieren al menos dos categorías.'}), 400
+            return jsonify({'error': 'Insufficient data to perform the Mann-Whitney U Test. At least two categories are required.'}), 400
 
         category_names = groups.index.tolist()
 
-        # Ejecutar el test Mann-Whitney U
+        # Perform the Mann-Whitney U Test
         u_stat, p_value = stats.mannwhitneyu(groups.iloc[0], groups.iloc[1], alternative=alternative)
 
-        # Evaluar la significancia según el valor p
-        significance = "significativo" if p_value < 0.05 else "no significativo"
-        decision = "Rechazar la hipótesis nula" if p_value < 0.05 else "No rechazar la hipótesis nula"
+        # Evaluate significance based on the p-value
+        significance = "significant" if p_value < 0.05 else "not significant"
+        decision = "Reject the null hypothesis" if p_value < 0.05 else "Do not reject the null hypothesis"
 
         result = {
             'test': 'Mann-Whitney U Test',
@@ -2647,28 +2653,28 @@ def run_wilcoxon():
         alternative = data.get('alternative', 'two-sided')
 
         if numeric_column not in dataframe.columns or categorical_column not in dataframe.columns:
-            return jsonify({'error': 'Las columnas especificadas no se encontraron en los datos.'}), 400
+            return jsonify({'error': 'The specified columns were not found in the data.'}), 400
 
-        # Agrupar los datos por la columna categórica
+        # Group the data by the categorical column
         groups = dataframe.groupby(categorical_column)[numeric_column].apply(list)
 
-        # Verificar que haya exactamente dos grupos
+        # Ensure there are exactly two groups
         if len(groups) != 2:
-            return jsonify({'error': 'La variable categórica debe tener exactamente dos categorías.'}), 400
+            return jsonify({'error': 'The categorical variable must have exactly two categories.'}), 400
 
         category_names = groups.index.tolist()
 
-        # Ajustar los tamaños de muestra si son diferentes
+        # Adjust sample sizes if they are different
         min_size = min(len(groups.iloc[0]), len(groups.iloc[1]))
         group1 = groups.iloc[0][:min_size]
         group2 = groups.iloc[1][:min_size]
 
-        # Ejecutar el test de Wilcoxon
+        # Perform the Wilcoxon test
         w_stat, p_value = stats.wilcoxon(group1, group2, alternative=alternative)
 
-        # Evaluar la significancia según el valor p
-        significance = "significativo" if p_value < 0.05 else "no significativo"
-        decision = "Rechazar la hipótesis nula" if p_value < 0.05 else "No rechazar la hipótesis nula"
+        # Evaluate significance based on the p-value
+        significance = "significant" if p_value < 0.05 else "not significant"
+        decision = "Reject the null hypothesis" if p_value < 0.05 else "Do not reject the null hypothesis"
 
         # Crear el resultado con el mismo formato que Mann-Whitney U
         result = {
@@ -2697,16 +2703,16 @@ def run_kruskal_wallis():
         categorical_column = data.get('categorical_column')
         multiple_comparisons = data.get('multiple_comparisons', False)
 
-        # Verificar que las columnas existan
+        # Verify that the columns exist
         if numeric_column not in dataframe.columns or categorical_column not in dataframe.columns:
-            return jsonify({'error': 'Las columnas especificadas no se encontraron en los datos.'}), 400
+            return jsonify({'error': 'The specified columns were not found in the data.'}), 400
 
-        # Agrupar los datos por la columna categórica
+        # Group the data by the categorical column
         groups = dataframe.groupby(categorical_column)[numeric_column].apply(list)
 
-        # Verificar si hay suficientes datos para cada grupo
+        # Check if there is sufficient data for each group
         if any(len(values) < 2 for values in groups):
-            return jsonify({'error': 'Hay grupos con datos insuficientes para realizar Kruskal-Wallis.'}), 400
+            return jsonify({'error': 'There are groups with insufficient data to perform Kruskal-Wallis.'}), 400
 
         # Realizar el test de Kruskal-Wallis
         h_statistic, p_value = stats.kruskal(*groups)
@@ -2766,7 +2772,7 @@ def run_kruskal_wallis():
                 result['dunn'] = dunn_summary
 
             except Exception as e:
-                return jsonify({'error': f'Error al ejecutar el test de Dunn: {str(e)}'}), 500
+                return jsonify({'error': f'Error executing Dunn\'s test: {str(e)}'}), 500
 
         return jsonify({'result': result})
 
@@ -2785,26 +2791,26 @@ def run_pearson():
         correlation_by_categories = data.get('correlation_by_categories', False)
 
         if not numeric_column1 or not numeric_column2:
-            return jsonify({'error': 'Debe especificar dos columnas numéricas válidas.'}), 400
+            return jsonify({'error': 'You must specify two valid numeric columns.'}), 400
 
-        # Caso: Correlación general sin categorías
+        # Case: General correlation without categories
         if not correlation_by_categories:
             corr, p_value = stats.pearsonr(dataframe[numeric_column1], dataframe[numeric_column2])
             
-            # Reemplazar NaN o infinito con None
+            # Replace NaN or infinity with None
             corr = None if not math.isfinite(corr) else round(corr, 4)
             p_value = None if not math.isfinite(p_value) else round(p_value, 4)
 
             result = {
                 'correlation': corr,
                 'p_value': p_value,
-                'significance': "significativo" if p_value and p_value < 0.05 else "no significativo"
+                'significance': "significant" if p_value and p_value < 0.05 else "not significant"
             }
             return jsonify({'result': result})
 
-        # Caso: Correlación por categorías
+        # Case: Correlation by categories
         if not categorical_column:
-            return jsonify({'error': 'Debe especificar una columna categórica.'}), 400
+            return jsonify({'error': 'You must specify a categorical column.'}), 400
 
         grouped = dataframe.groupby(categorical_column)
         correlation_results = []
@@ -2819,16 +2825,17 @@ def run_pearson():
                 p_value = None if not math.isfinite(p_value) else round(p_value, 4)
 
                 correlation_results.append({
-                    'category': category,
-                    'correlation': corr,
-                    'p_value': p_value,
-                    'significance': "significativo" if p_value and p_value < 0.05 else "no significativo"
-                })
+                'category': category,
+                'correlation': corr,
+                'p_value': p_value,
+                'significance': "significant" if p_value and p_value < 0.05 else "not significant"
+            })
             else:
                 correlation_results.append({
                     'category': category,
-                    'error': 'No hay suficientes datos para calcular la correlación.'
+                    'error': 'Insufficient data to calculate the correlation.'
                 })
+
 
         # Return debe ir FUERA del bucle
         return jsonify({
@@ -2852,26 +2859,26 @@ def run_spearman():
         correlation_by_categories = data.get('correlation_by_categories', False)
 
         if not numeric_column1 or not numeric_column2:
-            return jsonify({'error': 'Debe especificar dos columnas numéricas válidas.'}), 400
+            return jsonify({'error': 'You must specify two valid numeric columns.'}), 400
 
-        # Caso: Correlación general sin categorías
+        # Case: General correlation without categories
         if not correlation_by_categories:
             corr, p_value = stats.spearmanr(dataframe[numeric_column1], dataframe[numeric_column2])
             
-            # Reemplazar NaN o infinito con None
+            # Replace NaN or infinity with None
             corr = None if not math.isfinite(corr) else round(corr, 4)
             p_value = None if not math.isfinite(p_value) else round(p_value, 4)
 
             result = {
                 'correlation': corr,
                 'p_value': p_value,
-                'significance': "significativo" if p_value and p_value < 0.05 else "no significativo"
+                'significance': "significant" if p_value and p_value < 0.05 else "not significant"
             }
             return jsonify({'result': result})
 
-        # Caso: Correlación por categorías
+        # Case: Correlation by categories
         if not categorical_column:
-            return jsonify({'error': 'Debe especificar una columna categórica.'}), 400
+            return jsonify({'error': 'You must specify a categorical column.'}), 400
 
         grouped = dataframe.groupby(categorical_column)
         correlation_results = []
@@ -2886,16 +2893,17 @@ def run_spearman():
                 p_value = None if not math.isfinite(p_value) else round(p_value, 4)
 
                 correlation_results.append({
-                    'category': category,
-                    'correlation': corr,
-                    'p_value': p_value,
-                    'significance': "significativo" if p_value and p_value < 0.05 else "no significativo"
-                })
+                'category': category,
+                'correlation': corr,
+                'p_value': p_value,
+                'significance': "significant" if p_value and p_value < 0.05 else "not significant"
+            })
             else:
                 correlation_results.append({
                     'category': category,
-                    'error': 'No hay suficientes datos para calcular la correlación.'
-                })
+                    'error': 'Insufficient data to calculate the correlation.'
+            })
+
 
         # Return debe ir FUERA del bucle
         return jsonify({
@@ -3005,7 +3013,7 @@ def levene_test():
 
         # Validar que haya al menos dos grupos no vacíos
         if len(groups) < 2:
-            return jsonify({'error': 'Se requieren al menos dos grupos con datos para realizar la prueba de Levene.'}), 400
+            return jsonify({'error': "At least two groups with data are required to perform Levene's test."}), 400
 
         # Realizar la prueba de Levene
         stat, p_value = stats.levene(*groups)
@@ -3035,9 +3043,10 @@ def levene_test():
         return jsonify(levene_results)
 
     except Exception as e:
-        # Registrar el error en el servidor para depuración
-        print(f'Error al ejecutar la prueba de Levene: {str(e)}')
-        return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
+        # Log the error on the server for debugging
+        print(f'Error executing Levene\'s test: {str(e)}')
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
+
 
 # Ruta para la prueba t de Student con opción pareado y unilateral/bilateral
 @app.route('/api/ttest', methods=['POST'])
@@ -3086,24 +3095,25 @@ def chi_square_goodness_of_fit():
         if expected:
             expected = [float(x) for x in expected]
     except ValueError:
-        return jsonify({'error': 'Los datos proporcionados deben ser numéricos.'}), 400
+        return jsonify({'error': 'The provided data must be numeric.'}), 400
 
-    # Validar que observed y expected tengan la misma longitud si expected está presente
+    # Validate that observed and expected have the same length if expected is provided
     if expected and len(observed) != len(expected):
-        return jsonify({'error': 'Las frecuencias observadas y esperadas deben tener el mismo tamaño.'}), 400
+        return jsonify({'error': 'Observed and expected frequencies must have the same size.'}), 400
 
     try:
-        # Realizar la prueba Chi-Cuadrado
+        # Perform the Chi-Square test
         if expected:
             stat, p_value = chisquare(f_obs=observed, f_exp=expected)
         else:
             stat, p_value = chisquare(f_obs=observed)
         
-        # Retornar los resultados
-        return jsonify({'test': 'Chi-Square (Bondad de Ajuste)', 'statistic': stat, 'pValue': p_value})
+        # Return the results
+        return jsonify({'test': 'Chi-Square (Goodness of Fit)', 'statistic': stat, 'pValue': p_value})
     except Exception as e:
-        # Manejo de errores en la ejecución del test
-        return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
+        # Handle errors during test execution
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
+
 
 
 
@@ -3170,7 +3180,7 @@ def anova_one_way():
 
         # Validar que haya al menos dos grupos no vacíos
         if len(groups) < 2:
-            return jsonify({'error': 'Se requieren al menos dos grupos con datos para realizar ANOVA.'}), 400
+            return jsonify({'error': 'At least two groups with data are required to perform ANOVA.'}), 400
 
         # Realizar el ANOVA de una vía
         f_statistic, p_value = f_oneway(*groups)
@@ -3186,21 +3196,22 @@ def anova_one_way():
 
         # Realizar comparaciones múltiples si está habilitado
         if multiple_comparisons:
-            # Verificar que haya al menos tres grupos para hacer Tukey HSD
+            # Ensure there are at least three groups to perform Tukey HSD
             if len(groups) < 3:
-                return jsonify({'error': 'Se requieren al menos tres grupos para realizar comparaciones múltiples (Tukey HSD).'}), 400
-            
+                return jsonify({'error': 'At least three groups are required to perform multiple comparisons (Tukey HSD).'}), 400
+
             try:
-                # Preparar los datos para Tukey HSD
+                # Prepare data for Tukey HSD
                 all_data = []
                 labels = []
                 for i, group in enumerate(groups):
-                    # Verificar que cada grupo tenga al menos un valor
+                    # Ensure each group has at least one value
                     if len(group) == 0:
-                        return jsonify({'error': f'El grupo {i + 1} no contiene datos suficientes.'}), 400
+                        return jsonify({'error': f'Group {i + 1} does not contain enough data.'}), 400
 
                     all_data.extend(group)
-                    labels.extend([f'Grupo {i+1}'] * len(group))  # Cambia a 'Grupo {i+1}' para una mejor presentación
+                    labels.extend([f'Group {i+1}'] * len(group))  # Change to 'Group {i+1}' for better presentation
+
                 
                 # Convertir los datos a un DataFrame
                 df = pd.DataFrame({'value': all_data, 'group': labels})
@@ -3209,7 +3220,7 @@ def anova_one_way():
                 tukey = mc.pairwise_tukeyhsd(df['value'], df['group'], alpha=0.05)
 
                 # Procesar los resultados de Tukey HSD y generar texto formateado
-                tukey_summary = "Comparaciones múltiples (Tukey HSD):\n"
+                tukey_summary = "Multiple comparisons (Tukey HSD):\n"
                 for result in tukey.summary().data[1:]:  # Ignorar la cabecera
                     # Determinar el número de asteriscos en función del valor p ajustado
                     if result[3] < 0.001:
@@ -3223,25 +3234,25 @@ def anova_one_way():
                         
                     tukey_summary += (
                         f"----------------------------\n"  # Separador para mayor claridad
-                        f"Comparación: {result[0]} vs {result[1]}\n"
-                        f"  • Diferencia de Medias: {result[2]:.4f}\n"
-                        f"  • p-Value ajustado: {result[3]:.4f} {significance}\n"
-                        f"  • IC Inferior: {result[4]:.4f}, IC Superior: {result[5]:.4f}\n"
-                        f"  • Rechazo H0: {'Sí' if result[6] else 'No'}\n"
+                        f"Comparison: {result[0]} vs {result[1]}\n"
+                        f"  • Mean difference: {result[2]:.4f}\n"
+                        f"  • Adjusted p-Value: {result[3]:.4f} {significance}\n"
+                        f"  • Lower IC: {result[4]:.4f}, Upper IC: {result[5]:.4f}\n"
+                        f"  • Reject H0: {'Yes' if result[6] else 'No'}\n"
                     )
 
                 # Agregar el resumen de Tukey al resultado
                 anova_results['tukey'] = tukey_summary
 
             except Exception as e:
-                return jsonify({'error': f'Error al ejecutar Tukey HSD: {str(e)}'}), 500
+                return jsonify({'error': f'Error executing Tukey HSD: {str(e)}'}), 500
 
         return jsonify(anova_results)
     
     except Exception as e:
         # Registrar el error en el servidor para depuración
-        print(f'Error al ejecutar ANOVA: {str(e)}')
-        return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
+        print(f'Error executing ANOVA: {str(e)}')
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
 
 
 
@@ -3259,7 +3270,7 @@ def anova_two_way():
 
         # Asegurarse de que los vectores tengan la misma longitud
         if len(factor1) != len(factor2) or len(factor1) != len(values):
-            return jsonify({'error': 'Los vectores factor1, factor2 y values deben tener la misma longitud.'}), 400
+            return jsonify({'error': 'The vectors factor1, factor2, and values must have the same length.'}), 400
 
         # Crear un DataFrame con los datos, asegurando que factor1 y factor2 sean categóricos
         df = pd.DataFrame({
@@ -3299,7 +3310,7 @@ def anova_two_way():
         })
     
     except Exception as e:
-        return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
 
 # Mann-Whitney U Test con opción unilateral/bilateral
 @app.route('/api/mannwhitney', methods=['POST'])
@@ -3357,7 +3368,7 @@ def kruskal_wallis():
 
         # Validar que haya al menos dos grupos no vacíos
         if len(groups) < 2:
-            return jsonify({'error': 'Se requieren al menos dos grupos con datos para realizar la prueba Kruskal-Wallis.'}), 400
+            return jsonify({'error': 'At least two groups with data are required to perform the Kruskal-Wallis test.'}), 400
 
         # Realizar la prueba Kruskal-Wallis
         stat, p_value = stats.kruskal(*groups)
@@ -3388,7 +3399,7 @@ def kruskal_wallis():
         if multiple_comparisons:
             # Verificar que haya al menos tres grupos para realizar comparaciones múltiples
             if len(groups) < 3:
-                return jsonify({'error': 'Se requieren al menos tres grupos para realizar comparaciones múltiples.'}), 400
+                return jsonify({'error': 'At least three groups are required to perform multiple comparisons.'}), 400
 
             try:
                 # Preparar los datos para las comparaciones múltiples
@@ -3396,19 +3407,19 @@ def kruskal_wallis():
                 labels = []
                 for i, group in enumerate(groups):
                     all_data.extend(group)
-                    labels.extend([f'Grupo {i+1}'] * len(group))
+                    labels.extend([f'Group {i+1}'] * len(group))
 
                 # Convertir a DataFrame para usar en las pruebas
                 df = pd.DataFrame({'value': all_data, 'group': labels})
 
                 # Realizar la prueba de Dunn
                 if p_value_adjustment not in ['bonferroni', 'holm']:
-                    return jsonify({'error': 'Método de ajuste no válido. Use "bonferroni" o "holm".'}), 400
+                    return jsonify({'error': "Invalid adjustment method. Use 'bonferroni' or 'holm'."}), 400
                 
                 dunn = sp.posthoc_dunn(df, val_col='value', group_col='group', p_adjust=p_value_adjustment)
 
                 # Procesar los resultados de Dunn
-                dunn_summary = f"Comparaciones múltiples (Dunn con corrección {p_value_adjustment.capitalize()}):\n"
+                dunn_summary = f"Multiple comparisons (Dunn with correction {p_value_adjustment.capitalize()}):\n"
                 for i in range(len(dunn)):
                     for j in range(i+1, len(dunn)):
                         # Determinar el número de asteriscos en función del valor p ajustado
@@ -3425,20 +3436,20 @@ def kruskal_wallis():
                         # Generar el texto para cada comparación
                         dunn_summary += (
                             f"----------------------------\n"
-                            f"Comparación: Grupo {i + 1} vs Grupo {j + 1}\n"
-                            f"  • p-Value ajustado: {p_val:.4f} {significance}\n"
+                            f"Compararison: Group {i + 1} vs Group {j + 1}\n"
+                            f"  • Adjusted p-Value: {p_val:.4f} {significance}\n"
                         )
 
                 # Agregar el resumen de Dunn al resultado
                 kw_results['dunn'] = dunn_summary
 
             except Exception as e:
-                return jsonify({'error': f'Error al ejecutar la prueba de Dunn: {str(e)}'}), 500
+                return jsonify({'error': f'Error executing Dunn\'s test: {str(e)}'}), 500
 
         return jsonify(kw_results)
 
     except Exception as e:
-        return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
 
 
 # Friedman Test con comparaciones múltiples
@@ -3449,14 +3460,15 @@ def friedman_test():
         groups = data.get('groups', [])
         multiple_comparisons = data.get('multipleComparisons', False)
 
-        # Validación de que haya al menos 3 grupos
+        # Validation to ensure there are at least 3 groups
         if len(groups) < 3:
-            return jsonify({'error': 'Se requieren al menos 3 grupos para la prueba de Friedman.'}), 400
+            return jsonify({'error': 'At least 3 groups are required for the Friedman test.'}), 400
 
-        # Validar que todos los grupos tengan el mismo número de observaciones
+        # Validate that all groups have the same number of observations
         num_observations = len(groups[0])
         if not all(len(g) == num_observations for g in groups):
-            return jsonify({'error': 'Todos los grupos deben tener el mismo número de observaciones.'}), 400
+            return jsonify({'error': 'All groups must have the same number of observations.'}), 400
+
 
         # Realizar la prueba de Friedman
         stat, p_value = stats.friedmanchisquare(*groups)
@@ -3488,13 +3500,13 @@ def friedman_test():
             try:
                 # Preparar los datos en un DataFrame en formato de bloques
                 # Cada columna será un grupo y cada fila una observación
-                df = pd.DataFrame({f'Grupo {i+1}': group for i, group in enumerate(groups)})
+                df = pd.DataFrame({f'Group {i+1}': group for i, group in enumerate(groups)})
 
                 # Realizar la prueba de Nemenyi
                 nemenyi = sp.posthoc_nemenyi_friedman(df)
 
                 # Procesar los resultados de Nemenyi en formato de texto
-                nemenyi_summary = "Comparaciones múltiples (Nemenyi):\n"
+                nemenyi_summary = "Multiple comparisons (Nemenyi):\n"
                 for i in range(len(nemenyi)):
                     for j in range(i + 1, len(nemenyi)):
                         # Determinar el número de asteriscos en función del valor p ajustado
@@ -3511,20 +3523,20 @@ def friedman_test():
                         # Generar el texto para cada comparación
                         nemenyi_summary += (
                             f"----------------------------\n"
-                            f"Comparación: Grupo {i + 1} vs Grupo {j + 1}\n"
-                            f"  • p-Value ajustado: {p_val:.3f} {significance}\n"
+                            f"Comparison: Group {i + 1} vs Group {j + 1}\n"
+                            f"  • Adjusted p-Value: {p_val:.3f} {significance}\n"
                         )
 
                 # Agregar el resumen de Nemenyi al resultado
                 friedman_results['nemenyi'] = nemenyi_summary
 
             except Exception as e:
-                return jsonify({'error': f'Error al ejecutar la prueba de Nemenyi: {str(e)}'}), 500
+                return jsonify({'error': f'Error executing the Nemenyi test: {str(e)}'}), 500
 
         return jsonify(friedman_results)
 
     except Exception as e:
-        return jsonify({'error': f'Error interno del servidor: {str(e)}'}), 500
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
 
 
 
@@ -3537,7 +3549,7 @@ def fisher_test():
 
         # Validar que sea una tabla 2x2
         if len(observed) != 2 or len(observed[0]) != 2:
-            return jsonify({'error': 'Fisher’s exact test requires a 2x2 contingency table.'}), 400
+            return jsonify({'error': 'Fisher\'s exact test requires a 2x2 contingency table.'}), 400
 
         # Convertir la tabla a un array de Numpy para facilitar el manejo
         try:
@@ -3582,7 +3594,7 @@ def fisher_test():
         }
 
         if used_smoothing:
-            response['contiene0'] = "Se aplicó un suavizado aditivo para manejar los 0. Esto agregará 1 a todas las celdas de la tabla y permitirá realizar la prueba."
+            response['contiene0'] = "An additive smoothing was applied to handle the 0s. This will add 1 to all cells in the table and allow the test to be performed."
 
         return jsonify(response)
 
@@ -3601,7 +3613,7 @@ def mcnemar_test():
         observed = data['observed']
 
         if len(observed) != 2 or len(observed[0]) != 2:
-            return jsonify({'error': 'McNemar’s test requires a 2x2 contingency table.'}), 400
+            return jsonify({'error': 'McNemar\'s test requires a 2x2 contingency table.'}), 400
 
         result = mcnemar(observed, exact=True)
 
@@ -3636,7 +3648,7 @@ def cochran_test():
         observed = data['observed']
 
         if len(observed[0]) < 3:
-            return jsonify({'error': 'Cochran’s Q test requires at least 3 treatments/conditions.'}), 400
+            return jsonify({'error': 'Cochran\'s Q test requires at least 3 treatments/conditions.'}), 400
 
         # Ejecutar la prueba de Cochran
         result = cochrans_q(observed)
@@ -3674,7 +3686,7 @@ def wilcoxon_test():
 
         # Asegurarse de que ambas muestras tengan el mismo número de observaciones
         if len(sample1) != len(sample2):
-            return jsonify({'error': 'Las dos muestras deben tener el mismo número de observaciones para la prueba Wilcoxon.'}), 400
+            return jsonify({'error': 'The two samples must have the same number of observations for the Wilcoxon test.'}), 400
 
         # Ejecutar la prueba de Wilcoxon
         stat, p_value = stats.wilcoxon(sample1, sample2, alternative=alternative)
@@ -3712,7 +3724,7 @@ def pearson_correlation():
 
     # Validar que ambas muestras tengan datos
     if not sample1 or not sample2:
-        return jsonify({'error': 'Ambas muestras deben contener datos.'}), 400
+        return jsonify({'error': 'Both samples must contain data.'}), 400
 
     try:
         # Convertir muestras a arrays numpy para procesamiento
@@ -3734,7 +3746,7 @@ def pearson_correlation():
             plt.plot(sample1, slope * sample1 + intercept, color='red', linewidth=2, label='Línea de tendencia')
 
             # Personalizar el gráfico
-            plt.title('Gráfico de Dispersión con Línea de Tendencia')
+            plt.title('Scatter plot with trend line')
             plt.xlabel('Sample 1')
             plt.ylabel('Sample 2')
             plt.legend()
@@ -3775,7 +3787,7 @@ def spearman_correlation():
 
     # Validar que ambas muestras tengan datos
     if not sample1 or not sample2:
-        return jsonify({'error': 'Ambas muestras deben contener datos.'}), 400
+        return jsonify({'error': 'Both samples must contain data.'}), 400
 
     try:
         # Convertir muestras a arrays numpy para procesamiento
@@ -3794,11 +3806,11 @@ def spearman_correlation():
 
             # Ajustar la línea de tendencia usando una regresión lineal
             m, b = np.polyfit(sample1, sample2, 1)
-            plt.plot(sample1, m * sample1 + b, color='red', label='Línea de tendencia')
+            plt.plot(sample1, m * sample1 + b, color='red', label='Trend line')
 
-            plt.title('Gráfico de dispersión de Spearman')
-            plt.xlabel('Muestra 1')
-            plt.ylabel('Muestra 2')
+            plt.title('Scatter plot for Spearman')
+            plt.xlabel('Sample 1')
+            plt.ylabel('Sample 2')
             plt.legend()
             plt.tight_layout()
 
@@ -3837,7 +3849,7 @@ def welch_t_test():
 
     # Validar que ambas muestras tengan datos
     if not sample1 or not sample2:
-        return jsonify({'error': 'Ambas muestras deben contener datos.'}), 400
+        return jsonify({'error': 'Both samples must contain data.'}), 400
 
     # Realizar la prueba t de Welch con opción de prueba unilateral/bilateral
     stat, p_value = stats.ttest_ind(sample1, sample2, equal_var=False, alternative=alternative)
@@ -3872,7 +3884,7 @@ def one_sample_t_test():
 
     # Validar que la muestra tenga datos
     if not sample:
-        return jsonify({'error': 'La muestra debe contener datos.'}), 400
+        return jsonify({'error': 'The sample must contain data.'}), 400
 
     # Realizar la prueba t de una muestra
     stat, p_value = stats.ttest_1samp(sample, population_mean)
@@ -3911,7 +3923,7 @@ def linear_regression():
 
         # Validar que el número de observaciones sea el mismo para predictores y respuesta
         if predictors.shape[0] != response.shape[0]:
-            raise ValueError("El número de predictores y respuestas debe coincidir.")
+            raise ValueError("The number of predictors and responses must match.")
 
         # Añadir una constante (intercepto) a los predictores
         X = sm.add_constant(predictors)
@@ -3937,16 +3949,17 @@ def linear_regression():
         scatter_plot_encoded = None
         if show_plot and predictors.shape[1] == 1:  # Solo generamos el gráfico si hay un predictor
             plt.figure(figsize=(6, 4))
-            plt.scatter(predictors, response, color='blue', label='Datos')
+            plt.scatter(predictors, response, color='blue', label='Data')
             
-            # Generar la línea de regresión
+            # Generate the regression line
             predicted_values = intercept + coefficients[0] * predictors.flatten()
-            plt.plot(predictors, predicted_values, color='red', label='Línea de Regresión')
+            plt.plot(predictors, predicted_values, color='red', label='Regression Line')
 
-            # Personalizar el gráfico
-            plt.title('Regresión Lineal')
+            # Customize the plot
+            plt.title('Linear Regression')
             plt.xlabel('Predictor')
-            plt.ylabel('Respuesta')
+            plt.ylabel('Response')
+
             plt.legend()
             plt.tight_layout()
 
@@ -3975,7 +3988,7 @@ def linear_regression():
 
         return jsonify(response)
     except Exception as e:
-        print(f"Error en regresión lineal: {str(e)}")
+        print(f"Error in linear regression: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -3997,11 +4010,11 @@ def logistic_regression():
 
         # Validar que el número de observaciones sea el mismo para predictores y respuesta
         if predictors.shape[0] != response.shape[0]:
-            raise ValueError("El número de predictores y respuestas debe coincidir.")
+            raise ValueError("The number of predictors and responses must match.")
 
         # Verificar que la respuesta sea binaria (0 o 1)
         if not np.array_equal(np.unique(response), [0, 1]):
-            raise ValueError("La variable de respuesta debe ser binaria (0 o 1).")
+            raise ValueError("The response variable must be binary (0 or 1).")
 
         # Añadir una constante (intercepto) a los predictores
         X = sm.add_constant(predictors)
@@ -4042,7 +4055,7 @@ def logistic_regression():
             'confusion_matrix': cm
         })
     except Exception as e:
-        print(f"Error en regresión logística: {str(e)}")
+        print(f"Error in logistic regression: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -4073,7 +4086,7 @@ def cox_regression():
 
         # Validar que el número de observaciones sea el mismo en predictores, tiempo y evento
         if not (predictors.shape[0] == time.shape[0] == event.shape[0]):
-            raise ValueError("El número de observaciones debe coincidir en predictores, tiempo y evento.")
+            raise ValueError("The number of observations must match in predictors, time, and event.")
 
         # Convertir a DataFrame para el modelo de Cox
         df = pd.DataFrame(predictors, columns=[f'Predictor_{i+1}' for i in range(predictors.shape[1])])
@@ -4097,7 +4110,7 @@ def cox_regression():
             'confidence_intervals': confidence_intervals
         })
     except Exception as e:
-        print(f"Error en regresión de Cox: {str(e)}")
+        print(f"Error in Cox regression: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -4118,7 +4131,7 @@ def poisson_regression():
 
         # Validar que el número de observaciones sea el mismo para predictores y respuesta
         if predictors.shape[0] != response.shape[0]:
-            raise ValueError("El número de predictores y respuestas debe coincidir.")
+            raise ValueError("The number of predictors and responses must match.")
 
         # Añadir una constante (intercepto) a los predictores
         X = sm.add_constant(predictors)
@@ -4150,7 +4163,7 @@ def poisson_regression():
             'confidence_intervals': confidence_intervals
         })
     except Exception as e:
-        print(f"Error en regresión de Poisson: {str(e)}")
+        print(f"Error in Poisson regression: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 
