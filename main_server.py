@@ -575,7 +575,7 @@ def calculate_descriptive_statistics(request_body):
 
             for category, group in grouped:
                 # Calcular estadísticas básicas
-                stats = {
+                stat = {
                     'count': float(group.size),
                     'mean': float(group.mean()) if group.size > 0 else None,
                     'median': float(group.median()) if group.size > 0 else None,
@@ -583,7 +583,7 @@ def calculate_descriptive_statistics(request_body):
                     'min': float(group.min()) if group.size > 0 else None,
                     'max': float(group.max()) if group.size > 0 else None,
                 }
-                stats_by_category[category] = stats
+                stats_by_category[category] = stat
 
             results['stats_by_category'] = stats_by_category
 
@@ -643,7 +643,7 @@ def calculate_descriptive_statistics(request_body):
 
         # Análisis para una sola muestra sin categorías
         def analyze_single_series(data_series, title_suffix):
-            stats = {
+            stat = {
                 'count': float(data_series.size),
                 'mean': float(data_series.mean()),
                 'median': float(data_series.median()),
@@ -676,7 +676,7 @@ def calculate_descriptive_statistics(request_body):
                 img = io.BytesIO()
                 plt.savefig(img, format='png')
                 img.seek(0)
-                stats['histogram'] = base64.b64encode(img.getvalue()).decode()
+                stat['histogram'] = base64.b64encode(img.getvalue()).decode()
                 plt.close()
 
             if show_boxplot:
@@ -688,7 +688,7 @@ def calculate_descriptive_statistics(request_body):
                 boxplot_img = io.BytesIO()
                 plt.savefig(boxplot_img, format='png')
                 boxplot_img.seek(0)
-                stats['boxplot'] = base64.b64encode(boxplot_img.getvalue()).decode()
+                stat['boxplot'] = base64.b64encode(boxplot_img.getvalue()).decode()
                 plt.close()
 
             if show_density:
@@ -700,7 +700,7 @@ def calculate_descriptive_statistics(request_body):
                 density_img = io.BytesIO()
                 plt.savefig(density_img, format='png')
                 density_img.seek(0)
-                stats['density_plot'] = base64.b64encode(density_img.getvalue()).decode()
+                stat['density_plot'] = base64.b64encode(density_img.getvalue()).decode()
                 plt.close()
             if show_violinplot:
                 plt.figure(figsize=(6, 4))
@@ -711,7 +711,7 @@ def calculate_descriptive_statistics(request_body):
                 violin_img = io.BytesIO()
                 plt.savefig(violin_img, format='png')
                 violin_img.seek(0)
-                stats['violin_plot'] = base64.b64encode(violin_img.getvalue()).decode()
+                stat['violin_plot'] = base64.b64encode(violin_img.getvalue()).decode()
                 plt.close()
 
             if show_raincloudplot:
@@ -724,9 +724,9 @@ def calculate_descriptive_statistics(request_body):
                 raincloud_img = io.BytesIO()
                 plt.savefig(raincloud_img, format='png')
                 raincloud_img.seek(0)
-                stats['raincloud_plot'] = base64.b64encode(raincloud_img.getvalue()).decode()
+                stat['raincloud_plot'] = base64.b64encode(raincloud_img.getvalue()).decode()
                 plt.close()
-            return stats
+            return stat
 
         # Si solo hay una muestra, devolver las estadísticas para una muestra
         if data_series2 is None:
