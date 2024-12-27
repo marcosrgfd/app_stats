@@ -733,36 +733,53 @@ def calculate_descriptive_statistics(request_body):
             results.update(analyze_single_series(data_series1, ""))
             return results
 
-        # Si hay dos muestras, realizar análisis conjunto
-        mean1 = float(data_series1.mean()) if not data_series1.empty else None
-        mean2 = float(data_series2.mean()) if not data_series2.empty else None
-        
-        if data_series1.empty or data_series2.empty:
-            correlation = None
-        else:
-            correlation, _ = stats.pearsonr(data_series1, data_series2)
+        if data_series2 is not None:
+            # Validar que ambas muestras tienen la misma longitud
+            if len(data_series1) != len(data_series2):
+                raise ValueError("Samples must have the same length for correlation.")
 
-        results.update({
-            'mean1': mean1,
-            'mean2': mean2,
-            'correlation': correlation
-        })
+            # Calcular las medias
+            mean1 = float(data_series1.mean()) if not data_series1.empty else None
+            mean2 = float(data_series2.mean()) if not data_series2.empty else None
 
-        if show_scatter:
-            plt.figure(figsize=(6, 4))
-            plt.scatter(data_series1, data_series2, color='purple', alpha=0.6)
-            plt.title('Scatter plot with trend line')
-            plt.xlabel('Sample 1')
-            plt.ylabel('Sample 2')
-            plt.tight_layout()
-            m, b = np.polyfit(data_series1, data_series2, 1)
-            plt.plot(data_series1, m * data_series1 + b, color='red')
-            scatter_img = io.BytesIO()
-            plt.savefig(scatter_img, format='png')
-            scatter_img.seek(0)
-            results['scatter_plot'] = base64.b64encode(scatter_img.getvalue()).decode()
-            plt.close()
-        return results
+            # Calcular la correlación
+            try:
+                if data_series1.empty or data_series2.empty:
+                    correlation = None
+                else:
+                    correlation, _ = stats.pearsonr(data_series1, data_series2)
+            except Exception as e:
+                correlation = None
+                print(f"Error al calcular la correlación: {str(e)}")
+
+            # Almacenar resultados
+            results = {
+                'mean1': mean1,
+                'mean2': mean2,
+                'correlation': correlation,
+            }
+
+            # Generar scatter plot si está solicitado
+            if show_scatter:
+                try:
+                    plt.figure(figsize=(6, 4))
+                    plt.scatter(data_series1, data_series2, color='purple', alpha=0.6)
+                    plt.title('Scatter plot with trend line')
+                    plt.xlabel('Sample 1')
+                    plt.ylabel('Sample 2')
+                    plt.tight_layout()
+                    # Agregar línea de tendencia
+                    m, b = np.polyfit(data_series1, data_series2, 1)
+                    plt.plot(data_series1, m * data_series1 + b, color='red')
+                    scatter_img = io.BytesIO()
+                    plt.savefig(scatter_img, format='png')
+                    scatter_img.seek(0)
+                    results['scatter_plot'] = base64.b64encode(scatter_img.getvalue()).decode()
+                    plt.close()
+                except Exception as e:
+                    print(f"Error al generar scatter plot: {str(e)}")
+
+            return results
 
     except Exception as e:
         return {'error': str(e)}
