@@ -549,7 +549,7 @@ def calculate_descriptive_statistics(request_body):
     try:
         # Extraer datos de la solicitud
         data_series1 = pd.Series(request_body.get('data1', []))
-        data_series2 = request_body.get('data2')
+        data_series2 = pd.Series(request_body.get('data2', []))
         category_series = request_body.get('categories')
 
         # Verificar si el cliente solicitó gráficos específicos
@@ -734,9 +734,13 @@ def calculate_descriptive_statistics(request_body):
             return results
 
         # Si hay dos muestras, realizar análisis conjunto
-        mean1 = float(data_series1.mean())
-        mean2 = float(data_series2.mean())
-        correlation, _ = stats.pearsonr(data_series1, data_series2)
+        mean1 = float(data_series1.mean()) if not data_series1.empty else None
+        mean2 = float(data_series2.mean()) if not data_series2.empty else None
+        
+        if data_series1.empty or data_series2.empty:
+            correlation = None
+        else:
+            correlation, _ = stats.pearsonr(data_series1, data_series2)
 
         results.update({
             'mean1': mean1,
