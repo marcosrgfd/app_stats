@@ -549,7 +549,7 @@ def calculate_descriptive_statistics(request_body):
     try:
         # Extraer datos de la solicitud
         data_series1 = pd.Series(request_body.get('data1', []))
-        data_series2 = pd.Series(request_body.get('data2', []))
+        data_series2 = request_body.get('data2')
         category_series = request_body.get('categories')
 
         # Verificar si el cliente solicitó gráficos específicos
