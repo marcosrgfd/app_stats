@@ -3993,7 +3993,7 @@ def linear_regression():
 
         # Construir la respuesta JSON
         response = {
-            'model': 'Regresión Lineal',
+            'model': 'Linear Regression',
             'intercept': intercept,
             'intercept_pvalue': intercept_pvalue,
             'coefficients': coefficients,
@@ -4065,7 +4065,7 @@ def logistic_regression():
 
         # Devolver los resultados en formato JSON
         return jsonify({
-            'model': 'Regresión Logística',
+            'model': 'Logistic Regression',
             'intercept': intercept,
             'intercept_pvalue': intercept_pvalue,
             'coefficients': coefficients,
@@ -4125,7 +4125,7 @@ def cox_regression():
 
         # Devolver los resultados en formato JSON
         return jsonify({
-            'model': 'Regresión de Cox',
+            'model': 'Cox Regression',
             'coefficients': coefficients,
             'p_values': p_values,
             'confidence_intervals': confidence_intervals
@@ -4175,7 +4175,7 @@ def poisson_regression():
 
         # Devolver los resultados en formato JSON
         return jsonify({
-            'model': 'Regresión de Poisson',
+            'model': 'Poisson Regression',
             'intercept': intercept,
             'intercept_pvalue': intercept_pvalue,
             'coefficients': coefficients,
