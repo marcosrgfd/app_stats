@@ -2945,28 +2945,53 @@ def run_spearman():
 # Ruta para la prueba Shapiro-Wilk
 @app.route('/api/shapiro', methods=['POST'])
 def shapiro_test():
-    data = request.get_json()
-    sample = data['sample']
-    stat, p_value = stats.shapiro(sample)
+    try:
+        data = request.get_json()
+        sample = data.get('sample')
 
-    # Determine significance of the p-value
-    if p_value < 0.05:
-        significance = "significant"
-        reject_null = "Reject the null hypothesis"
-    elif p_value < 0.1:
-        significance = "marginally significant"
-        reject_null = "Potential rejection of the null hypothesis"
-    else:
-        significance = "not significant"
-        reject_null = "Do not reject the null hypothesis"
+        # Validar que la muestra no esté vacía
+        if not sample or not isinstance(sample, list) or len(sample) == 0:
+            return jsonify({
+                'error': 'Invalid input',
+                'message': 'The sample must be a non-empty list of numbers.'
+            }), 400
 
-    return jsonify({
-        'test': 'Shapiro-Wilk',
-        'statistic': stat,
-        'pValue': p_value,
-        'significance': significance,
-        'decision': reject_null
-    })
+        # Validar tamaño mínimo de muestra para Shapiro-Wilk
+        if len(sample) < 3:
+            return jsonify({
+                'error': 'Sample size too small',
+                'message': 'The sample size must be at least 3 for the Shapiro-Wilk test.'
+            }), 400
+
+        # Ejecutar la prueba Shapiro-Wilk
+        stat, p_value = stats.shapiro(sample)
+
+        # Determinar la significancia del p-valor
+        if p_value < 0.05:
+            significance = "significant"
+            reject_null = "Reject the null hypothesis"
+        elif p_value < 0.1:
+            significance = "marginally significant"
+            reject_null = "Potential rejection of the null hypothesis"
+        else:
+            significance = "not significant"
+            reject_null = "Do not reject the null hypothesis"
+
+        # Respuesta exitosa
+        return jsonify({
+            'test': 'Shapiro-Wilk',
+            'statistic': stat,
+            'pValue': p_value,
+            'significance': significance,
+            'decision': reject_null
+        })
+
+    except Exception as e:
+        # Manejar errores inesperados del servidor
+        return jsonify({
+            'error': 'Server error',
+            'message': f'An unexpected error occurred: {str(e)}'
+        }), 500
 
 
 # Ruta para la prueba Kolmogorov-Smirnov
