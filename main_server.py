@@ -2997,32 +2997,55 @@ def shapiro_test():
 # Ruta para la prueba Kolmogorov-Smirnov
 @app.route('/api/kolmogorov', methods=['POST'])
 def kolmogorov_test():
-    data = request.get_json()
-    sample = data['sample']
+    try:
+        data = request.get_json()
+        sample = data.get('sample')
 
-    sample_mean = np.mean(sample)
-    sample_std = np.std(sample, ddof=1)
-    
-    stat, p_value = stats.kstest(sample, 'norm', args=(sample_mean, sample_std))
+        # Validar que la muestra no esté vacía
+        if not sample or not isinstance(sample, list) or len(sample) == 0:
+            return jsonify({
+                'error': 'Invalid input',
+                'message': 'The sample must be a non-empty list of numbers.'
+            }), 400
 
-    # Determine significance of the p-value
-    if p_value < 0.05:
-        significance = "significant"
-        reject_null = "Reject the null hypothesis"
-    elif p_value < 0.1:
-        significance = "marginally significant"
-        reject_null = "Potential rejection of the null hypothesis"
-    else:
-        significance = "not significant"
-        reject_null = "Do not reject the null hypothesis"
+        # Validar tamaño mínimo de muestra
+        if len(sample) < 3:
+            return jsonify({
+                'error': 'Sample size too small',
+                'message': 'The sample size must be at least 3 for the Kolmogorov-Smirnov test.'
+            }), 400
 
-    return jsonify({
-        'test': 'Kolmogorov-Smirnov',
-        'statistic': stat,
-        'pValue': p_value,
-        'significance': significance,
-        'decision': reject_null
-    })
+        # Calcular estadísticas y realizar la prueba Kolmogorov-Smirnov
+        sample_mean = np.mean(sample)
+        sample_std = np.std(sample, ddof=1)
+        stat, p_value = stats.kstest(sample, 'norm', args=(sample_mean, sample_std))
+
+        # Determinar la significancia del p-valor
+        if p_value < 0.05:
+            significance = "significant"
+            reject_null = "Reject the null hypothesis"
+        elif p_value < 0.1:
+            significance = "marginally significant"
+            reject_null = "Potential rejection of the null hypothesis"
+        else:
+            significance = "not significant"
+            reject_null = "Do not reject the null hypothesis"
+
+        # Respuesta exitosa
+        return jsonify({
+            'test': 'Kolmogorov-Smirnov',
+            'statistic': stat,
+            'pValue': p_value,
+            'significance': significance,
+            'decision': reject_null
+        })
+
+    except Exception as e:
+        # Manejar errores inesperados del servidor
+        return jsonify({
+            'error': 'Server error',
+            'message': f'An unexpected error occurred: {str(e)}'
+        }), 500
 
 
 # Ruta para la prueba de Levene (homogeneidad de varianzas)
