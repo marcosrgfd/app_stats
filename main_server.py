@@ -1994,57 +1994,96 @@ def run_ttest():
     global dataframe
     try:
         data = request.get_json()
-        numeric_column = data.get('numeric_column')
-        categorical_column = data.get('categorical_column')
+        comparison_type = data.get('comparison_type')
         paired = data.get('paired', False)
         alternative = data.get('alternative', 'two-sided')
 
-        if numeric_column not in dataframe.columns or categorical_column not in dataframe.columns:
-            return jsonify({'error': 'The specified columns do not exist in the uploaded data. Please check the names and try again.'}), 400
+        if comparison_type == 'categorical_vs_numeric':
+            numeric_column = data.get('numeric_column')
+            categorical_column = data.get('categorical_column')
 
-        # Agrupar los datos por la columna categórica
-        groups = dataframe.groupby(categorical_column)[numeric_column].apply(list)
+            if numeric_column not in dataframe.columns or categorical_column not in dataframe.columns:
+                return jsonify({'error': 'The specified columns do not exist in the uploaded data. Please check the names and try again.'}), 400
 
-        # Verificar que haya al menos dos grupos
-        if len(groups) < 2:
-            return jsonify({'error': 'Insufficient data to perform the T-Test. At least two different categories are required.'}), 400
+            # Agrupar los datos por la columna categórica
+            groups = dataframe.groupby(categorical_column)[numeric_column].apply(list)
 
-        category_names = groups.index.tolist()
+            # Verificar que haya al menos dos grupos
+            if len(groups) < 2:
+                return jsonify({'error': 'Insufficient data to perform the T-Test. At least two different categories are required.'}), 400
 
-        # Verificar longitudes para pruebas pareadas
-        if paired and len(groups.iloc[0]) != len(groups.iloc[1]):
-            return jsonify({
-                'error': (
-                    f'The paired T-Test requires the two groups to have the same number of elements. '
-                    f'Group "{category_names[0]}" has {len(groups.iloc[0])} elements, while '
-                    f'group "{category_names[1]}" has {len(groups.iloc[1])} elements.'
-                )
-            }), 400
+            category_names = groups.index.tolist()
 
-        # Realizar la prueba T con el tipo de prueba especificado
-        if paired:
-            t_stat, p_value = stats.ttest_rel(groups.iloc[0], groups.iloc[1], alternative=alternative)
+            # Verificar longitudes para pruebas pareadas
+            if paired and len(groups.iloc[0]) != len(groups.iloc[1]):
+                return jsonify({
+                    'error': (
+                        f'The paired T-Test requires the two groups to have the same number of elements. '
+                        f'Group "{category_names[0]}" has {len(groups.iloc[0])} elements, while '
+                        f'group "{category_names[1]}" has {len(groups.iloc[1])} elements.'
+                    )
+                }), 400
+
+            # Realizar la prueba T con el tipo de prueba especificado
+            if paired:
+                t_stat, p_value = stats.ttest_rel(groups.iloc[0], groups.iloc[1], alternative=alternative)
+            else:
+                t_stat, p_value = stats.ttest_ind(groups.iloc[0], groups.iloc[1], alternative=alternative, equal_var=False)
+
+            result = {
+                'test': 'T-Test' + (' pareado' if paired else ''),
+                't_statistic': t_stat,
+                'p_value': p_value,
+                'significance': "significant" if p_value < 0.05 else "not significant",
+                'decision': "Reject the null hypothesis" if p_value < 0.05 else "Do not reject the null hypothesis",
+                'category1': category_names[0],
+                'category2': category_names[1],
+                'alternative': alternative
+            }
+
+        elif comparison_type == 'numeric_vs_numeric':
+            numeric_column1 = data.get('numeric_column1')
+            numeric_column2 = data.get('numeric_column2')
+
+            if numeric_column1 not in dataframe.columns or numeric_column2 not in dataframe.columns:
+                return jsonify({'error': 'The specified columns do not exist in the uploaded data. Please check the names and try again.'}), 400
+
+            # Extraer las columnas
+            col1_data = dataframe[numeric_column1].dropna()
+            col2_data = dataframe[numeric_column2].dropna()
+
+            # Verificar longitudes para pruebas pareadas
+            if paired and len(col1_data) != len(col2_data):
+                return jsonify({
+                    'error': (
+                        f'The paired T-Test requires the two variables to have the same number of elements. '
+                        f'Column "{numeric_column1}" has {len(col1_data)} elements, while '
+                        f'column "{numeric_column2}" has {len(col2_data)} elements.'
+                    )
+                }), 400
+
+            # Realizar la prueba T con el tipo de prueba especificado
+            if paired:
+                t_stat, p_value = stats.ttest_rel(col1_data, col2_data, alternative=alternative)
+            else:
+                t_stat, p_value = stats.ttest_ind(col1_data, col2_data, alternative=alternative, equal_var=False)
+
+            result = {
+                'test': 'T-Test' + (' pareado' if paired else ''),
+                't_statistic': t_stat,
+                'p_value': p_value,
+                'significance': "significant" if p_value < 0.05 else "not significant",
+                'decision': "Reject the null hypothesis" if p_value < 0.05 else "Do not reject the null hypothesis",
+                'column1': numeric_column1,
+                'column2': numeric_column2,
+                'alternative': alternative
+            }
+
         else:
-            t_stat, p_value = stats.ttest_ind(groups.iloc[0], groups.iloc[1], alternative=alternative, equal_var=False)
-
-        # Evaluar la significancia según el valor p
-        significance = "significant" if p_value < 0.05 else "not significant"
-        decision = "Reject the null hypothesis" if p_value < 0.05 else "Do not reject the null hypothesis"
-
-        result = {
-            'test': 'T-Test' + (' pareado' if paired else ''),
-            't_statistic': t_stat,
-            'p_value': p_value,
-            'significance': significance,
-            'decision': decision,
-            'category1': category_names[0],
-            'category2': category_names[1],
-            'alternative': alternative
-        }
+            return jsonify({'error': 'Invalid comparison type specified. Please check the input data.'}), 400
 
         # Limpiar los resultados antes de enviarlos
         result = clean_results(result)
-
         return jsonify({'result': result})
 
     except Exception as e:
@@ -2052,6 +2091,7 @@ def run_ttest():
             'error': 'An unexpected error occurred during the T-Test calculation. Please check the input data and try again.',
             'details': str(e)
         }), 400
+
 
 
 
