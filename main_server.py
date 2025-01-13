@@ -3214,7 +3214,6 @@ def chi_square_independence():
 
 
 
-# Ruta para la prueba ANOVA de una vía
 @app.route('/api/anova_one_way', methods=['POST'])
 def anova_one_way():
     try:
@@ -3249,7 +3248,7 @@ def anova_one_way():
 
         # Validar que haya al menos dos grupos no vacíos
         if len(groups) < 2:
-            return jsonify({'error': 'At least two groups with data are required to perform ANOVA.'}), 400
+            return jsonify({'error': 'anova_test_error'}), 400
 
         # Realizar el ANOVA de una vía
         f_statistic, p_value = f_oneway(*groups)
@@ -3265,63 +3264,48 @@ def anova_one_way():
 
         # Realizar comparaciones múltiples si está habilitado
         if multiple_comparisons:
-            # Ensure there are at least three groups to perform Tukey HSD
             if len(groups) < 3:
-                return jsonify({'error': 'At least three groups are required to perform multiple comparisons (Tukey HSD).'}), 400
+                return jsonify({'error': 'anova_test_error'}), 400
 
-            try:
-                # Prepare data for Tukey HSD
-                all_data = []
-                labels = []
-                for i, group in enumerate(groups):
-                    # Ensure each group has at least one value
-                    if len(group) == 0:
-                        return jsonify({'error': f'Group {i + 1} does not contain enough data.'}), 400
+            # Prepare data for Tukey HSD
+            all_data = []
+            labels = []
+            for i, group in enumerate(groups):
+                if len(group) == 0:
+                    return jsonify({'error': 'anova_test_error'}), 400
 
-                    all_data.extend(group)
-                    labels.extend([f'Group {i+1}'] * len(group))  # Change to 'Group {i+1}' for better presentation
+                all_data.extend(group)
+                labels.extend([f'Group {i+1}'] * len(group))
 
-                
-                # Convertir los datos a un DataFrame
-                df = pd.DataFrame({'value': all_data, 'group': labels})
-                
-                # Realizar Tukey HSD
-                tukey = mc.pairwise_tukeyhsd(df['value'], df['group'], alpha=0.05)
+            df = pd.DataFrame({'value': all_data, 'group': labels})
 
-                # Procesar los resultados de Tukey HSD y generar texto formateado
-                tukey_summary = "Multiple comparisons (Tukey HSD):\n"
-                for result in tukey.summary().data[1:]:  # Ignorar la cabecera
-                    # Determinar el número de asteriscos en función del valor p ajustado
-                    if result[3] < 0.001:
-                        significance = "***"
-                    elif result[3] < 0.01:
-                        significance = "**"
-                    elif result[3] < 0.05:
-                        significance = "*"
-                    else:
-                        significance = ""
-                        
-                    tukey_summary += (
-                        f"----------------------------\n"  # Separador para mayor claridad
-                        f"Comparison: {result[0]} vs {result[1]}\n"
-                        f"  • Mean difference: {result[2]:.4f}\n"
-                        f"  • Adjusted p-Value: {result[3]:.4f} {significance}\n"
-                        f"  • Lower IC: {result[4]:.4f}, Upper IC: {result[5]:.4f}\n"
-                        f"  • Reject H0: {'Yes' if result[6] else 'No'}\n"
-                    )
+            tukey = mc.pairwise_tukeyhsd(df['value'], df['group'], alpha=0.05)
 
-                # Agregar el resumen de Tukey al resultado
-                anova_results['tukey'] = tukey_summary
+            # Procesar resultados de Tukey HSD
+            tukey_summary = "Multiple comparisons (Tukey HSD):\n"
+            for result in tukey.summary().data[1:]:
+                significance = (
+                    "***" if result[3] < 0.001 else
+                    "**" if result[3] < 0.01 else
+                    "*" if result[3] < 0.05 else ""
+                )
+                tukey_summary += (
+                    f"----------------------------\n"
+                    f"Comparison: {result[0]} vs {result[1]}\n"
+                    f"  • Mean difference: {result[2]:.4f}\n"
+                    f"  • Adjusted p-Value: {result[3]:.4f} {significance}\n"
+                    f"  • Lower IC: {result[4]:.4f}, Upper IC: {result[5]:.4f}\n"
+                    f"  • Reject H0: {'Yes' if result[6] else 'No'}\n"
+                )
 
-            except Exception as e:
-                return jsonify({'error': f'Error executing Tukey HSD: {str(e)}'}), 500
+            anova_results['tukey'] = tukey_summary
 
         return jsonify(anova_results)
-    
-    except Exception as e:
-        # Registrar el error en el servidor para depuración
-        print(f'Error executing ANOVA: {str(e)}')
-        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
+
+    except Exception:
+        # Mensaje de error general
+        return jsonify({'error': 'anova_test_error'}), 500
+
 
 
 
