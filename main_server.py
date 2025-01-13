@@ -2696,43 +2696,73 @@ def run_mannwhitney():
     global dataframe
     try:
         data = request.get_json()
-        numeric_column = data.get('numeric_column')
-        categorical_column = data.get('categorical_column')
+        comparison_type = data.get('comparison_type')  # Tipo de comparación
         alternative = data.get('alternative', 'two-sided')
 
-        if numeric_column not in dataframe.columns or categorical_column not in dataframe.columns:
-            return jsonify({'error': 'The specified columns were not found in the data.'}), 400
+        if comparison_type == 'categorical_vs_numeric':
+            # Variables para comparación categórica vs. numérica
+            numeric_column = data.get('numeric_column')
+            categorical_column = data.get('categorical_column')
 
-        # Group the data by the categorical column
-        groups = dataframe.groupby(categorical_column)[numeric_column].apply(list)
+            # Validar las columnas especificadas
+            if numeric_column not in dataframe.columns or categorical_column not in dataframe.columns:
+                return jsonify({'error': 'The specified columns were not found in the data.'}), 400
 
-        # Ensure there are at least two groups
-        if len(groups) < 2:
-            return jsonify({'error': 'Insufficient data to perform the Mann-Whitney U Test. At least two categories are required.'}), 400
+            # Agrupar los datos por la columna categórica
+            groups = dataframe.groupby(categorical_column)[numeric_column].apply(list)
 
-        category_names = groups.index.tolist()
+            # Verificar que haya al menos dos grupos
+            if len(groups) < 2:
+                return jsonify({'error': 'Insufficient data to perform the Mann-Whitney U Test. At least two categories are required.'}), 400
 
-        # Perform the Mann-Whitney U Test
-        u_stat, p_value = stats.mannwhitneyu(groups.iloc[0], groups.iloc[1], alternative=alternative)
+            category_names = groups.index.tolist()
 
-        # Evaluate significance based on the p-value
-        significance = "significant" if p_value < 0.05 else "not significant"
-        decision = "Reject the null hypothesis" if p_value < 0.05 else "Do not reject the null hypothesis"
+            # Realizar el Mann-Whitney U Test
+            u_stat, p_value = stats.mannwhitneyu(groups.iloc[0], groups.iloc[1], alternative=alternative)
 
-        result = {
-            'test': 'Mann-Whitney U Test',
-            'u_statistic': u_stat,
-            'p_value': p_value,
-            'significance': significance,
-            'decision': decision,
-            'category1': category_names[0],
-            'category2': category_names[1],
-            'alternative': alternative
-        }
+            result = {
+                'test': 'Mann-Whitney U Test',
+                'u_statistic': u_stat,
+                'p_value': p_value,
+                'significance': "significant" if p_value < 0.05 else "not significant",
+                'decision': "Reject the null hypothesis" if p_value < 0.05 else "Do not reject the null hypothesis",
+                'category1': category_names[0],
+                'category2': category_names[1],
+                'alternative': alternative
+            }
+
+        elif comparison_type == 'numeric_vs_numeric':
+            # Variables para comparación numérica vs. numérica
+            numeric_column1 = data.get('numeric_column1')
+            numeric_column2 = data.get('numeric_column2')
+
+            # Validar las columnas especificadas
+            if numeric_column1 not in dataframe.columns or numeric_column2 not in dataframe.columns:
+                return jsonify({'error': 'The specified columns were not found in the data.'}), 400
+
+            # Extraer los datos de las columnas
+            col1_data = dataframe[numeric_column1].dropna()
+            col2_data = dataframe[numeric_column2].dropna()
+
+            # Realizar el Mann-Whitney U Test
+            u_stat, p_value = stats.mannwhitneyu(col1_data, col2_data, alternative=alternative)
+
+            result = {
+                'test': 'Mann-Whitney U Test',
+                'u_statistic': u_stat,
+                'p_value': p_value,
+                'significance': "significant" if p_value < 0.05 else "not significant",
+                'decision': "Reject the null hypothesis" if p_value < 0.05 else "Do not reject the null hypothesis",
+                'column1': numeric_column1,
+                'column2': numeric_column2,
+                'alternative': alternative
+            }
+
+        else:
+            return jsonify({'error': 'Invalid comparison type specified. Please check the input data.'}), 400
 
         # Limpiar los resultados antes de enviarlos
         result = clean_results(result)
-
         return jsonify({'result': result})
 
     except Exception as e:
