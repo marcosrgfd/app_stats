@@ -2117,58 +2117,93 @@ def get_category_names():
     except Exception as e:
         return jsonify({'error': str(e)}), 400
     
-# WELCH ttest
+# WELCH T-Test
 @app.route('/run_welch_ttest', methods=['POST'])
 def run_welch_ttest():
     global dataframe
     try:
         # Obtener los datos de la solicitud
         data = request.get_json()
-        numeric_column = data.get('numeric_column')
-        categorical_column = data.get('categorical_column')
+        comparison_type = data.get('comparison_type')
         alternative = data.get('alternative', 'two-sided')
 
-        # Validar las columnas especificadas
-        if numeric_column not in dataframe.columns or categorical_column not in dataframe.columns:
-            return jsonify({'error': 'The specified columns were not found in the data.'}), 400
+        if comparison_type == 'categorical_vs_numeric':
+            # Variables para comparación categórica vs. numérica
+            numeric_column = data.get('numeric_column')
+            categorical_column = data.get('categorical_column')
 
-        # Agrupar los datos por la columna categórica
-        groups = dataframe.groupby(categorical_column)[numeric_column].apply(list)
+            # Validar las columnas especificadas
+            if numeric_column not in dataframe.columns or categorical_column not in dataframe.columns:
+                return jsonify({'error': 'The specified columns were not found in the data.'}), 400
 
-        # Verificar que haya al menos dos grupos
-        if len(groups) < 2:
-            return jsonify({'error': 'Insufficient data to perform the Welch T-Test. At least two categories are required.'}), 400
+            # Agrupar los datos por la columna categórica
+            groups = dataframe.groupby(categorical_column)[numeric_column].apply(list)
 
-        category_names = groups.index.tolist()
+            # Verificar que haya al menos dos grupos
+            if len(groups) < 2:
+                return jsonify({'error': 'Insufficient data to perform the Welch T-Test. At least two categories are required.'}), 400
 
-        # Realizar la prueba T de Welch
-        t_stat, p_value = stats.ttest_ind(
-            groups.iloc[0], 
-            groups.iloc[1], 
-            equal_var=False,  # Welch T-Test: no se asume igualdad de varianzas
-            alternative=alternative
-        )
+            category_names = groups.index.tolist()
 
-        # Evaluar la significancia según el valor p
-        significance = "significant" if p_value < 0.05 else "not significant"
-        decision = "Reject the null hypothesis" if p_value < 0.05 else "Do not reject the null hypothesis"
+            # Realizar la prueba T de Welch
+            t_stat, p_value = stats.ttest_ind(
+                groups.iloc[0], 
+                groups.iloc[1], 
+                equal_var=False,  # Welch T-Test: no se asume igualdad de varianzas
+                alternative=alternative
+            )
 
-        # Construir el resultado
-        result = {
-            'test': 'Welch T-Test',
-            't_statistic': t_stat,
-            'p_value': p_value,
-            'significance': significance,
-            'decision': decision,
-            'category1': category_names[0],
-            'category2': category_names[1],
-            'alternative': alternative
-        }
+            result = {
+                'test': 'Welch T-Test',
+                't_statistic': t_stat,
+                'p_value': p_value,
+                'significance': "significant" if p_value < 0.05 else "not significant",
+                'decision': "Reject the null hypothesis" if p_value < 0.05 else "Do not reject the null hypothesis",
+                'category1': category_names[0],
+                'category2': category_names[1],
+                'alternative': alternative
+            }
+
+        elif comparison_type == 'numeric_vs_numeric':
+            # Variables para comparación numérica vs. numérica
+            numeric_column1 = data.get('numeric_column1')
+            numeric_column2 = data.get('numeric_column2')
+
+            # Validar las columnas especificadas
+            if numeric_column1 not in dataframe.columns or numeric_column2 not in dataframe.columns:
+                return jsonify({'error': 'The specified columns were not found in the data.'}), 400
+
+            # Extraer los datos de las columnas
+            col1_data = dataframe[numeric_column1].dropna()
+            col2_data = dataframe[numeric_column2].dropna()
+
+            # Realizar la prueba T de Welch
+            t_stat, p_value = stats.ttest_ind(
+                col1_data,
+                col2_data,
+                equal_var=False,  # Welch T-Test: no se asume igualdad de varianzas
+                alternative=alternative
+            )
+
+            result = {
+                'test': 'Welch T-Test',
+                't_statistic': t_stat,
+                'p_value': p_value,
+                'significance': "significant" if p_value < 0.05 else "not significant",
+                'decision': "Reject the null hypothesis" if p_value < 0.05 else "Do not reject the null hypothesis",
+                'column1': numeric_column1,
+                'column2': numeric_column2,
+                'alternative': alternative
+            }
+
+        else:
+            return jsonify({'error': 'Invalid comparison type specified. Please check the input data.'}), 400
 
         return jsonify({'result': result})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
 
 # 1. Prueba de Levene
 @app.route('/run_levene', methods=['POST'])
