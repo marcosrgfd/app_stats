@@ -2768,56 +2768,97 @@ def run_mannwhitney():
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
-# 9. Wilcoxon
+# 9. Wilcoxon Signed-Rank Test
 @app.route('/run_wilcoxon', methods=['POST'])
 def run_wilcoxon():
     global dataframe
     try:
+        # Validar si el dataframe está cargado
+        if dataframe is None:
+            return jsonify({'error': 'No data has been uploaded. Please upload your dataset first.'}), 400
+
+        # Obtener los datos de la solicitud
         data = request.get_json()
-        numeric_column = data.get('numeric_column')
-        categorical_column = data.get('categorical_column')
+        comparison_type = data.get('comparison_type')  # Tipo de comparación
         alternative = data.get('alternative', 'two-sided')
 
-        if numeric_column not in dataframe.columns or categorical_column not in dataframe.columns:
-            return jsonify({'error': 'The specified columns were not found in the data.'}), 400
+        if comparison_type == 'categorical_vs_numeric':
+            # Variables para comparación categórica vs. numérica
+            numeric_column = data.get('numeric_column')
+            categorical_column = data.get('categorical_column')
 
-        # Group the data by the categorical column
-        groups = dataframe.groupby(categorical_column)[numeric_column].apply(list)
+            # Validar las columnas especificadas
+            if numeric_column not in dataframe.columns or categorical_column not in dataframe.columns:
+                return jsonify({'error': 'The specified columns were not found in the data.'}), 400
 
-        # Ensure there are exactly two groups
-        if len(groups) != 2:
-            return jsonify({'error': 'The categorical variable must have exactly two categories.'}), 400
+            # Agrupar los datos por la columna categórica
+            groups = dataframe.groupby(categorical_column)[numeric_column].apply(list)
 
-        category_names = groups.index.tolist()
+            # Verificar que haya exactamente dos grupos
+            if len(groups) != 2:
+                return jsonify({'error': 'The categorical variable must have exactly two categories.'}), 400
 
-        # Adjust sample sizes if they are different
-        min_size = min(len(groups.iloc[0]), len(groups.iloc[1]))
-        group1 = groups.iloc[0][:min_size]
-        group2 = groups.iloc[1][:min_size]
+            category_names = groups.index.tolist()
 
-        # Perform the Wilcoxon test
-        w_stat, p_value = stats.wilcoxon(group1, group2, alternative=alternative)
+            # Ajustar los tamaños de las muestras si son diferentes
+            min_size = min(len(groups.iloc[0]), len(groups.iloc[1]))
+            group1 = groups.iloc[0][:min_size]
+            group2 = groups.iloc[1][:min_size]
 
-        # Evaluate significance based on the p-value
-        significance = "significant" if p_value < 0.05 else "not significant"
-        decision = "Reject the null hypothesis" if p_value < 0.05 else "Do not reject the null hypothesis"
+            # Realizar el Wilcoxon Signed-Rank Test
+            w_stat, p_value = stats.wilcoxon(group1, group2, alternative=alternative)
 
-        # Crear el resultado con el mismo formato que Mann-Whitney U
-        result = {
-            'test': 'Wilcoxon Signed-Rank Test',
-            'w_statistic': w_stat,
-            'p_value': p_value,
-            'significance': significance,
-            'decision': decision,
-            'category1': category_names[0],
-            'category2': category_names[1],
-            'alternative': alternative
-        }
+            result = {
+                'test': 'Wilcoxon Signed-Rank Test',
+                'w_statistic': w_stat,
+                'p_value': p_value,
+                'significance': "significant" if p_value < 0.05 else "not significant",
+                'decision': "Reject the null hypothesis" if p_value < 0.05 else "Do not reject the null hypothesis",
+                'category1': category_names[0],
+                'category2': category_names[1],
+                'alternative': alternative
+            }
+
+        elif comparison_type == 'numeric_vs_numeric':
+            # Variables para comparación numérica vs. numérica
+            numeric_column1 = data.get('numeric_column1')
+            numeric_column2 = data.get('numeric_column2')
+
+            # Validar las columnas especificadas
+            if numeric_column1 not in dataframe.columns or numeric_column2 not in dataframe.columns:
+                return jsonify({'error': 'The specified columns were not found in the data.'}), 400
+
+            # Extraer los datos de las columnas
+            col1_data = dataframe[numeric_column1].dropna()
+            col2_data = dataframe[numeric_column2].dropna()
+
+            # Ajustar los tamaños de las muestras si son diferentes
+            min_size = min(len(col1_data), len(col2_data))
+            col1_data = col1_data[:min_size]
+            col2_data = col2_data[:min_size]
+
+            # Realizar el Wilcoxon Signed-Rank Test
+            w_stat, p_value = stats.wilcoxon(col1_data, col2_data, alternative=alternative)
+
+            result = {
+                'test': 'Wilcoxon Signed-Rank Test',
+                'w_statistic': w_stat,
+                'p_value': p_value,
+                'significance': "significant" if p_value < 0.05 else "not significant",
+                'decision': "Reject the null hypothesis" if p_value < 0.05 else "Do not reject the null hypothesis",
+                'column1': numeric_column1,
+                'column2': numeric_column2,
+                'alternative': alternative
+            }
+
+        else:
+            return jsonify({'error': 'Invalid comparison type specified. Please check the input data.'}), 400
 
         return jsonify({'result': result})
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
 
 # 10. Kruskal Wallis
 @app.route('/run_kruskal_wallis', methods=['POST'])
