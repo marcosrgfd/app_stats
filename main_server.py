@@ -2014,6 +2014,15 @@ def run_ttest():
 
             category_names = groups.index.tolist()
 
+            # Calcular estadísticas descriptivas
+            group_stats = {
+                category: {
+                    'mean': np.mean(data),
+                    'std': np.std(data),
+                    'count': len(data)
+                } for category, data in groups.items()
+            }
+
             # Verificar longitudes para pruebas pareadas
             if paired and len(groups.iloc[0]) != len(groups.iloc[1]):
                 return jsonify({
@@ -2038,7 +2047,8 @@ def run_ttest():
                 'decision': "Reject the null hypothesis" if p_value < 0.05 else "Do not reject the null hypothesis",
                 'category1': category_names[0],
                 'category2': category_names[1],
-                'alternative': alternative
+                'alternative': alternative,
+                'group_statistics': group_stats  # Agregar estadísticas descriptivas
             }
 
         elif comparison_type == 'numeric_vs_numeric':
@@ -2051,6 +2061,20 @@ def run_ttest():
             # Extraer las columnas
             col1_data = dataframe[numeric_column1].dropna()
             col2_data = dataframe[numeric_column2].dropna()
+
+            # Calcular estadísticas descriptivas
+            column_stats = {
+                numeric_column1: {
+                    'mean': np.mean(col1_data),
+                    'std': np.std(col1_data),
+                    'count': len(col1_data)
+                },
+                numeric_column2: {
+                    'mean': np.mean(col2_data),
+                    'std': np.std(col2_data),
+                    'count': len(col2_data)
+                }
+            }
 
             # Verificar longitudes para pruebas pareadas
             if paired and len(col1_data) != len(col2_data):
@@ -2076,7 +2100,8 @@ def run_ttest():
                 'decision': "Reject the null hypothesis" if p_value < 0.05 else "Do not reject the null hypothesis",
                 'column1': numeric_column1,
                 'column2': numeric_column2,
-                'alternative': alternative
+                'alternative': alternative,
+                'column_statistics': column_stats  # Agregar estadísticas descriptivas
             }
 
         else:
