@@ -2170,6 +2170,15 @@ def run_welch_ttest():
 
             category_names = groups.index.tolist()
 
+            # Calcular estadísticas descriptivas para cada grupo
+            group_stats = {
+                category: {
+                    'mean': np.mean(data),
+                    'std': np.std(data, ddof=1),  # ddof=1 para muestras
+                    'count': len(data)
+                } for category, data in groups.items()
+            }
+
             # Realizar la prueba T de Welch
             t_stat, p_value = stats.ttest_ind(
                 groups.iloc[0], 
@@ -2186,7 +2195,8 @@ def run_welch_ttest():
                 'decision': "Reject the null hypothesis" if p_value < 0.05 else "Do not reject the null hypothesis",
                 'category1': category_names[0],
                 'category2': category_names[1],
-                'alternative': alternative
+                'alternative': alternative,
+                'group_statistics': group_stats  # Agregar estadísticas descriptivas
             }
 
         elif comparison_type == 'numeric_vs_numeric':
@@ -2201,6 +2211,20 @@ def run_welch_ttest():
             # Extraer los datos de las columnas
             col1_data = dataframe[numeric_column1].dropna()
             col2_data = dataframe[numeric_column2].dropna()
+
+            # Calcular estadísticas descriptivas para cada columna
+            column_stats = {
+                numeric_column1: {
+                    'mean': np.mean(col1_data),
+                    'std': np.std(col1_data, ddof=1),  # ddof=1 para muestras
+                    'count': len(col1_data)
+                },
+                numeric_column2: {
+                    'mean': np.mean(col2_data),
+                    'std': np.std(col2_data, ddof=1),  # ddof=1 para muestras
+                    'count': len(col2_data)
+                }
+            }
 
             # Realizar la prueba T de Welch
             t_stat, p_value = stats.ttest_ind(
@@ -2218,7 +2242,8 @@ def run_welch_ttest():
                 'decision': "Reject the null hypothesis" if p_value < 0.05 else "Do not reject the null hypothesis",
                 'column1': numeric_column1,
                 'column2': numeric_column2,
-                'alternative': alternative
+                'alternative': alternative,
+                'column_statistics': column_stats  # Agregar estadísticas descriptivas
             }
 
         else:
