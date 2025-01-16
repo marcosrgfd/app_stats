@@ -3360,41 +3360,47 @@ def levene_test():
     except Exception as e:
         # Log the error on the server for debugging
         print(f'Error executing Levene\'s test: {str(e)}')
-        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
+        return jsonify({'error': 'An error occurred while performing Levene\'s test. Please check your input data and try again.'}), 500
 
 
 # Ruta para la prueba t de Student con opción pareado y unilateral/bilateral
 @app.route('/api/ttest', methods=['POST'])
 def t_test():
-    data = request.get_json()
-    sample1 = data['sample1']
-    sample2 = data['sample2']
-    paired = data.get('paired', False)
-    alternative = data.get('alternative', 'two-sided')  # Configuración de unilateral/bilateral
+    try:
+        data = request.get_json()
+        sample1 = data['sample1']
+        sample2 = data['sample2']
+        paired = data.get('paired', False)
+        alternative = data.get('alternative', 'two-sided')  # Configuración de unilateral/bilateral
 
-    if paired:
-        stat, p_value = stats.ttest_rel(sample1, sample2, alternative=alternative)
-    else:
-        stat, p_value = stats.ttest_ind(sample1, sample2, alternative=alternative)
+        if paired:
+            stat, p_value = stats.ttest_rel(sample1, sample2, alternative=alternative)
+        else:
+            stat, p_value = stats.ttest_ind(sample1, sample2, alternative=alternative)
 
-    # Determine significance of the p-value
-    if p_value < 0.05:
-        significance = "significant"
-        reject_null = "Reject the null hypothesis"
-    elif p_value < 0.1:
-        significance = "marginally significant"
-        reject_null = "Potential rejection of the null hypothesis"
-    else:
-        significance = "not significant"
-        reject_null = "Do not reject the null hypothesis"
+        # Determine significance of the p-value
+        if p_value < 0.05:
+            significance = "significant"
+            reject_null = "Reject the null hypothesis"
+        elif p_value < 0.1:
+            significance = "marginally significant"
+            reject_null = "Potential rejection of the null hypothesis"
+        else:
+            significance = "not significant"
+            reject_null = "Do not reject the null hypothesis"
 
-    return jsonify({
-        'test': 'T-Test' + (' paired' if paired else ''),
-        'statistic': stat,
-        'pValue': p_value,
-        'significance': significance,
-        'decision': reject_null
-    })
+        return jsonify({
+            'test': 'T-Test' + (' paired' if paired else ''),
+            'statistic': stat,
+            'pValue': p_value,
+            'significance': significance,
+            'decision': reject_null
+        })
+
+    except Exception as e:
+        # Registrar el error en el servidor para depuración
+        print(f'Error executing T-Test: {str(e)}')
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
 
 
 # Ruta para la prueba Chi-Square de bondad de ajuste
@@ -3614,32 +3620,78 @@ def anova_two_way():
 # Mann-Whitney U Test con opción unilateral/bilateral
 @app.route('/api/mannwhitney', methods=['POST'])
 def mann_whitney():
-    data = request.get_json()
-    sample1 = data['sample1']
-    sample2 = data['sample2']
-    alternative = data.get('alternative', 'two-sided')  # Configuración de unilateral/bilateral
+    try:
+        data = request.get_json()
+        sample1 = data['sample1']
+        sample2 = data['sample2']
+        alternative = data.get('alternative', 'two-sided')  # Configuración de unilateral/bilateral
 
-    # Realizar la prueba Mann-Whitney
-    stat, p_value = stats.mannwhitneyu(sample1, sample2, alternative=alternative)
+        # Realizar la prueba Mann-Whitney
+        stat, p_value = stats.mannwhitneyu(sample1, sample2, alternative=alternative)
 
-    # Determine significance of the p-value
-    if p_value < 0.05:
-        significance = "significant"
-        reject_null = "Reject the null hypothesis"
-    elif p_value < 0.1:
-        significance = "marginally significant"
-        reject_null = "Potential rejection of the null hypothesis"
-    else:
-        significance = "not significant"
-        reject_null = "Do not reject the null hypothesis"
+        # Determine significance of the p-value
+        if p_value < 0.05:
+            significance = "significant"
+            reject_null = "Reject the null hypothesis"
+        elif p_value < 0.1:
+            significance = "marginally significant"
+            reject_null = "Potential rejection of the null hypothesis"
+        else:
+            significance = "not significant"
+            reject_null = "Do not reject the null hypothesis"
 
-    return jsonify({
-        'test': 'Mann-Whitney U',
-        'statistic': stat,
-        'pValue': p_value,
-        'significance': significance,
-        'decision': reject_null
-    })
+        return jsonify({
+            'test': 'Mann-Whitney U',
+            'statistic': stat,
+            'pValue': p_value,
+            'significance': significance,
+            'decision': reject_null
+        })
+    
+    except Exception as e:
+        # Registrar el error en el servidor para depuración
+        print(f'Error executing Welch T-Test: {str(e)}')
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
+    
+    # Ruta para la prueba t de Welch (para muestras independientes con varianzas desiguales)
+@app.route('/api/welch_ttest', methods=['POST'])
+def welch_t_test():
+    try: 
+        data = request.get_json()
+        sample1 = data.get('sample1', [])
+        sample2 = data.get('sample2', [])
+        alternative = data.get('alternative', 'two-sided')  # Configuración de unilateral/bilateral
+
+        # Validar que ambas muestras tengan datos
+        if not sample1 or not sample2:
+            return jsonify({'error': 'Both samples must contain data.'}), 400
+
+        # Realizar la prueba t de Welch con opción de prueba unilateral/bilateral
+        stat, p_value = stats.ttest_ind(sample1, sample2, equal_var=False, alternative=alternative)
+
+        # Determinar significancia según el valor p
+        if p_value < 0.05:
+            significance = "significant"
+            decision = "Reject the null hypothesis"
+        elif p_value < 0.1:
+            significance = "marginally significant"
+            decision = "Potential rejection of the null hypothesis"
+        else:
+            significance = "not significant"
+            decision = "Do not reject the null hypothesis"
+
+        return jsonify({
+            'test': 'Welch T-Test',
+            'statistic': stat,
+            'pValue': p_value,
+            'significance': significance,
+            'decision': decision
+        })
+
+    except Exception as e:
+        # Registrar el error en el servidor para depuración
+        print(f'Error executing Welch T-Test: {str(e)}')
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
 
 
 
