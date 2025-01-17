@@ -1058,7 +1058,7 @@ def analyze_selected_columns():
             # Crear boxplot si solicitado
             if show_boxplot:
                 plt.figure(figsize=(8, 6))
-                sns.boxplot(x=data_series, color='orange')
+                sns.boxplot(x=data_series, color='orange', linewidth=0.8)
                 plt.title(f'Boxplot de {selected_columns[0]}')
                 boxplot_img = io.BytesIO()
                 plt.savefig(boxplot_img, format='png', bbox_inches='tight', dpi=100)
