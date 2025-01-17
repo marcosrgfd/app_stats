@@ -3640,10 +3640,22 @@ def mann_whitney():
         sample2 = data['sample2']
         alternative = data.get('alternative', 'two-sided')  # Configuración de unilateral/bilateral
 
+        # Calcular las estadísticas descriptivas para cada muestra
+        stats_group1 = {
+            'mean': np.mean(sample1),
+            'std': np.std(sample1, ddof=1),  # Desviación estándar muestral
+            'count': len(sample1)
+        }
+        stats_group2 = {
+            'mean': np.mean(sample2),
+            'std': np.std(sample2, ddof=1),  # Desviación estándar muestral
+            'count': len(sample2)
+        }
+
         # Realizar la prueba Mann-Whitney
         stat, p_value = stats.mannwhitneyu(sample1, sample2, alternative=alternative)
 
-        # Determine significance of the p-value
+        # Determinar la significancia del valor p
         if p_value < 0.05:
             significance = "significant"
             reject_null = "Reject the null hypothesis"
@@ -3654,18 +3666,22 @@ def mann_whitney():
             significance = "not significant"
             reject_null = "Do not reject the null hypothesis"
 
+        # Devolver la respuesta con estadísticas descriptivas y resultados de la prueba Mann-Whitney
         return jsonify({
             'test': 'Mann-Whitney U',
             'statistic': stat,
             'pValue': p_value,
             'significance': significance,
-            'decision': reject_null
+            'decision': reject_null,
+            'group1_statistics': stats_group1,  # Estadísticas del grupo 1
+            'group2_statistics': stats_group2   # Estadísticas del grupo 2
         })
     
     except Exception as e:
         # Registrar el error en el servidor para depuración
         print(f'Error executing Mann-Whitney: {str(e)}')
         return jsonify({'error': f'Internal server error: {str(e)}'}), 500
+
 
 
 
@@ -4013,6 +4029,18 @@ def wilcoxon_test():
         if len(sample1) != len(sample2):
             return jsonify({'error': 'The two samples must have the same number of observations for the Wilcoxon test.'}), 400
 
+        # Calcular las estadísticas descriptivas para cada muestra
+        stats_group1 = {
+            'mean': np.mean(sample1),
+            'std': np.std(sample1, ddof=1),  # Desviación estándar muestral
+            'count': len(sample1)
+        }
+        stats_group2 = {
+            'mean': np.mean(sample2),
+            'std': np.std(sample2, ddof=1),  # Desviación estándar muestral
+            'count': len(sample2)
+        }
+
         # Ejecutar la prueba de Wilcoxon
         stat, p_value = stats.wilcoxon(sample1, sample2, alternative=alternative)
 
@@ -4027,16 +4055,20 @@ def wilcoxon_test():
             significance = "not significant"
             reject_null = "Do not reject the null hypothesis"
 
+        # Respuesta con los resultados y estadísticas descriptivas
         return jsonify({
             'test': 'Wilcoxon Signed-Rank',
             'statistic': stat,
             'pValue': p_value,
             'significance': significance,
-            'decision': reject_null
+            'decision': reject_null,
+            'group1_statistics': stats_group1,  # Estadísticas del grupo 1
+            'group2_statistics': stats_group2   # Estadísticas del grupo 2
         })
 
     except Exception as e:
         return jsonify({'error': f'Internal server error: {str(e)}'}), 500
+
 
 
 # Ruta para la correlación de Pearson
