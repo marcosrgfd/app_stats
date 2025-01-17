@@ -3373,6 +3373,18 @@ def t_test():
         paired = data.get('paired', False)
         alternative = data.get('alternative', 'two-sided')  # Configuración de unilateral/bilateral
 
+        # Calcular las estadísticas descriptivas para cada muestra
+        stats_group1 = {
+            'mean': np.mean(sample1),
+            'std': np.std(sample1, ddof=1),  # Desviación estándar muestral
+            'count': len(sample1)
+        }
+        stats_group2 = {
+            'mean': np.mean(sample2),
+            'std': np.std(sample2, ddof=1),  # Desviación estándar muestral
+            'count': len(sample2)
+        }
+
         if paired:
             stat, p_value = stats.ttest_rel(sample1, sample2, alternative=alternative)
         else:
@@ -3394,7 +3406,9 @@ def t_test():
             'statistic': stat,
             'pValue': p_value,
             'significance': significance,
-            'decision': reject_null
+            'decision': reject_null,
+            'group1_statistics': stats_group1,  # Estadísticas del grupo 1
+            'group2_statistics': stats_group2   # Estadísticas del grupo 2
         })
 
     except Exception as e:
