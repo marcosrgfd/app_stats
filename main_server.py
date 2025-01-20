@@ -616,7 +616,7 @@ def calculate_descriptive_statistics(request_body):
                 plt.close()
 
             if show_raincloudplot:
-                fig, ax = plt.subplots(figsize=(10, 8))
+                fig, ax = plt.subplots(figsize=(8, 6))
                 palette = sns.color_palette("Set2", len(category_series.unique()))
                 for i, category in enumerate(category_series.unique()):
                     cat_data = data_series1[category_series == category]
@@ -1047,8 +1047,8 @@ def analyze_selected_columns():
                 plt.figure(figsize=(8, 6))
                 sns.histplot(data_series, bins=20, kde=True, color='skyblue')
                 plt.xlabel(selected_columns[0])
-                plt.ylabel('Frecuencia')
-                plt.title(f'Histograma de {selected_columns[0]}')
+                plt.ylabel('Frequency')
+                plt.title(f'Histogram of {selected_columns[0]}')
                 histogram_img = io.BytesIO()
                 plt.savefig(histogram_img, format='png', bbox_inches='tight', dpi=100)
                 histogram_img.seek(0)
@@ -1059,7 +1059,7 @@ def analyze_selected_columns():
             if show_boxplot:
                 plt.figure(figsize=(8, 6))
                 sns.boxplot(x=data_series, palette="Set2", width=0.4)
-                plt.title(f'Boxplot de {selected_columns[0]}')
+                plt.title(f'Boxplot of {selected_columns[0]}')
                 boxplot_img = io.BytesIO()
                 plt.savefig(boxplot_img, format='png', bbox_inches='tight', dpi=100)
                 boxplot_img.seek(0)
