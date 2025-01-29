@@ -1526,7 +1526,7 @@ def generate_charts():
                     ax.set_yticks(np.arange(1, len(df_clean[categorical_column].unique()) + 1))
                     ax.set_yticklabels(df_clean[categorical_column].unique())
                     ax.set_xlabel(x_column)
-                    ax.set_title(translations[language]['Raincloud plot by'])
+                    ax.set_title(f'Raincloud plot of {x_column} by {categorical_column}')
                     plt.grid(True)
                 else:
                     # Raincloud Plot sin categorización
@@ -1535,7 +1535,7 @@ def generate_charts():
                     y_jitter = np.random.uniform(-0.05, 0.05, size=len(df_clean[x_column]))
                     plt.scatter(df_clean[x_column], y_jitter, s=10, color='blue', alpha=0.6)
                     plt.xlabel(x_column)
-                    plt.title(translations[language]['Raincloud plot'])
+                    plt.title(f'Raincloud plot of {x_column}')
 
             else:
                 return jsonify({'error': 'The selected column must be numeric for a raincloud plot.'}), 400
