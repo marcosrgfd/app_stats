@@ -1393,7 +1393,7 @@ def generate_charts():
         numeric_columns = data.get('numeric_columns', [])  # Nuevo: Usado en Pairplot
         language = data.get('language', 'en')  # Idioma por defecto: inglés
 
-        if not x_column or not chart_type:
+        if not chart_type:
             return jsonify({'error': 'Please select the columns and the type of chart.'}), 400
         
         # Diccionario de traducciones
