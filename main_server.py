@@ -1390,10 +1390,9 @@ def generate_charts():
         y_column = data.get('y_column')
         chart_type = data.get('chart_type')
         categorical_column = data.get('categorical_column')
-        numeric_columns = data.get('numeric_columns', [])  # Nuevo: Usado en Pairplot
         language = data.get('language', 'en')  # Idioma por defecto: inglés
 
-        if not chart_type:
+        if not x_column or not chart_type:
             return jsonify({'error': 'Please select the columns and the type of chart.'}), 400
         
         # Diccionario de traducciones
@@ -1405,8 +1404,6 @@ def generate_charts():
                 'Boxplot_by': f'Boxplot of {x_column} by {categorical_column}',
                 'Raincloud plot': f'Raincloud plot of {x_column}',
                 'Raincloud plot by': f'Raincloud plot of {x_column} by {categorical_column}',
-                'Barplot': f'Barplot of {categorical_column}',
-                'Pairplot': 'Pairplot of numerical variables',
                 'Frequency': 'Frequency',
                 'Trend line': 'Trend line',
             },
@@ -1417,8 +1414,6 @@ def generate_charts():
                 'Boxplot_by': f'Diagrama de caja de {x_column} por {categorical_column}',
                 'Raincloud plot': f'Gráfico de nubes de lluvia de {x_column}',
                 'Raincloud plot by': f'Gráfico de nubes de lluvia de {x_column} por {categorical_column}',
-                'Barplot': f'Gráfico de barras de {categorical_column}',
-                'Pairplot': 'Matriz de diagramas de dispersión',
                 'Frequency': 'Frecuencia',
                 'Trend line': 'Línea de tendencia',
             },
@@ -1429,8 +1424,6 @@ def generate_charts():
                 'Boxplot_by': f'{categorical_column} 分类的 {x_column} 的箱线图',
                 'Raincloud plot': f'{x_column} 的雨云图',
                 'Raincloud plot by': f'{categorical_column} 分类的 {x_column} 的雨云图',
-                'Barplot': f'{categorical_column} 的柱状图',
-                'Pairplot': '散点矩阵图',
                 'Frequency': '频率',
                 'Trend line': '趋势线',
             }
@@ -1546,38 +1539,7 @@ def generate_charts():
 
             else:
                 return jsonify({'error': 'The selected column must be numeric for a raincloud plot.'}), 400
-            
-        if chart_type == 'Pairplot':
-            if len(numeric_columns) < 2:
-                return jsonify({'error': 'The Pairplot requires at least two numerical columns.'}), 400
-            df_clean = dataframe[numeric_columns].dropna()
-        else:
-            df_clean = dataframe.dropna(subset=[x_column, y_column] if y_column else [x_column])
 
-        # Generar el gráfico
-        img = io.BytesIO()
-        plt.figure(figsize=(10, 8))
-
-        if chart_type == 'Pairplot':
-            pairplot = sns.pairplot(df_clean, hue=categorical_column, diag_kind='kde', markers='o')
-            pairplot.fig.suptitle(translations[language]['Pairplot'], y=1.02)
-            pairplot.savefig(img, format='png')
-            img.seek(0)
-            encoded_img = base64.b64encode(img.getvalue()).decode()
-            plt.close()
-            return jsonify({'chart': encoded_img})
-
-        elif chart_type == 'Barplot':
-            if not categorical_column or categorical_column not in dataframe.columns:
-                return jsonify({'error': 'A valid categorical column is required for the Barplot.'}), 400
-            df_bar = df_clean[categorical_column].value_counts().reset_index()
-            df_bar.columns = [categorical_column, 'count']
-            sns.barplot(x=df_bar[categorical_column], y=df_bar['count'], palette="Set2")
-            plt.xlabel(categorical_column)
-            plt.ylabel(translations[language]['Frequency'])
-            plt.title(translations[language]['Barplot'])
-
-        # 📌 Guardar el gráfico en base64 para enviar a Flutter
         plt.tight_layout()
         plt.savefig(img, format='png')
         img.seek(0)
@@ -1588,6 +1550,7 @@ def generate_charts():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
 
 
 
