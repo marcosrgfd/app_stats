@@ -1526,7 +1526,7 @@ def generate_charts():
                     ax.set_yticks(np.arange(1, len(df_clean[categorical_column].unique()) + 1))
                     ax.set_yticklabels(df_clean[categorical_column].unique())
                     ax.set_xlabel(x_column)
-                    ax.set_title(f'{translations[language]['Raincloud plot by']}')
+                    ax.set_title(f"{translations[language]['Raincloud plot by']}")
                     plt.grid(True)
                 else:
                     # Raincloud Plot sin categorización
