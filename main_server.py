@@ -1390,9 +1390,44 @@ def generate_charts():
         y_column = data.get('y_column')
         chart_type = data.get('chart_type')
         categorical_column = data.get('categorical_column')
+        language = data.get('language', 'en')  # Idioma por defecto: inglés
 
         if not x_column or not chart_type:
             return jsonify({'error': 'Please select the columns and the type of chart.'}), 400
+        
+        # Diccionario de traducciones
+        translations = {
+            'en': {
+                'Scatterplot': f'Scatterplot of {x_column} vs {y_column}',
+                'Histogram': f'Histogram of {x_column}',
+                'Boxplot': f'Boxplot of {x_column}',
+                'Boxplot_by': f'Boxplot of {x_column} by {categorical_column}',
+                'Raincloud plot': f'Raincloud plot of {x_column}',
+                'Raincloud plot by': f'Raincloud plot of {x_column} by {categorical_column}',
+                'Frequency': 'Frequency',
+                'Trend line': 'Trend line',
+            },
+            'es': {
+                'Scatterplot': f'Diagrama de dispersión de {x_column} vs {y_column}',
+                'Histogram': f'Histograma de {x_column}',
+                'Boxplot': f'Diagrama de caja de {x_column}',
+                'Boxplot_by': f'Diagrama de caja de {x_column} por {categorical_column}',
+                'Raincloud plot': f'Gráfico de nubes de lluvia de {x_column}',
+                'Raincloud plot by': f'Gráfico de nubes de lluvia de {x_column} por {categorical_column}',
+                'Frequency': 'Frecuencia',
+                'Trend line': 'Línea de tendencia',
+            },
+            'zh': {
+                'Scatterplot': f'{x_column} 与 {y_column} 的散点图',
+                'Histogram': f'{x_column} 的直方图',
+                'Boxplot': f'{x_column} 的箱线图',
+                'Boxplot_by': f'{categorical_column} 分类的 {x_column} 的箱线图',
+                'Raincloud plot': f'{x_column} 的雨云图',
+                'Raincloud plot by': f'{categorical_column} 分类的 {x_column} 的雨云图',
+                'Frequency': '频率',
+                'Trend line': '趋势线',
+            }
+        }
 
         # Limpiar los datos eliminando valores nulos
         df_clean = dataframe.dropna(subset=[x_column, y_column] if y_column else [x_column])
@@ -1411,14 +1446,14 @@ def generate_charts():
                 sns.scatterplot(x=df_clean[x_column], y=df_clean[y_column], color='blue', alpha=0.6, edgecolor='w', s=80)
                 plt.xlabel(x_column)
                 plt.ylabel(y_column)
-                plt.title(f'Scatterplot of {x_column} vs {y_column}')
+                plt.title(translations[language]['Scatterplot'])
                 plt.grid(True)
 
                 # Añadir línea de tendencia si se solicita
                 if add_trendline:
                     m, b = np.polyfit(df_clean[x_column], df_clean[y_column], 1)
                     plt.plot(df_clean[x_column], m * df_clean[x_column] + b, color='red', linestyle='--', linewidth=2)
-                    plt.legend(['Trend line', 'Data'])
+                    plt.legend([translations[language]['Trend line'], 'Data'])
                     
             else:
                 return jsonify({'error': 'Both selected columns must be numeric for a scatterplot.'}), 400
@@ -1427,8 +1462,8 @@ def generate_charts():
             if pd.api.types.is_numeric_dtype(dataframe[x_column]):
                 sns.histplot(df_clean[x_column], bins=20, kde=True, color='skyblue')
                 plt.xlabel(x_column)
-                plt.ylabel('Frequency')
-                plt.title(f'Histogram of {x_column}')
+                plt.ylabel(translations[language]['Frequency'])
+                plt.title(translations[language]['Histogram'])
             else:
                 return jsonify({'error': 'The selected column must be numeric for a histogram.'}), 400
 
@@ -1447,7 +1482,7 @@ def generate_charts():
                             palette='Set3', 
                             width=0.4  # Ajustar el ancho de las barras para hacerlas más finas
                         )
-                        plt.title(f'Boxplot of {x_column} by {categorical_column}')
+                        plt.title(translations[language]['Boxplot_by'])
                         plt.xlabel(categorical_column)  # Etiqueta correcta para el eje X
                         plt.ylabel(x_column)  # Etiqueta correcta para el eje Y
                     else:
@@ -1455,9 +1490,9 @@ def generate_charts():
                 else:
                     # Boxplot sin categorización
                     sns.boxplot(x=df_clean[x_column], color='lightgreen', width=0.4)
-                    plt.title(f'Boxplot of {x_column}')
+                    plt.title(translations[language]['Boxplot'])
                     plt.xlabel(x_column)
-                    plt.ylabel('Frequency')  # Etiqueta adecuada para el eje Y cuando no hay categorización
+                    plt.ylabel(translations[language]['Frequency'])  # Etiqueta adecuada para el eje Y cuando no hay categorización
             else:
                 return jsonify({'error': 'The selected column must be numeric for a boxplot.'}), 400
 
@@ -1491,7 +1526,7 @@ def generate_charts():
                     ax.set_yticks(np.arange(1, len(df_clean[categorical_column].unique()) + 1))
                     ax.set_yticklabels(df_clean[categorical_column].unique())
                     ax.set_xlabel(x_column)
-                    ax.set_title(f'Raincloud plot of {x_column} by {categorical_column}')
+                    ax.set_title(f'{translations[language]['Raincloud plot by']}')
                     plt.grid(True)
                 else:
                     # Raincloud Plot sin categorización
@@ -1500,7 +1535,7 @@ def generate_charts():
                     y_jitter = np.random.uniform(-0.05, 0.05, size=len(df_clean[x_column]))
                     plt.scatter(df_clean[x_column], y_jitter, s=10, color='blue', alpha=0.6)
                     plt.xlabel(x_column)
-                    plt.title(f'Raincloud plot of {x_column}')
+                    plt.title(translations[language]['Raincloud plot'])
 
             else:
                 return jsonify({'error': 'The selected column must be numeric for a raincloud plot.'}), 400
