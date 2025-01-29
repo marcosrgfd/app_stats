@@ -1390,6 +1390,7 @@ def generate_charts():
         y_column = data.get('y_column')
         chart_type = data.get('chart_type')
         categorical_column = data.get('categorical_column')
+        numeric_columns = data.get('numeric_columns', [])  # Nuevo: Usado en Pairplot
         language = data.get('language', 'en')  # Idioma por defecto: inglés
 
         if not x_column or not chart_type:
@@ -1472,19 +1473,6 @@ def generate_charts():
                 plt.title(translations[language]['Histogram'])
             else:
                 return jsonify({'error': 'The selected column must be numeric for a histogram.'}), 400
-        
-        # 📊 **Barplot (Gráfico de Barras)**
-        elif chart_type == 'Barplot':
-            if categorical_column and categorical_column in dataframe.columns:
-                df_bar = df_clean[categorical_column].value_counts().reset_index()
-                df_bar.columns = [categorical_column, 'count']
-
-                sns.barplot(x=df_bar[categorical_column], y=df_bar['count'], palette="Set2")
-                plt.xlabel(categorical_column)
-                plt.ylabel(translations[language]['Frequency'])
-                plt.title(translations[language]['Barplot'])
-            else:
-                return jsonify({'error': 'A categorical column is required for the Barplot.'}), 400
 
         elif chart_type == 'Boxplot':
             if pd.api.types.is_numeric_dtype(dataframe[x_column]):
@@ -1559,23 +1547,37 @@ def generate_charts():
             else:
                 return jsonify({'error': 'The selected column must be numeric for a raincloud plot.'}), 400
             
-        # 📊 **Pairplot (Matriz de diagramas de dispersión)**
-        elif chart_type == 'Pairplot':
-            num_cols = df_clean.select_dtypes(include=['number']).columns  # Solo columnas numéricas
-            if len(num_cols) < 2:
+        if chart_type == 'Pairplot':
+            if len(numeric_columns) < 2:
                 return jsonify({'error': 'The Pairplot requires at least two numerical columns.'}), 400
+            df_clean = dataframe[numeric_columns].dropna()
+        else:
+            df_clean = dataframe.dropna(subset=[x_column, y_column] if y_column else [x_column])
 
-            pairplot = sns.pairplot(df_clean[num_cols], hue=categorical_column, diag_kind='kde', markers='o')
+        # Generar el gráfico
+        img = io.BytesIO()
+        plt.figure(figsize=(10, 8))
+
+        if chart_type == 'Pairplot':
+            pairplot = sns.pairplot(df_clean, hue=categorical_column, diag_kind='kde', markers='o')
             pairplot.fig.suptitle(translations[language]['Pairplot'], y=1.02)
-
-            # Guardar el Pairplot manualmente
             pairplot.savefig(img, format='png')
             img.seek(0)
             encoded_img = base64.b64encode(img.getvalue()).decode()
             plt.close()
             return jsonify({'chart': encoded_img})
 
-        # 📌 Guardar el gráfico en base64 para enviar a la app
+        elif chart_type == 'Barplot':
+            if not categorical_column or categorical_column not in dataframe.columns:
+                return jsonify({'error': 'A valid categorical column is required for the Barplot.'}), 400
+            df_bar = df_clean[categorical_column].value_counts().reset_index()
+            df_bar.columns = [categorical_column, 'count']
+            sns.barplot(x=df_bar[categorical_column], y=df_bar['count'], palette="Set2")
+            plt.xlabel(categorical_column)
+            plt.ylabel(translations[language]['Frequency'])
+            plt.title(translations[language]['Barplot'])
+
+        # 📌 Guardar el gráfico en base64 para enviar a Flutter
         plt.tight_layout()
         plt.savefig(img, format='png')
         img.seek(0)
