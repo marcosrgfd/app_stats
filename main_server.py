@@ -71,6 +71,8 @@ from flask_cors import CORS
 
 import re  # Para limpiar los nombres de columnas
 
+import os
+
 # Cambiar el backend de matplotlib para evitar problemas de hilos en entornos de servidor
 plt.switch_backend('Agg')
 
@@ -4572,7 +4574,8 @@ def ping():
     return '', 200
 
 if __name__ == '__main__':
-    app.run(debug=False, host='0.0.0.0', port=5000)
+    port = int(os.environ.get('PORT', 8080))  # Por defecto, usa 8080
+    app.run(debug=False, host='0.0.0.0', port=port)
 
 
 
